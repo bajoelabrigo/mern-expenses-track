@@ -76,7 +76,7 @@ const usersController = {
     });
   }),
 
-  //!Changle password
+  //!Change password
   changeUserPassword: asyncHandler(async (req, res) => {
     const { newPasword } = req.body;
     //!Find the user
@@ -100,7 +100,7 @@ const usersController = {
   //!update user profile
   updateUserProfile: asyncHandler(async (req, res) => {
     const { email, username } = req.body;
-    const updateUser = await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       req.user,
       {
         username,
@@ -110,8 +110,9 @@ const usersController = {
         new: true,
       }
     );
-    res.json({ message: "User profile update successfully", updateUser });
+    res.json({ message: "User profile updated successfully", updatedUser });
   }),
+  
 };
 
 module.exports = usersController;

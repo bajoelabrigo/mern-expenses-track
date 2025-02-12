@@ -44,7 +44,7 @@ const transactionController = {
         filters.category = category;
       }
     }
-    const transactions = await Transaction.find(filters).sort({ date: -1 });
+    const transactions = await Transaction.find(filters).sort({ date: -1 }); //ascending and descending
     res.json(transactions);
   }),
 

@@ -23,7 +23,7 @@ userRouter.put(
 
 //!Update profile
 userRouter.put(
-  "api/v1/users/update-profile",
+  "/api/v1/users/update-profile",
   isAuthenticated,
   usersController.updateUserProfile
 );

@@ -22,7 +22,9 @@ const categoryController = {
       user: req.user,
     });
     if (categoryExists) {
-      throw new Error`Category ${categoryExists.name} already exists in the database`();
+      throw new Error(
+        `Category ${categoryExists.name} already exists in the database`
+      );
     }
     //!Create the category
     const category = await Category.create({
@@ -87,4 +89,4 @@ const categoryController = {
   }),
 };
 
-module.exports(categoryController);
+module.exports = categoryController;
