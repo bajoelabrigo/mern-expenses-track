@@ -76,9 +76,9 @@ const TransactionUpdate = () => {
         >
           <div className="text-center">
             <h2 className="text-2xl font-semibold text-gray-800">
-              Transaction Details
+              Update Transaction
             </h2>
-            <p className="text-gray-600">Fill in the details below.</p>
+            <p className="text-gray-600">Fill in the fields you want to update.</p>
           </div>
           {/* Display alert message */}
 
@@ -212,7 +212,7 @@ const TransactionUpdate = () => {
               type="submit"
               className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
             >
-              Submit Transaction
+              Update Transaction
             </button>
             <Link
               to="/dashboard"
