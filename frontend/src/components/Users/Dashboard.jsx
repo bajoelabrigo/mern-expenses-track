@@ -1,9 +1,13 @@
-import React from 'react'
+import TransactionChart from "../Transactions/TransactionChart";
+import TransactionList from "../Transactions/TransactionList";
 
 const Dashboard = () => {
   return (
-    <div>Dashboard</div>
-  )
-}
+    <>
+      <TransactionChart />
+      <TransactionList />
+    </>
+  );
+};
 
-export default Dashboard
+export default Dashboard;

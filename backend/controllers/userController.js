@@ -78,7 +78,7 @@ const usersController = {
 
   //!Change password
   changeUserPassword: asyncHandler(async (req, res) => {
-    const { newPasword } = req.body;
+    const { newPassword } = req.body;
     //!Find the user
     const user = await User.findById(req.user);
     if (!user) {

@@ -8,26 +8,58 @@ import {
   FaWallet,
 } from "react-icons/fa";
 import { SiDatabricks } from "react-icons/si";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
+import { useNavigate, useParams } from "react-router-dom";
+import { updateCategoryAPI } from "../../services/category/categoryService";
+import AlertMessage from "../Alert/AlertMessage";
 
 const validationSchema = Yup.object({
-  name: Yup.string()
-    .required("Category name is required")
-    .oneOf(["income", "expense"]),
+  name: Yup.string().required("Category name is required"),
   type: Yup.string()
     .required("Category type is required")
     .oneOf(["income", "expense"]),
 });
 
-const AddCategory = () => {
+const UpdateCategory = () => {
+  //Id Params
+  const { id } = useParams();
+
+  //Navigate
+  const navigate = useNavigate();
+
+  //Mutation
+  const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
+    mutationFn: updateCategoryAPI,
+    mutationKey: ["update-category"],
+  });
+
   const formik = useFormik({
     initialValues: {
       type: "",
       name: "",
     },
-    onSubmit: (values) => {},
+    validationSchema,
+    onSubmit: (values) => {
+      const data = {
+        ...values,
+        id,
+      };
+      mutateAsync(data)
+        .then((data) => {
+          console.log(data);
+        })
+        .catch((e) => console.log(e));
+    },
   });
+
+  //Redirect
+  useEffect(() => {
+    setTimeout(() => {
+      if (isSuccess) {
+        navigate("/categories");
+      }
+    }, 1000);
+  }, [isPending, isError, error, isSuccess]);
 
   return (
     <form
@@ -36,16 +68,17 @@ const AddCategory = () => {
     >
       <div className="text-center">
         <h2 className="text-2xl font-semibold text-gray-800">
-          Add New Category
+          Update Category
         </h2>
         <p className="text-gray-600">Fill in the details below.</p>
       </div>
+
       {/* Display alert message */}
       {isError && (
         <AlertMessage
           type="error"
           message={
-            error?.response?.data?.message ||
+            error.response.data.messaje ||
             "Something happened please try again later"
           }
         />
@@ -53,9 +86,10 @@ const AddCategory = () => {
       {isSuccess && (
         <AlertMessage
           type="success"
-          message="Category added successfully, redirecting..."
+          message="Category updated successfully, redirecting..."
         />
       )}
+
       {/* Category Type */}
       <div className="space-y-2">
         <label
@@ -66,16 +100,17 @@ const AddCategory = () => {
           <span>Type</span>
         </label>
         <select
-          {...formik.getFieldProps("type")}
+          name=""
           id="type"
+          {...formik.getFieldProps("type")}
           className="w-full p-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
         >
-          <option value="">Select transaction type</option>
+          <option value="">Select transaction type</option>{" "}
           <option value="income">Income</option>
           <option value="expense">Expense</option>
         </select>
         {formik.touched.type && formik.errors.type && (
-          <p className="text-red-500 text-xs">{formik.errors.type}</p>
+          <p className="text-red-500 text-xs ">{formik.errors.type}</p>
         )}
       </div>
 
@@ -100,12 +135,12 @@ const AddCategory = () => {
       {/* Submit Button */}
       <button
         type="submit"
-        className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 transform"
+        className="mt-4 w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 transform"
       >
-        Add Category
+        Update Category
       </button>
     </form>
   );
 };
 
-export default AddCategory;
+export default UpdateCategory;

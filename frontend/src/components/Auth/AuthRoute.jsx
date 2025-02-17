@@ -1,9 +1,16 @@
-import React from 'react'
+import React from "react";
+import { Navigate } from "react-router-dom";
+import { getUserFromStorage } from "../../utils/getUserFromStorage";
 
-const AuthRoute = () => {
-  return (
-    <div>AuthRoute</div>
-  )
-}
+const AuthRoute = ({ children }) => {
+  //get the token
+  const token = getUserFromStorage();
 
-export default AuthRoute
+  if (token) {
+    return children;
+  } else {
+    return <Navigate to="/login" />;
+  }
+};
+
+export default AuthRoute;
