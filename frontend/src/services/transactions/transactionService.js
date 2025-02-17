@@ -31,12 +31,22 @@ export const addTransactionAPI = async ({
 };
 
 //!update
-export const updateTransactionAPI = async ({ name, type, id }) => {
+export const updateTransactionAPI = async ({
+  type,
+  category,
+  amount,
+  date,
+  description,
+  id,
+}) => {
   const response = await axios.put(
     `${BASE_URL}/transactions/update/${id}`,
     {
-      name,
       type,
+      category,
+      amount,
+      date,
+      description,
     },
     {
       headers: {
@@ -49,7 +59,7 @@ export const updateTransactionAPI = async ({ name, type, id }) => {
 
 //!delete
 export const deleteTransactionAPI = async (id) => {
-  const response = await axios.delete(`${BASE_URL}transactions/delete/${id}`, {
+  const response = await axios.delete(`${BASE_URL}/transactions/delete/${id}`, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

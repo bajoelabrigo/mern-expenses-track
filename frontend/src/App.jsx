@@ -12,6 +12,7 @@ import Dashboard from "./components/Users/Dashboard";
 import { useSelector } from "react-redux";
 import AddCategory from "./components/category/AddCategory";
 import AuthRoute from "./components/Auth/AuthRoute";
+import TransactionUpdate from "./components/Transactions/TransactionUpdate";
 
 const App = () => {
   const user = useSelector((state) => state.auth.user);
@@ -54,6 +55,14 @@ const App = () => {
           element={
             <AuthRoute>
               <TransactionForm />
+            </AuthRoute>
+          }
+        />
+        <Route
+          path="/update-transactions/:id"
+          element={
+            <AuthRoute>
+              <TransactionUpdate />
             </AuthRoute>
           }
         />
