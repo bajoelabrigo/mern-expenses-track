@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "mern-expenses-tracker": "file:.."
+  }
+}
