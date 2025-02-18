@@ -21,9 +21,8 @@ const corsOptions = {
   origin: ["http://localhost:5173"],
 };
 
-if (process.env.NODE_ENV !== "production") {
-  app.use(cors(corsOptions));
-}
+app.use(cors(corsOptions));
+
 //!Middlewares
 app.use(express.json()); //?Pass incoming json data
 
@@ -33,14 +32,6 @@ app.use("/", categoryRouter);
 app.use("/", transactionRouter);
 //!Error
 app.use(errorHandler);
-
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "/frontend/dist")));
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
-  });
-}
 
 //!Start the server
 const PORT = process.env.PORT || 8000;

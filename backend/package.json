@@ -1,11 +1,10 @@
 {
   "name": "mern-expenses-tracker",
   "version": "1.0.0",
-  "main": "backend/app.js",
+  "main": "app.js",
   "scripts": {
-    "dev": "nodemon backend/app.js",
-    "start": "node backend/app.js",
-    "build": "npm install && npm install --prefix frontend && npm run build --prefix frontend"
+    "dev": "nodemon app.js",
+    "start": "node app.js"
   },
   "keywords": [],
   "author": "",
