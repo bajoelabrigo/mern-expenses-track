@@ -18,7 +18,7 @@ mongoose
 
 //! Cors config
 const corsOptions = {
-  origin: ["https://sistemadegastos.netlify.app/","http://localhost:5173", "http://localhost:5174"],
+  origin: ["https://sistemadegastos.netlify.app/","http://localhost:5173", "http://localhost:5174", "https://mern-expenses-track.onrender.com"],
 };
 app.use(cors(corsOptions));
 
