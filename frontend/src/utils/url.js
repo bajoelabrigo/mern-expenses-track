@@ -1,1 +1,1 @@
-export const BASE_URL = "https://mern-expenses-track.onrender.com"
+export const BASE_URL = "https://mern-expenses-track.onrender.com/api/v1"
