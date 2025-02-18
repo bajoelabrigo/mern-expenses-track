@@ -18,7 +18,7 @@ mongoose
 
 //! Cors config
 const corsOptions = {
-  origin: ["http://localhost:5173"],
+  origin: ["https://sistemadegastos.netlify.app/","http://localhost:5173", "http://localhost:5174"],
 };
 app.use(cors(corsOptions));
 
