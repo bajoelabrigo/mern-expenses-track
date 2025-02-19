@@ -96,7 +96,7 @@ const TransactionChart = () => {
                 Income
               </h3>
               <h3 className="font-semibold text-xl text-gray-700 text-center ">
-                ${totals?.income}.00
+                ${totals?.income}0
               </h3>
             </div>
           </div>
