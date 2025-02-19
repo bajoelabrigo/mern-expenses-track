@@ -106,11 +106,11 @@ const TransactionChart = () => {
                 Expense
               </h3>
               <h3 className="font-semibold text-gray-700 text-xl text-center ">
-                ${totals?.expense}.00
+                ${totals?.expense}0
               </h3>
             </div>
             <h3 className="text-xl font-semibold text-[#36A2EB] mt-3 text-center ">
-              Total ${totals?.income - totals?.expense}.00
+              Total ${totals?.income - totals?.expense}0
             </h3>
           </div>
           <Doughnut data={data} options={options} />
