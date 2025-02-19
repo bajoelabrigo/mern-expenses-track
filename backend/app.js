@@ -18,7 +18,7 @@ mongoose
 
 //! Cors config
 const corsOptions = {
-  origin: ["https://mern-expenses-track-frontend.onrender.com" ||"http://localhost:5173"],
+  origin: ["https://mern-expenses-track-frontend.onrender.com" ||"http://localhost:5173" || "https://controldegastoschurch.netlify.app/"],
 };
 
 app.use(cors(corsOptions));
