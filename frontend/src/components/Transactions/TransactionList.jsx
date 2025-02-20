@@ -64,6 +64,7 @@ const TransactionList = () => {
       })
       .catch((e) => console.log(e));
   };
+  console.log(transactions);
   return (
     <div className="my-4 p-4 shadow-lg rounded-lg bg-white">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -142,9 +143,13 @@ const TransactionList = () => {
                     {transaction.type.charAt(0).toUpperCase() +
                       transaction.type.slice(1)}
                   </span>
+                  <span className="ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                    {transaction.category.charAt(0).toUpperCase() +
+                      transaction.category.slice(1)}
+                  </span>
                   <span className="ml-2 text-gray-800">
-                    {transaction.category?.name} - $
-                    {transaction.amount.toLocaleString()}
+                    {transaction.category?.name} - S/.
+                    {Number(transaction.amount).toFixed(2)}
                   </span>
                   <span className="text-sm text-gray-600 italic ml-2">
                     {transaction.description}
