@@ -89,7 +89,7 @@ const TransactionChart = () => {
         <h1 className="text-2xl font-bold text-center mb-4">
           Transaction Overview
         </h1>
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div
             style={{ height: "350px" }}
             className="relative flex justify-center max-w-xl items-center p-8 shadow-2xl rounded-2xl"
@@ -104,7 +104,7 @@ const TransactionChart = () => {
                 </span>
               </div>
               <h3 className="text-3xl  font-bold text-[#36A2EB] text-center ">
-                {totals?.income.toFixed(2) - (totals?.expense).toFixed(2)}
+                {totals?.income?.toFixed(2) - (totals?.expense)?.toFixed(2)}
               </h3>
             </div>
             <Doughnut data={data} options={options} />
@@ -116,10 +116,10 @@ const TransactionChart = () => {
               <h3 className="text-3xl mb-2 font-bold text-[#36A2EB] mt-3">
                 Total Income
               </h3>
-              <div className="flex gap-4 ">
+              <div className="flex flex-col items-center md:flex-row gap-4">
                 <BsCashCoin className="text-4xl text-green-400" />
-                <h3 className="font-bold text-6xl text-gray-500 text-center ">
-                  S/. {(totals?.income).toFixed(2)}
+                <h3 className="font-bold text-4xl md:text-6xl lg:text-5xl text-gray-500 text-center ">
+                  S/. {(totals?.income)?.toFixed(2)}
                 </h3>
               </div>
             </div>
@@ -130,10 +130,10 @@ const TransactionChart = () => {
               <h3 className="text-3xl mb-2 font-bold text-[#FF6384] mt-3">
                 Total Expense
               </h3>
-              <div className="flex gap-4">
-                <BsHouseDash className="text-4xl text-orange-400" />
-                <h3 className="font-bold text-6xl text-gray-500  text-center ">
-                  S/. {(totals?.expense).toFixed(2)}
+              <div className="flex flex-col items-center md:flex-row gap-4">
+                <BsHouseDash className="text-4xl  text-orange-400" />
+                <h3 className="font-bold text-4xl md:text-6xl lg:text-5xl text-gray-500  text-center ">
+                  S/. {(totals?.expense)?.toFixed(2)}
                 </h3>
               </div>
             </div>
