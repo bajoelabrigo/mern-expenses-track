@@ -54,27 +54,35 @@ const CategoriesList = () => {
             key={category._id}
             className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
           >
-            <div>
-              <span className="text-gray-800">{category?.name}</span>
-              <span
-                className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  category.type === "income"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {category?.type?.charAt(0).toUpperCase() +
-                  category?.type?.slice(1)}
-              </span>
+            <div className="flex items-center gap-2">
+              {/* Emoji/icon */}
+              <span className="text-xl">{category?.icon || "📁"}</span>
+
+              {/* Name and Type */}
+              <div>
+                <span className="text-gray-800 font-medium">
+                  {category?.name}
+                </span>
+                <span
+                  className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    category.type === "income"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {category?.type?.charAt(0).toUpperCase() +
+                    category?.type?.slice(1)}
+                </span>
+              </div>
             </div>
+
+            {/* Edit/Delete buttons */}
             <div className="flex space-x-3">
               <Link
                 to={`/update-category/${category._id}`}
-                className="text-red-500 hover:text-red-700"
+                className="text-blue-500 hover:text-blue-700"
               >
-                <button className="text-blue-500 hover:text-blue-700">
-                  <FaEdit />
-                </button>
+                <FaEdit />
               </Link>
               <button
                 onClick={() => handleDelete(category._id)}

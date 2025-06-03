@@ -1,33 +1,29 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import {
-  FaDollarSign,
-  FaCalendarAlt,
-  FaRegCommentDots,
   FaWallet,
 } from "react-icons/fa";
 import { SiDatabricks } from "react-icons/si";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
-import { updateCategoryAPI } from "../../services/category/categoryService";
+import { updateCategoryAPI, getCategoryByIdAPI } from "../../services/category/categoryService";
 import AlertMessage from "../Alert/AlertMessage";
+import EmojiPicker from "emoji-picker-react";
 
 const validationSchema = Yup.object({
   name: Yup.string().required("Category name is required"),
   type: Yup.string()
     .required("Category type is required")
     .oneOf(["income", "expense"]),
+  icon: Yup.string().required("Emoji icon is required"),
 });
 
 const UpdateCategory = () => {
-  //Id Params
   const { id } = useParams();
-
-  //Navigate
   const navigate = useNavigate();
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  //Mutation
   const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
     mutationFn: updateCategoryAPI,
     mutationKey: ["update-category"],
@@ -37,29 +33,35 @@ const UpdateCategory = () => {
     initialValues: {
       type: "",
       name: "",
+      icon: "",
     },
     validationSchema,
     onSubmit: (values) => {
-      const data = {
-        ...values,
-        id,
-      };
-      mutateAsync(data)
-        .then((data) => {
-          console.log(data);
-        })
+      mutateAsync({ ...values, id })
+        .then(() => console.log("Category updated"))
         .catch((e) => console.log(e));
     },
   });
 
-  //Redirect
+  useQuery({
+    queryKey: ["category", id],
+    queryFn: () => getCategoryByIdAPI(id),
+    enabled: !!id,
+    onSuccess: (data) => {
+      formik.setValues({
+        name: data.name,
+        type: data.type,
+        icon: data.icon || "",
+      });
+    },
+  });
+
   useEffect(() => {
-    setTimeout(() => {
-      if (isSuccess) {
-        navigate("/categories");
-      }
-    }, 1000);
-  }, [isPending, isError, error, isSuccess]);
+    if (isSuccess) {
+      const timeout = setTimeout(() => navigate("/categories"), 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [isSuccess, navigate]);
 
   return (
     <form
@@ -67,20 +69,14 @@ const UpdateCategory = () => {
       className="max-w-lg mx-auto my-10 bg-white p-6 rounded-lg shadow-lg space-y-6"
     >
       <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-800">
-          Update Category
-        </h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Update Category</h2>
         <p className="text-gray-600">Fill in the details below.</p>
       </div>
 
-      {/* Display alert message */}
       {isError && (
         <AlertMessage
           type="error"
-          message={
-            error.response.data.messaje ||
-            "Something happened please try again later"
-          }
+          message={error?.response?.data?.message || "Something happened, please try again later"}
         />
       )}
       {isSuccess && (
@@ -90,52 +86,66 @@ const UpdateCategory = () => {
         />
       )}
 
-      {/* Category Type */}
+      {/* Type */}
       <div className="space-y-2">
-        <label
-          htmlFor="type"
-          className="flex gap-2 items-center text-gray-700 font-medium"
-        >
+        <label htmlFor="type" className="flex gap-2 items-center text-gray-700 font-medium">
           <FaWallet className="text-blue-500" />
           <span>Type</span>
         </label>
         <select
-          name=""
-          id="type"
           {...formik.getFieldProps("type")}
-          className="w-full p-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+          id="type"
+          className="w-full p-2 mt-1 border border-gray-300 rounded-md"
         >
-          <option value="">Select transaction type</option>{" "}
+          <option value="">Select transaction type</option>
           <option value="income">Income</option>
           <option value="expense">Expense</option>
         </select>
-        {formik.touched.type && formik.errors.type && (
-          <p className="text-red-500 text-xs ">{formik.errors.type}</p>
-        )}
       </div>
 
-      {/* Category Name */}
+      {/* Name */}
       <div className="flex flex-col">
         <label htmlFor="name" className="text-gray-700 font-medium">
-          <SiDatabricks className="inline mr-2 text-blue-500" />
-          Name
+          <SiDatabricks className="inline mr-2 text-blue-500" /> Name
         </label>
         <input
           type="text"
           {...formik.getFieldProps("name")}
-          placeholder="Name"
+          placeholder="Category Name"
           id="name"
-          className="w-full mt-1 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 py-2 px-3"
+          className="w-full mt-1 border border-gray-300 rounded-md py-2 px-3"
         />
-        {formik.touched.name && formik.errors.name && (
-          <p className="text-red-500 text-xs italic">{formik.errors.name}</p>
+      </div>
+
+      {/* Emoji Picker */}
+      <div className="space-y-2">
+        <label className="text-gray-700 font-medium">Emoji Icon</label>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="px-3 py-1 bg-blue-500 text-white rounded shadow hover:bg-blue-600 transition"
+          >
+            {formik.values.icon ? formik.values.icon : "Select Emoji"}
+          </button>
+          {formik.values.icon && (
+            <span className="text-2xl">{formik.values.icon}</span>
+          )}
+        </div>
+        {showEmojiPicker && (
+          <EmojiPicker
+            onEmojiClick={(emojiData) => {
+              formik.setFieldValue("icon", emojiData.emoji);
+              setShowEmojiPicker(false);
+            }}
+          />
         )}
       </div>
 
-      {/* Submit Button */}
+      {/* Submit */}
       <button
         type="submit"
-        className="mt-4 w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 transform"
+        className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
       >
         Update Category
       </button>

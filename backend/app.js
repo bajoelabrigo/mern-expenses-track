@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const errorHandler = require("./middlewares/errorHandlerMiddleware");
 const dotenv = require("dotenv");
 const userRouter = require("./routes/userRouter");
@@ -18,10 +19,20 @@ mongoose
 
 //! Cors config
 const corsOptions = {
-  origin: ["https://controldegastoschurch.netlify.app", "https://mern-expenses-track-frontend.onrender.com", "http://localhost:5173"]
+  origin: [
+    "https://controldegastoschurch.netlify.app",
+    "https://mern-expenses-track-frontend.onrender.com",
+    "http://localhost:5173",
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 };
-
 app.use(cors(corsOptions));
+
+app.options("*", cors(corsOptions)); // <-- para responder preflight correctamente
+
+app.use(cookieParser()); // ✅ Esto es esencial
 
 //!Middlewares
 app.use(express.json()); //?Pass incoming json data

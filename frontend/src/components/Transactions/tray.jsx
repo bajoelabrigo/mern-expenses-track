@@ -10,11 +10,9 @@ import {
   FaWallet,
 } from "react-icons/fa";
 import { listCategoriesAPI } from "../../services/category/categoryService";
-import {
-  fetchTransactionByIdAPI,
-  updateTransactionAPI,
-} from "../../services/transactions/transactionService";
+import { updateTransactionAPI } from "../../services/transactions/transactionService";
 import AlertMessage from "../Alert/AlertMessage";
+
 
 const TransactionUpdate = () => {
   //Id Params
@@ -47,35 +45,20 @@ const TransactionUpdate = () => {
       category: "",
       date: "",
       description: "",
+      type:""
     },
     onSubmit: (values) => {
-      console.log("Submitted values:", values); // 🔍 Verifica si type y category están vacíos
-      const data = { ...values, id };
-      mutateAsync(data).catch(console.error);
+      const data = {
+        ...values,
+        id,
+      };
+      mutateAsync(data)
+        .then((data) => {
+          console.log(data);
+        })
+        .catch((e) => console.log(e));
     },
   });
-
-  // ⬇️ Cargar la transacción existente al montar
-  useEffect(() => {
-    const loadTransaction = async () => {
-      try {
-        const transaction = await fetchTransactionByIdAPI(id);
-        formik.setValues({
-          type: transaction.type || "",
-          amount: transaction.amount || "",
-          category: transaction.category || "",
-          date: transaction.date?.slice(0, 10) || "",
-          description: transaction.description || "",
-        });
-      } catch (e) {
-        console.error("Error fetching transaction:", e);
-      }
-    };
-
-    if (id) {
-      loadTransaction();
-    }
-  }, [id]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -96,9 +79,7 @@ const TransactionUpdate = () => {
             <h2 className="text-2xl font-semibold text-gray-800">
               Update Transaction
             </h2>
-            <p className="text-gray-600">
-              Fill in the fields you want to update.
-            </p>
+            <p className="text-gray-600">Fill in the fields you want to update.</p>
           </div>
           {/* Display alert message */}
 

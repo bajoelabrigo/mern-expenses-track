@@ -1,56 +1,37 @@
-import axios from "axios";
-import { BASE_URL } from "../../utils/url";
-import { getUserFromStorage } from "../../utils/getUserFromStorage";
+import { axiosInstance } from "../../lib/axios";
 
-//!token
-const token = getUserFromStorage();
-//!Add
+//! Add Category
 export const addCategoryAPI = async ({ name, type }) => {
-  const response = await axios.post(
-    `${BASE_URL}/categories/create`,
-    {
-      name,
-      type,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+  const response = await axiosInstance.post("/categories/create", {
+    name,
+    type,
+  });
   return response.data;
 };
-//!update
+
+//! Update Category
 export const updateCategoryAPI = async ({ name, type, id }) => {
-  const response = await axios.put(
-    `${BASE_URL}/categories/update/${id}`,
-    {
-      name,
-      type,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+  const response = await axiosInstance.put(`/categories/update/${id}`, {
+    name,
+    type,
+  });
   return response.data;
 };
-//!delete
+
+//! Delete Category
 export const deleteCategoryAPI = async (id) => {
-  const response = await axios.delete(`${BASE_URL}/categories/delete/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axiosInstance.delete(`/categories/delete/${id}`);
   return response.data;
 };
-//!lists
+
+//! List Categories
 export const listCategoriesAPI = async () => {
-  const response = await axios.get(`${BASE_URL}/categories/lists`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await axiosInstance.get("/categories/lists");
+  return response.data;
+};
+
+//! Get One Category
+export const getCategoryByIdAPI = async (id) => {
+  const response = await axiosInstance.get(`/categories/${id}`);
   return response.data;
 };

@@ -17,6 +17,10 @@ const CategorySchema = new mongoose.Schema(
       required: true,
       enum: ["income", "expense"],
     },
+    icon: {
+      type: String,
+      default: "📁", // icono por defecto si no se especifica
+    },
   },
   {
     timestamps: true,

@@ -23,13 +23,27 @@ const validationSchema = Yup.object({
   category: Yup.string().required("Category is required"),
   date: Yup.date().required("Date is required"),
   description: Yup.string(),
+  recurrent: Yup.boolean(),
+  recurrenceType: Yup.string().when("recurrent", {
+    is: true,
+    then: (schema) =>
+      schema
+        .required("Recurrence type is required")
+        .oneOf(["daily", "weekly", "monthly", "yearly"]),
+  }),
+  recurrenceCount: Yup.number().when("recurrent", {
+    is: true,
+    then: (schema) =>
+      schema
+        .required("Recurrence count is required")
+        .min(1, "Must be at least 1")
+        .max(365, "Too many recurrences"),
+  }),
 });
 
 const TransactionForm = () => {
-  //Navigate
   const navigate = useNavigate();
 
-  // Mutation
   const {
     mutateAsync,
     isPending,
@@ -40,8 +54,8 @@ const TransactionForm = () => {
     mutationFn: addTransactionAPI,
     mutationKey: ["add-transaction"],
   });
-  //fetching
-  const { data, isError, isLoading, isFetched, error, refetch } = useQuery({
+
+  const { data, isError, isLoading, error, refetch } = useQuery({
     queryFn: listCategoriesAPI,
     queryKey: ["list-categories"],
   });
@@ -53,6 +67,9 @@ const TransactionForm = () => {
       category: "",
       date: "",
       description: "",
+      recurrent: false,
+      recurrenceType: "",
+      recurrenceCount: "",
     },
     validationSchema,
     onSubmit: (values) => {
@@ -65,12 +82,13 @@ const TransactionForm = () => {
   });
 
   useEffect(() => {
-    setTimeout(() => {
-      if (isSuccess) {
+    if (isSuccess) {
+      const timeout = setTimeout(() => {
         navigate("/dashboard");
-      }
-    }, 1000);
-  }, [isPending, isAddTranErr, transErr, isSuccess]);
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [isSuccess, navigate]);
 
   return (
     <form
@@ -83,21 +101,21 @@ const TransactionForm = () => {
         </h2>
         <p className="text-gray-600">Fill in the details below.</p>
       </div>
-      {/* Display alert message */}
 
       {isError && (
         <AlertMessage
           type="error"
           message={
             error?.response?.data?.message ||
-            "Something happened please try again later"
+            "Something went wrong. Please try again."
           }
         />
       )}
       {isSuccess && (
         <AlertMessage type="success" message="Transaction added successfully" />
       )}
-      {/* Transaction Type Field */}
+
+      {/* Type */}
       <div className="space-y-2">
         <label
           htmlFor="type"
@@ -120,7 +138,7 @@ const TransactionForm = () => {
         )}
       </div>
 
-      {/* Amount Field */}
+      {/* Amount */}
       <div className="flex flex-col space-y-1">
         <label htmlFor="amount" className="text-gray-700 font-medium">
           <FaDollarSign className="inline mr-2 text-blue-500" />
@@ -138,7 +156,7 @@ const TransactionForm = () => {
         )}
       </div>
 
-      {/* Category Field */}
+      {/* Category */}
       <div className="flex flex-col space-y-1">
         <label htmlFor="category" className="text-gray-700 font-medium">
           <FaRegCommentDots className="inline mr-2 text-blue-500" />
@@ -150,13 +168,11 @@ const TransactionForm = () => {
           className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
         >
           <option value="">Select a category</option>
-          {data?.map((category) => {
-            return (
-              <option key={category?._id} value={category?.name}>
-                {category?.name}
-              </option>
-            );
-          })}
+          {data?.map((category) => (
+            <option key={category._id} value={category.name}>
+              {category.name}
+            </option>
+          ))}
         </select>
         {formik.touched.category && formik.errors.category && (
           <p className="text-red-500 text-xs italic">
@@ -165,7 +181,7 @@ const TransactionForm = () => {
         )}
       </div>
 
-      {/* Date Field */}
+      {/* Date */}
       <div className="flex flex-col space-y-1">
         <label htmlFor="date" className="text-gray-700 font-medium">
           <FaCalendarAlt className="inline mr-2 text-blue-500" />
@@ -182,7 +198,7 @@ const TransactionForm = () => {
         )}
       </div>
 
-      {/* Description Field */}
+      {/* Description */}
       <div className="flex flex-col space-y-1">
         <label htmlFor="description" className="text-gray-700 font-medium">
           <FaRegCommentDots className="inline mr-2 text-blue-500" />
@@ -202,7 +218,76 @@ const TransactionForm = () => {
         )}
       </div>
 
-      {/* Submit Button */}
+      {/* Recurrent checkbox */}
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          id="recurrent"
+          name="recurrent"
+          checked={formik.values.recurrent}
+          onChange={formik.handleChange}
+          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        />
+        <label htmlFor="recurrent" className="text-gray-700 font-medium">
+          Repeat transaction (Recurrent)
+        </label>
+      </div>
+
+      {/* Conditional recurrence fields */}
+      {formik.values.recurrent && (
+        <div className="space-y-3">
+          {/* Recurrence Type */}
+          <div>
+            <label
+              htmlFor="recurrenceType"
+              className="text-gray-700 font-medium"
+            >
+              Recurrence Type
+            </label>
+            <select
+              {...formik.getFieldProps("recurrenceType")}
+              id="recurrenceType"
+              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 mt-1"
+            >
+              <option value="">Select recurrence</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+            {formik.touched.recurrenceType && formik.errors.recurrenceType && (
+              <p className="text-red-500 text-xs italic">
+                {formik.errors.recurrenceType}
+              </p>
+            )}
+          </div>
+
+          {/* Recurrence Count */}
+          <div>
+            <label
+              htmlFor="recurrenceCount"
+              className="text-gray-700 font-medium"
+            >
+              Repetition Count
+            </label>
+            <input
+              type="number"
+              {...formik.getFieldProps("recurrenceCount")}
+              id="recurrenceCount"
+              placeholder="e.g. 6"
+              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+            />
+            {formik.touched.recurrenceCount &&
+              formik.errors.recurrenceCount && (
+                <p className="text-red-500 text-xs italic">
+                  {formik.errors.recurrenceCount}
+                </p>
+              )}
+          </div>
+        </div>
+      )}
+
+      {/* Submit */}
       <button
         type="submit"
         className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"

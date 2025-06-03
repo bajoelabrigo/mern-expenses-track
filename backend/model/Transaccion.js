@@ -20,6 +20,7 @@ const transactionSchema = new mongoose.Schema(
     amount: {
       type: Number,
       required: true,
+      min: 0,
     },
     date: {
       type: Date,
@@ -27,7 +28,23 @@ const transactionSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: false,
+    },
+    icon: {
+      type: String,
+      default: "", // puedes cambiar a "💰" si quieres un ícono por defecto
+    },
+    recurrent: {
+      type: Boolean,
+      default: false,
+    },
+    recurrenceType: {
+      type: String,
+      enum: ["daily", "weekly", "monthly", "yearly"],
+      default: null,
+    },
+    recurrenceCount: {
+      type: Number, // ¿cuántas veces se repetirá?
+      default: 0,
     },
   },
   {

@@ -1,146 +1,216 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   Chart as ChartJS,
   ArcElement,
   Tooltip,
   Legend,
-  plugins,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
 } from "chart.js";
-import { Doughnut } from "react-chartjs-2";
+import { Doughnut, Bar } from "react-chartjs-2";
 import { useQuery } from "@tanstack/react-query";
-import { listTransationsAPI } from "../../services/transactions/transactionService";
+import {
+  getTransactionByPeriodAPI,
+  exportTransactionExcelAPI,
+} from "../../services/transactions/transactionService";
+import { listCategoriesAPI } from "../../services/category/categoryService";
+import { BsCashCoin, BsHouseDash } from "react-icons/bs";
 import { GrMoney } from "react-icons/gr";
-import { BsCashCoin } from "react-icons/bs";
-import { BsHouseDash } from "react-icons/bs";
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title
+);
+
+const periods = [
+  { label: "Mensual", value: "monthly" },
+  { label: "Bimestral", value: "bimonthly" },
+  { label: "Trimestral", value: "quarterly" },
+  { label: "6 Meses", value: "semiannual" },
+  { label: "Anual", value: "annual" },
+];
 
 const TransactionChart = () => {
-  const {
-    data: transactions,
-    isError,
-    error,
-    isLoading,
-    isFetched,
-    refetch,
-  } = useQuery({
-    queryFn: listTransationsAPI,
-    queryKey: ["list-transactions", "list-categories", "login"],
+  const [selectedPeriod, setSelectedPeriod] = useState("monthly");
+
+  const { data: categories = [] } = useQuery({
+    queryFn: listCategoriesAPI,
+    queryKey: ["list-categories"],
   });
 
-  //!calculate total income and expense with "reduce function"
-  const totals = transactions?.reduce(
-    (acc, transaction) => {
-      if (transaction?.type === "income") {
-        acc.income += Number(transaction?.amount);
-      } else {
-        acc.expense += Number(transaction?.amount);
-      }
-      return acc;
-    },
-    { income: 0, expense: 0 }
-  );
+  const { data: transactions = [] } = useQuery({
+    queryFn: () => getTransactionByPeriodAPI(selectedPeriod),
+    queryKey: ["transactions", selectedPeriod],
+  });
 
-  //!Data structure for chart
-  const data = {
-    labels: ["Income", "Expense"],
-    datasets: [
-      {
-        label: "Transactions",
-        data: [totals?.income, totals?.expense],
-        backgroundColor: ["#36A2EB", "#FF6384"],
-        borderColor: ["#36A2EB", "#FF6384"],
-        hoverOffset: 4,
+  const totals = useMemo(() => {
+    return transactions.reduce(
+      (acc, t) => {
+        if (t.type === "income") acc.income += Number(t.amount);
+        else acc.expense += Number(t.amount);
+        return acc;
       },
-    ],
+      { income: 0, expense: 0 }
+    );
+  }, [transactions]);
+
+  const chartData = useMemo(() => {
+    const map = {};
+    transactions.forEach((t) => {
+      const date = new Date(t.date);
+      const key = `${date.getFullYear()}-${(date.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}`;
+      if (!map[key]) map[key] = { income: 0, expense: 0 };
+      if (t.type === "income") map[key].income += Number(t.amount);
+      else map[key].expense += Number(t.amount);
+    });
+    const labels = Object.keys(map).sort();
+    return {
+      labels,
+      datasets: [
+        {
+          label: "Ingresos",
+          data: labels.map((l) => map[l].income),
+          backgroundColor: "#36A2EB",
+        },
+        {
+          label: "Gastos",
+          data: labels.map((l) => map[l].expense),
+          backgroundColor: "#FF6384",
+        },
+      ],
+    };
+  }, [transactions]);
+
+  const handleExportExcel = async () => {
+    const response = await exportTransactionExcelAPI(selectedPeriod);
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `transactions_${selectedPeriod}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const options = {
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: "bottom",
-        labels: {
-          padding: 25,
-          boxWidth: 12,
-          font: {
-            size: 14,
-          },
-        },
-      },
-      title: {
-        display: true,
-        text: "Income vs Expense",
-        font: {
-          size: 18,
-          weight: "bold",
-        },
-        padding: {
-          top: 10,
-          bottom: 30,
-        },
-      },
-    },
-    cutout: "70%",
-  };
   return (
-    <>
-      <div className="my-8 p-6 bg-white rounded-lg shadow-xl border border-gray-200">
-        <h1 className="text-2xl font-bold text-center mb-4">
-          Transaction Overview
-        </h1>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div
-            style={{ height: "350px" }}
-            className="relative flex justify-center max-w-xl items-center p-8 shadow-2xl rounded-2xl"
-          >
-            <div className="flex flex-col items-center justify-center max-w-2xl px-auto mx-auto absolute top-28 ">
-              <div className="flex items-center justify-center gap-2">
-                <h3 className="text-2xl  font-bold text-[#FF6384] text-center ">
-                  Total
-                </h3>
-                <span>
-                  <GrMoney className="text-red-300 text-xl" />
-                </span>
-              </div>
-              <h3 className="text-3xl  font-bold text-[#36A2EB] text-center ">
-                {totals?.income?.toFixed(2) - (totals?.expense)?.toFixed(2)}
-              </h3>
-            </div>
-            <Doughnut data={data} options={options} />
-          </div>
+    <div className="p-6 space-y-6 bg-white rounded-lg shadow-xl border border-gray-200">
+      <h2 className="text-2xl font-bold text-center">
+        Resumen de Transacciones
+      </h2>
 
+      <div className="flex justify-center gap-4">
+        <select
+          value={selectedPeriod}
+          onChange={(e) => setSelectedPeriod(e.target.value)}
+          className="border p-2 rounded-md"
+        >
+          {periods.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handleExportExcel}
+          className="bg-green-500 text-white px-4 py-2 rounded-md"
+        >
+          Exportar Excel
+        </button>
+      </div>
 
-          <div className="relative flex justify-between p-22 max-w-xl shadow-2xl rounded-2xl">
-            <div className="items-center justify-center">
-              <h3 className="text-3xl mb-2 font-bold text-[#36A2EB] mt-3">
-                Total Income
-              </h3>
-              <div className="flex flex-col items-center md:flex-row gap-4">
-                <BsCashCoin className="text-4xl text-green-400" />
-                <h3 className="font-bold text-4xl md:text-6xl lg:text-5xl text-gray-500 text-center ">
-                  S/. {(totals?.income)?.toFixed(2)}
-                </h3>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative flex justify-between max-w-xl p-22  shadow-2xl rounded-2xl">
-            <div className="items-center justify-center">
-              <h3 className="text-3xl mb-2 font-bold text-[#FF6384] mt-3">
-                Total Expense
-              </h3>
-              <div className="flex flex-col items-center md:flex-row gap-4">
-                <BsHouseDash className="text-4xl  text-orange-400" />
-                <h3 className="font-bold text-4xl md:text-6xl lg:text-5xl text-gray-500  text-center ">
-                  S/. {(totals?.expense)?.toFixed(2)}
-                </h3>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="relative w-full flex justify-center items-center h-72">
+          <div className="w-64 h-64 relative">
+            <Doughnut
+              data={{
+                labels: ["Ingresos", "Gastos"],
+                datasets: [
+                  {
+                    data: [totals.income, totals.expense],
+                    backgroundColor: ["#36A2EB", "#FF6384"],
+                  },
+                ],
+              }}
+              options={{
+                plugins: {
+                  legend: { position: "bottom" },
+                  title: {
+                    display: true,
+                    text: "Ingreso vs Gasto",
+                    font: {
+                      size: 16,
+                    },
+                  },
+                },
+                cutout: "80%",
+                maintainAspectRatio: false,
+              }}
+            />
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center ">
+              <GrMoney className="text-3xl text-blue-400 mb-1" />
+              <span className="text-sm font-semibold text-gray-600">
+                Balance
+              </span>
+              <span className="text-xl font-bold text-gray-900">
+                S/. {(totals.income - totals.expense).toFixed(2)}
+              </span>
             </div>
           </div>
         </div>
+
+        <div className="flex flex-col items-center justify-center shadow-xl rounded-lg">
+          <h3 className="text-3xl font-bold text-[#36A2EB]">Total Ingresos</h3>
+          <div className="flex gap-2 items-center">
+            <BsCashCoin className="text-3xl text-green-500" />
+            <span className="text-3xl font-bold">
+              S/. {totals.income.toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center justify-center shadow-xl rounded-lg">
+          <h3 className="text-3xl font-bold text-[#FF6384]">Total Gastos</h3>
+          <div className="flex gap-2 items-center">
+            <BsHouseDash className="text-3xl text-red-500" />
+            <span className="text-3xl font-bold">
+              S/. {totals.expense.toFixed(2)}
+            </span>
+          </div>
+        </div>
       </div>
-    </>
+
+      <div className="mt-8">
+        <h2 className="text-2xl  font-bold mb-4">
+          Evolución mensual de transacciones
+        </h2>
+        <div className="h-[400px]">
+          <Bar
+            data={chartData}
+            options={{
+              responsive: true,
+              plugins: {
+                legend: { position: "top" },
+                title: {
+                  display: true,
+                  text: `Historial de Ingresos y Gastos (${
+                    periods.find((p) => p.value === selectedPeriod)?.label
+                  })`,
+                },
+              },
+            }}
+          />
+        </div>
+      </div>
+    </div>
   );
 };
 

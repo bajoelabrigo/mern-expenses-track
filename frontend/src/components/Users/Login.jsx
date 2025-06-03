@@ -1,28 +1,27 @@
 import React, { useEffect } from "react";
-import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
+import { FaEnvelope, FaLock } from "react-icons/fa";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
-import { loginAPI, registerAPI } from "../../services/users/userService";
+import { loginAPI } from "../../services/users/userService";
 import { useNavigate } from "react-router-dom";
 import AlertMessage from "../Alert/AlertMessage";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { loginAction } from "../../redux/slice/authSlice";
 
-//Validations
+// Validations
 const validationSchema = Yup.object({
-  email: Yup.string().email("Invalid").required("Email is required"),
+  email: Yup.string().email("Invalid email").required("Email is required"),
   password: Yup.string()
     .min(5, "Password must be at least 5 characters long")
-    .required("Email is required"),
+    .required("Password is required"),
 });
 
 const LoginForm = () => {
-  //Navigate
   const navigate = useNavigate();
-  //Dispatch
   const dispatch = useDispatch();
-  //Mutation
+  const user = useSelector((state) => state.auth.user); // 👈
+
   const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
     mutationFn: loginAPI,
     mutationKey: ["login"],
@@ -33,30 +32,24 @@ const LoginForm = () => {
       email: "",
       password: "",
     },
-    //Validations
     validationSchema,
-    //Submit
-    onSubmit: (values) => {
-      console.log(values);
-      //http request
-      mutateAsync(values)
-        .then((data) => {
-          //dispatch
-          dispatch(loginAction(data));
-          //Save the user into localStorage
-          localStorage.setItem("userInfo", JSON.stringify(data));
-        })
-        .catch((e) => console.log(data));
+    onSubmit: async (values) => {
+      try {
+        const data = await mutateAsync(values);
+        dispatch(loginAction(data));
+        localStorage.setItem("userInfo", JSON.stringify(data));
+      } catch (e) {
+        console.error("Login error:", e);
+      }
     },
   });
-  //Redirect
+
+  // ✅ Redirige cuando Redux tenga el user
   useEffect(() => {
-    setTimeout(() => {
-      if (isSuccess) {
-        navigate("/dashboard");
-      }
-    }, 2000);
-  }, [isPending, isError, error, isSuccess]);
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   return (
     <form
@@ -68,9 +61,14 @@ const LoginForm = () => {
       </h2>
 
       {/* Display messages */}
-      {isPending && <AlertMessage type="loading" message="Login you in..." />}
+      {isPending && <AlertMessage type="loading" message="Logging you in..." />}
       {isError && (
-        <AlertMessage type="error" message={error.response.data.message} />
+        <AlertMessage
+          type="error"
+          message={
+            error?.response?.data?.message || "Something went wrong. Try again."
+          }
+        />
       )}
       {isSuccess && <AlertMessage type="success" message="Login success" />}
 
@@ -78,7 +76,7 @@ const LoginForm = () => {
         Login to access your account
       </p>
 
-      {/* Input Field - Email */}
+      {/* Email Field */}
       <div className="relative">
         <FaEnvelope className="absolute top-3 left-3 text-gray-400" />
         <input
@@ -93,7 +91,7 @@ const LoginForm = () => {
         )}
       </div>
 
-      {/* Input Field - Password */}
+      {/* Password Field */}
       <div className="relative">
         <FaLock className="absolute top-3 left-3 text-gray-400" />
         <input
@@ -108,9 +106,10 @@ const LoginForm = () => {
         )}
       </div>
 
-      {/* Submit Button */}
+      {/* Submit */}
       <button
         type="submit"
+        disabled={isPending}
         className="w-full bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
       >
         Login

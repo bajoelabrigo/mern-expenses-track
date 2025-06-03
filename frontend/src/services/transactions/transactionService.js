@@ -1,10 +1,6 @@
-import axios from "axios";
-import { BASE_URL } from "../../utils/url";
-import { getUserFromStorage } from "../../utils/getUserFromStorage";
+import { axiosInstance } from "../../lib/axios";
 
-//!Get token
-const token = getUserFromStorage();
-//!Add
+//! Add Transaction
 export const addTransactionAPI = async ({
   type,
   category,
@@ -12,25 +8,17 @@ export const addTransactionAPI = async ({
   description,
   amount,
 }) => {
-  const response = await axios.post(
-    `${BASE_URL}/transactions/create`,
-    {
-      type,
-      category,
-      date,
-      amount,
-      description,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+  const response = await axiosInstance.post("/transactions/create", {
+    type,
+    category,
+    date,
+    amount,
+    description,
+  });
   return response.data;
 };
 
-//!update
+//! Update Transaction
 export const updateTransactionAPI = async ({
   type,
   category,
@@ -39,46 +27,65 @@ export const updateTransactionAPI = async ({
   description,
   id,
 }) => {
-  const response = await axios.put(
-    `${BASE_URL}/transactions/update/${id}`,
-    {
-      type,
-      category,
-      amount,
-      date,
-      description,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-  return response.data;
-};
-
-//!delete
-export const deleteTransactionAPI = async (id) => {
-  const response = await axios.delete(`${BASE_URL}/transactions/delete/${id}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const response = await axiosInstance.put(`/transactions/update/${id}`, {
+    type,
+    category,
+    amount,
+    date,
+    description,
   });
   return response.data;
 };
 
-//!lists
+//! Delete Transaction
+export const deleteTransactionAPI = async (id) => {
+  const response = await axiosInstance.delete(`/transactions/delete/${id}`);
+  return response.data;
+};
+
+//! List Transactions with Filters
 export const listTransationsAPI = async ({
   category,
   type,
   startDate,
   endDate,
 }) => {
-  const response = await axios.get(`${BASE_URL}/transactions/lists`, {
+  const response = await axiosInstance.get("/transactions/lists", {
     params: { category, type, startDate, endDate },
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
   return response.data;
+};
+
+//! Get Single Transaction by ID
+export const fetchTransactionByIdAPI = async (id) => {
+  if (!id) throw new Error("Transaction ID is required");
+  const response = await axiosInstance.get(`/transactions/${id}`);
+  return response.data;
+};
+
+//! Get Transactions by Period
+export const getTransactionByPeriodAPI = async (period = "monthly") => {
+  const response = await axiosInstance.get("/transactions/period", {
+    params: { period },
+  });
+  return response.data;
+};
+
+//! Export Transactions to Excel
+export const exportTransactionExcelAPI = async () => {
+  const response = await axiosInstance.get("/transactions/export/excel", {
+    responseType: "blob",
+  });
+
+  const blob = new Blob([response.data], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "transactions_report.xlsx";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 };
