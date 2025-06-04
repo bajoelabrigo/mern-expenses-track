@@ -51,8 +51,16 @@ const categoryController = {
 
     const category = await Category.findById(req.params.id);
 
-    if (!category || category.user.toString() !== req.user._id.toString()) {
-      throw new Error("Category not found or user not authorized");
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    // Verifica si el usuario es el dueño o si es admin
+    const isOwner = category.user.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      throw new Error("User not authorized to update this category");
     }
 
     const oldName = category.name;
@@ -82,10 +90,16 @@ const categoryController = {
   delete: asyncHandler(async (req, res) => {
     const category = await Category.findById(req.params.id);
 
-    if (!category || category.user.toString() !== req.user._id.toString()) {
-      return res
-        .status(404)
-        .json({ message: "Category not found or not authorized" });
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    // Verifica si el usuario es el dueño o si es admin
+    const isOwner = category.user.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      throw new Error("User not authorized to update this category");
     }
 
     const defaultCategory = "Uncategorized";

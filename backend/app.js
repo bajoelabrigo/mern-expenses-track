@@ -7,6 +7,7 @@ const dotenv = require("dotenv");
 const userRouter = require("./routes/userRouter");
 const categoryRouter = require("./routes/categoryRouter");
 const transactionRouter = require("./routes/transactionRouter");
+const adminRouter=require("./routes/adminRoutes")
 
 const app = express();
 dotenv.config();
@@ -41,6 +42,7 @@ app.use(express.json()); //?Pass incoming json data
 app.use("/", userRouter);
 app.use("/", categoryRouter);
 app.use("/", transactionRouter);
+app.use("/api/admin", adminRouter);
 //!Error
 app.use(errorHandler);
 

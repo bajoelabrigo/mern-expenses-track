@@ -1,219 +1,130 @@
-import { Fragment, useEffect } from "react";
+import { Fragment } from "react";
 import { Disclosure, Menu, Transition } from "@headlessui/react";
-import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Link } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { IoLogOutOutline } from "react-icons/io5";
-import { SiAuthy } from "react-icons/si";
-import { logoutAction } from "../../redux/slice/authSlice";
-import { ChevronUpDownIcon } from "@heroicons/react/24/solid";
 import { FaChurch } from "react-icons/fa6";
+import { logoutAction } from "../../redux/slice/authSlice";
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
 }
 
 export default function PrivateNavbar() {
-  //Dispatch
   const dispatch = useDispatch();
-  //Logout handler
+  const user = useSelector((state) => state.auth.user);
+
   const logoutHandler = () => {
     dispatch(logoutAction());
-    //remove the user from storage
     localStorage.removeItem("userInfo");
   };
 
   return (
-    <Disclosure as="nav" className="bg-white ">
+    <Disclosure as="nav" className="bg-white">
       {({ open }) => (
         <>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 justify-start items-center">
-              <div className="flex justify-center flex-row w-full">
-                <div className="-ml-2 mr-2 flex items-left md:hidden">
-                  {/* Mobile menu button */}
-                  <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
-                    <span className="absolute -inset-0.5" />
-                    <span className="sr-only">Abrir menu principal</span>
-                    {open ? (
-                      <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-                    ) : (
-                      <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-                    )}
-                  </Disclosure.Button>
-                </div>
-                <div className="flex flex-shrink-0 items-center">
-                  {/* Logo */}
-                  <FaChurch className="h-8 w-auto text-blue-500" />
-                </div>
-                <div className="hidden md:ml-6 md:flex md:space-x-8">
-                  <Link
-                    to="/"
-                    className="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
-                  >
-                    Sistema Contable Iglesia
+            <div className="flex h-16 justify-between items-center">
+              <div className="flex items-center gap-6">
+                <FaChurch className="h-8 w-auto text-blue-500" />
+                <Link to="/" className="text-lg font-semibold text-gray-800">
+                  Sistema Contable Iglesia
+                </Link>
+                <div className="hidden md:flex gap-6">
+                  <Link to="/add-transaction" className="nav-link">
+                    Agregar Transacción
                   </Link>
-                </div>
-                <div className="hidden md:ml-6 md:flex md:space-x-8">
-                  <Link
-                    to="/add-transaction"
-                    className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  >
-                   Agregar Transacción
+                  <Link to="/add-category" className="nav-link">
+                    Agregar Categoría
                   </Link>
-                  <Link
-                    to="/add-category"
-                    className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  >
-                    Agregar Categoria
+                  <Link to="/categories" className="nav-link">
+                    Categorías
                   </Link>
-                  <Link
-                    to="/categories"
-                    className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  >
-                    Categorias
-                  </Link>
-                  <Link
-                    to="/profile"
-                    className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  >
+                  <Link to="/profile" className="nav-link">
                     Perfil
                   </Link>
-                  <Link
-                    to="/dashboard"
-                    className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  >
+                  <Link to="/dashboard" className="nav-link">
                     Panel de Control
                   </Link>
+
+                  {user?.role === "admin" && (
+                    <>
+                      <Link to="/admin/users" className="nav-link text-red-600">
+                        Lista de Usuarios
+                      </Link>
+                      <Link
+                        to="/admin/dashboard"
+                        className="nav-link text-red-600"
+                      >
+                        Panel Admin
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
+
               <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <button
-                    onClick={logoutHandler}
-                    type="button"
-                    className="relative m-2 inline-flex items-center gap-x-1.5 rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600"
-                  >
-                    <IoLogOutOutline className="h-5 w-5" aria-hidden="true" />
-                    <span>Salir</span>
-                  </button>
-                </div>
-                <div className="hidden md:ml-1 md:flex md:flex-shrink-0 md:items-center">
-                  {/* Profile dropdown */}
-                  <Menu as="div" className="relative ml-1">
-                    <div>
-                      <Menu.Button className="relative flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                        <span className="absolute -inset-1.5" />
-                        <span className="sr-only">Abrir menu de usuario</span>
-                      </Menu.Button>
-                    </div>
-                    <Transition
-                      as={Fragment}
-                      enter="transition ease-out duration-200"
-                      enterFrom="transform opacity-0 scale-95"
-                      enterTo="transform opacity-100 scale-100"
-                      leave="transition ease-in duration-75"
-                      leaveFrom="transform opacity-100 scale-100"
-                      leaveTo="transform opacity-0 scale-95"
-                    >
-                      <Menu.Items className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                        <Menu.Item>
-                          {({ active }) => (
-                            <Link
-                              to="/student-dashboard"
-                              className={classNames(
-                                active ? "bg-gray-100" : "",
-                                "block px-4 py-2 text-sm text-gray-700"
-                              )}
-                            >
-                              Mi Panel
-                            </Link>
-                          )}
-                        </Menu.Item>
-                        <Menu.Item>
-                          {({ active }) => (
-                            <button
-                              onClick={logoutHandler}
-                              className={classNames(
-                                active ? "bg-gray-100" : "",
-                                "block px-4 py-2 text-sm text-gray-700"
-                              )}
-                            >
-                              Salir
-                            </button>
-                          )}
-                        </Menu.Item>
-                      </Menu.Items>
-                    </Transition>
-                  </Menu>
-                </div>
+                <button
+                  onClick={logoutHandler}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700"
+                >
+                  <IoLogOutOutline className="h-5 w-5" />
+                  Salir
+                </button>
               </div>
             </div>
           </div>
-          {/* Mobile Navs  private links*/}
-          <Disclosure.Panel className="md:hidden">
-            <div className="space-y-1 pb-3 pt-2">
-              <Link to="/">
-                <Disclosure.Button
-                  as="button"
-                  className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
-                >
-                  Sistema Contable Iglesia
-                </Disclosure.Button>
-              </Link>
-              <Link to="/add-transaction">
-                <Disclosure.Button
-                  as="button"
-                  className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
-                >
-                  Agregar Transacción
-                </Disclosure.Button>
-              </Link>
-              <Link to="/add-category">
-                <Disclosure.Button
-                  as="button"
-                  className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
-                >
-                  Agregar Categoria
-                </Disclosure.Button>
-              </Link>
-              <Link to="/categories">
-                <Disclosure.Button
-                  as="button"
-                  className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
-                >
-                  Categorias
-                </Disclosure.Button>
-              </Link>
-              <Link to="/profile">
-                <Disclosure.Button
-                  as="button"
-                  className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
-                >
-                  Perfil
-                </Disclosure.Button>
-              </Link>
-              <Link to="/dashboard">
-                <Disclosure.Button
-                  as="button"
-                  className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
-                >
-                  Mi Panel
-                </Disclosure.Button>
-              </Link>
-            </div>
-            {/* Profile links */}
-            <div className="border-t border-gray-200 pb-3 pt-4">
-              <div className="mt-3 space-y-1">
-                <Disclosure.Button
-                  as="button"
-                  // onClick={logoutHandler}
-                  className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 sm:px-6"
-                >
-                  Calir
-                </Disclosure.Button>
-              </div>
-            </div>
+
+          {/* Mobile Navigation */}
+          <Disclosure.Panel className="md:hidden px-4 pt-2 pb-3 space-y-1">
+            <Link to="/add-transaction">
+              <Disclosure.Button className="mobile-link">
+                Agregar Transacción
+              </Disclosure.Button>
+            </Link>
+            <Link to="/add-category">
+              <Disclosure.Button className="mobile-link">
+                Agregar Categoría
+              </Disclosure.Button>
+            </Link>
+            <Link to="/categories">
+              <Disclosure.Button className="mobile-link">
+                Categorías
+              </Disclosure.Button>
+            </Link>
+            <Link to="/profile">
+              <Disclosure.Button className="mobile-link">
+                Perfil
+              </Disclosure.Button>
+            </Link>
+            <Link to="/dashboard">
+              <Disclosure.Button className="mobile-link">
+                Panel de Control
+              </Disclosure.Button>
+            </Link>
+
+            {user?.role === "admin" && (
+              <>
+                <Link to="/admin/users">
+                  <Disclosure.Button className="mobile-link text-red-600">
+                    Lista de Usuarios
+                  </Disclosure.Button>
+                </Link>
+                <Link to="/admin/dashboard">
+                  <Disclosure.Button className="mobile-link text-red-600">
+                    Panel Admin
+                  </Disclosure.Button>
+                </Link>
+              </>
+            )}
+
+            <Disclosure.Button
+              onClick={logoutHandler}
+              className="block w-full text-left px-4 py-2 text-base font-medium text-gray-600 hover:bg-gray-100"
+            >
+              Salir
+            </Disclosure.Button>
           </Disclosure.Panel>
         </>
       )}

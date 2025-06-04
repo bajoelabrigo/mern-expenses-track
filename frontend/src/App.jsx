@@ -11,6 +11,9 @@ import AddCategory from "./components/category/AddCategory";
 import AuthRoute from "./components/Auth/AuthRoute";
 import TransactionUpdate from "./components/Transactions/TransactionUpdate";
 import Layout from "./layout/Layout";
+import AdminRoute from "./components/Auth/AdminRoute ";
+import AdminUsersList from "./components/Admin/AdminUsersList ";
+import AdminUserDashboard from "./components/Admin/AdminUserDashboard";
 
 const App = () => {
   return (
@@ -75,6 +78,23 @@ const App = () => {
               <AuthRoute>
                 <UserProfile />
               </AuthRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <AdminRoute>
+                <AdminUsersList />
+              </AdminRoute>
+            }
+          />
+
+          <Route
+            path="/admin/dashboard/:id"
+            element={
+              <AdminRoute>
+                <AdminUserDashboard />
+              </AdminRoute>
             }
           />
         </Route>
