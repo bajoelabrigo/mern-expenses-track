@@ -49,8 +49,8 @@ const AddCategory = () => {
       className="max-w-lg mx-auto my-10 bg-white p-6 rounded-lg shadow-lg space-y-6"
     >
       <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-800">Add New Category</h2>
-        <p className="text-gray-600">Fill in the details below.</p>
+        <h2 className="text-2xl font-semibold text-gray-800">Agregar nueva categoria</h2>
+        <p className="text-gray-600">Complete los detalles a continuación.</p>
       </div>
 
       {isError && (
@@ -62,16 +62,16 @@ const AddCategory = () => {
       <div className="space-y-2">
         <label htmlFor="type" className="flex gap-2 items-center text-gray-700 font-medium">
           <FaWallet className="text-blue-500" />
-          <span>Type</span>
+          <span>Tipo</span>
         </label>
         <select
           {...formik.getFieldProps("type")}
           id="type"
           className="w-full p-2 border border-gray-300 rounded-md"
         >
-          <option value="">Select transaction type</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
+          <option value="">Seleccione el tipo de transacción</option>
+          <option value="income">Ingreso</option>
+          <option value="expense">Gasto</option>
         </select>
       </div>
 
@@ -79,20 +79,20 @@ const AddCategory = () => {
       <div className="space-y-2">
         <label htmlFor="name" className="text-gray-700 font-medium">
           <SiDatabricks className="inline mr-2 text-blue-500" />
-          Name
+          Nombre
         </label>
         <input
           type="text"
           {...formik.getFieldProps("name")}
           id="name"
-          placeholder="Category name"
+          placeholder="Nombre de categoria..."
           className="w-full p-2 border border-gray-300 rounded-md"
         />
       </div>
 
       {/* Emoji Picker */}
       <div className="space-y-2">
-        <label className="text-gray-700 font-medium">Emoji Icon</label>
+        <label className="text-gray-700 font-medium">Icono de Emoji</label>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -120,7 +120,7 @@ const AddCategory = () => {
         type="submit"
         className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
       >
-        Add Category
+        Agregar Categoria
       </button>
     </form>
   );

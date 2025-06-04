@@ -22,7 +22,7 @@ const UserProfile = () => {
             setOpenTab(1);
           }}
         >
-          Update Profile
+          Actualizar Perfil
         </Link>
         <Link
           to="#"
@@ -33,7 +33,7 @@ const UserProfile = () => {
             setOpenTab(2);
           }}
         >
-          Update Password
+          Actualizar Password
         </Link>
       </div>
       {/*Contents for tabs */}
@@ -44,7 +44,7 @@ const UserProfile = () => {
         </div>
         <div className={`${openTab === 2 ? "block" : "hidden"}`}>
           {/*Update password form */}
-          <UpdatePasswordForm/>
+          <UpdatePasswordForm />
         </div>
       </div>
       <div></div>

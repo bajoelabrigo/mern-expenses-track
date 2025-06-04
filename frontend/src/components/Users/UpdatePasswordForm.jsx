@@ -49,16 +49,16 @@ const UpdatePassword = () => {
             className="block text-sm font-medium mb-2"
             htmlFor="new-password"
           >
-            New Password
+            Nuevo Password
           </label>
-          {isPending && <AlertMessage type="loading" message="Updating...." />}
+          {isPending && <AlertMessage type="loading" message="Actualizando...." />}
           {isError && (
             <AlertMessage type="error" message={error.response.data.message} />
           )}
           {isSuccess && (
             <AlertMessage
               type="success"
-              message="Password updated successfully"
+              message="Password Actualizado Exitosamente"
             />
           )}
           <div className="flex items-center border-2 shadow border-gray-400 py-2 mt-2 px-3 rounded">
@@ -69,7 +69,7 @@ const UpdatePassword = () => {
               name="newPassword"
               {...formik.getFieldProps("password")}
               className="outline-none flex-1"
-              placeholder="Enter new password"
+              placeholder="Ingrese el nuevo password"
             />
           </div>
           {formik.touched.password && formik.errors.password && (
@@ -83,7 +83,7 @@ const UpdatePassword = () => {
           type="submit"
           className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
         >
-          Update Password
+          Actualizar Password
         </button>
       </form>
     </div>

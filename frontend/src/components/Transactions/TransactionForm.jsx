@@ -97,9 +97,9 @@ const TransactionForm = () => {
     >
       <div className="text-center">
         <h2 className="text-2xl font-semibold text-gray-800">
-          Transaction Details
+          Detalles de la transacción
         </h2>
-        <p className="text-gray-600">Fill in the details below.</p>
+        <p className="text-gray-600">Llena todos los campos a continuación.</p>
       </div>
 
       {isError && (
@@ -107,12 +107,12 @@ const TransactionForm = () => {
           type="error"
           message={
             error?.response?.data?.message ||
-            "Something went wrong. Please try again."
+            "Algo salió mal. Inténtalo de nuevo."
           }
         />
       )}
       {isSuccess && (
-        <AlertMessage type="success" message="Transaction added successfully" />
+        <AlertMessage type="success" message="Transacción agregada exitosamente" />
       )}
 
       {/* Type */}
@@ -122,16 +122,16 @@ const TransactionForm = () => {
           className="flex gap-2 items-center text-gray-700 font-medium"
         >
           <FaWallet className="text-blue-500" />
-          <span>Type</span>
+          <span>Tipo</span>
         </label>
         <select
           {...formik.getFieldProps("type")}
           id="type"
           className="block w-full p-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
         >
-          <option value="">Select transaction type</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
+          <option value="">Seleccione el tipo de transacción</option>
+          <option value="income">Ingreso</option>
+          <option value="expense">Gasto</option>
         </select>
         {formik.touched.type && formik.errors.type && (
           <p className="text-red-500 text-xs">{formik.errors.type}</p>
@@ -142,13 +142,13 @@ const TransactionForm = () => {
       <div className="flex flex-col space-y-1">
         <label htmlFor="amount" className="text-gray-700 font-medium">
           <FaDollarSign className="inline mr-2 text-blue-500" />
-          Amount
+          Cantidad
         </label>
         <input
           type="number"
           {...formik.getFieldProps("amount")}
           id="amount"
-          placeholder="Amount"
+          placeholder="Cantidad"
           className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
         />
         {formik.touched.amount && formik.errors.amount && (
@@ -160,14 +160,14 @@ const TransactionForm = () => {
       <div className="flex flex-col space-y-1">
         <label htmlFor="category" className="text-gray-700 font-medium">
           <FaRegCommentDots className="inline mr-2 text-blue-500" />
-          Category
+          Categoria
         </label>
         <select
           {...formik.getFieldProps("category")}
           id="category"
           className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
         >
-          <option value="">Select a category</option>
+          <option value="">Seleccione una Categoria</option>
           {data?.map((category) => (
             <option key={category._id} value={category.name}>
               {category.name}
@@ -185,7 +185,7 @@ const TransactionForm = () => {
       <div className="flex flex-col space-y-1">
         <label htmlFor="date" className="text-gray-700 font-medium">
           <FaCalendarAlt className="inline mr-2 text-blue-500" />
-          Date
+          Fecha
         </label>
         <input
           type="date"
@@ -202,12 +202,12 @@ const TransactionForm = () => {
       <div className="flex flex-col space-y-1">
         <label htmlFor="description" className="text-gray-700 font-medium">
           <FaRegCommentDots className="inline mr-2 text-blue-500" />
-          Description (Optional)
+          Descripción (Opcional)
         </label>
         <textarea
           {...formik.getFieldProps("description")}
           id="description"
-          placeholder="Description"
+          placeholder="Descripción"
           rows="3"
           className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
         ></textarea>
@@ -229,7 +229,7 @@ const TransactionForm = () => {
           className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
         />
         <label htmlFor="recurrent" className="text-gray-700 font-medium">
-          Repeat transaction (Recurrent)
+          Transacción repetida (recurrente)
         </label>
       </div>
 
@@ -242,18 +242,18 @@ const TransactionForm = () => {
               htmlFor="recurrenceType"
               className="text-gray-700 font-medium"
             >
-              Recurrence Type
+              Tipo de recurrencia
             </label>
             <select
               {...formik.getFieldProps("recurrenceType")}
               id="recurrenceType"
               className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 mt-1"
             >
-              <option value="">Select recurrence</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
+              <option value="">Seleccionar recurrencia</option>
+              <option value="daily">Diariamente</option>
+              <option value="weekly">Semanalmente</option>
+              <option value="monthly">Mensualmente</option>
+              <option value="yearly">Anualmente</option>
             </select>
             {formik.touched.recurrenceType && formik.errors.recurrenceType && (
               <p className="text-red-500 text-xs italic">
@@ -268,13 +268,13 @@ const TransactionForm = () => {
               htmlFor="recurrenceCount"
               className="text-gray-700 font-medium"
             >
-              Repetition Count
+              Recuento de repeticiones
             </label>
             <input
               type="number"
               {...formik.getFieldProps("recurrenceCount")}
               id="recurrenceCount"
-              placeholder="e.g. 6"
+              placeholder="Ejemplo: 6"
               className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
             />
             {formik.touched.recurrenceCount &&
@@ -292,7 +292,7 @@ const TransactionForm = () => {
         type="submit"
         className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
       >
-        Submit Transaction
+        Enviar transacción
       </button>
     </form>
   );

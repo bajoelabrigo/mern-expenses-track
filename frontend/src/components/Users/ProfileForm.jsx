@@ -33,18 +33,18 @@ export default function ProfileForm() {
     <>
       <div className="max-w-2xl mx-auto my-10 p-8 bg-white rounded-lg shadow-md">
         <h1 className="mb-2 text-2xl text-center font-extrabold">
-          Welcome {`${user?.username}`}
+          Bienvenido {`${user?.username}`}
         </h1>
         <h3 className="text-xl font-semibold text-gray-800 mb-4">
-          Update Profile
+          Actualizar Perfil
         </h3>
         {/* Display message */}
-        {isPending && <AlertMessage type="loading" message="Updating..." />}
+        {isPending && <AlertMessage type="loading" message="Actualizando..." />}
         {isError && (
           <AlertMessage type="error" message={error.response.data.message} />
         )}
         {isSuccess && (
-          <AlertMessage type="success" message="Update successfully" />
+          <AlertMessage type="success" message="Actualización Exitosa" />
         )}
 
         <form action="" onSubmit={formik.handleSubmit} className="space-y-6">
@@ -63,7 +63,7 @@ export default function ProfileForm() {
                 type="text"
                 id="username"
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Your username"
+                placeholder="Username..."
               />
             </div>
             {formik.touched.username && formik.errors.username && (
@@ -88,7 +88,7 @@ export default function ProfileForm() {
                 id="email"
                 {...formik.getFieldProps("email")}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-4 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Your email"
+                placeholder="Email..."
               />
             </div>
             {formik.touched.email && formik.errors.email && (
@@ -104,7 +104,7 @@ export default function ProfileForm() {
               type="submit"
               className="bg-blue-500 w-full hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             >
-              Save Changes
+              Guardar Cambios
             </button>
           </div>
         </form>

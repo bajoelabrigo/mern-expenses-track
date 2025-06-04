@@ -89,9 +89,9 @@ const TransactionList = () => {
             onChange={handleFilterChange}
             className="w-full p-2 rounded-lg border-gray-300 appearance-none"
           >
-            <option value="">All Types</option>
-            <option value="income">Income</option>
-            <option value="expense">Expense</option>
+            <option value="">Todos los tipos</option>
+            <option value="income">Ingreso</option>
+            <option value="expense">Gasto</option>
           </select>
           <ChevronDownIcon className="w-5 h-5 absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500" />
         </div>
@@ -102,8 +102,8 @@ const TransactionList = () => {
             onChange={handleFilterChange}
             className="w-full p-2 rounded-lg border-gray-300 appearance-none"
           >
-            <option value="All">All Categories</option>
-            <option value="Uncategorized">Uncategorized</option>
+            <option value="All">Todas las categorías</option>
+            <option value="Uncategorized">Sin categorizar</option>
             {categoryData?.map((category) => (
               <option key={category._id} value={category.name}>
                 {category.name}
@@ -115,7 +115,7 @@ const TransactionList = () => {
       </div>
       <div className="mt-6 bg-gray-50 p-4 rounded-lg shadow-inner">
         <h3 className="text-xl font-semibold mb-4 text-gray-800">
-          Filtered Transactions
+          Transacciones filtradas
         </h3>
         <ul className="list-disc pl-5 space-y-2">
           {transactions?.map((transaction) => (
@@ -141,7 +141,8 @@ const TransactionList = () => {
                   {getCategoryIcon(transaction.category)}
                 </span>
                 <span className="ml-2 font-semibold text-gray-800">
-                  {transaction.category} - S/.{Number(transaction.amount).toFixed(2)}
+                  {transaction.category} - S/.
+                  {Number(transaction.amount).toFixed(2)}
                 </span>
                 <span className="text-sm text-gray-600 italic ml-2">
                   {transaction.description}

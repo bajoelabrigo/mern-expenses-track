@@ -69,8 +69,8 @@ const UpdateCategory = () => {
       className="max-w-lg mx-auto my-10 bg-white p-6 rounded-lg shadow-lg space-y-6"
     >
       <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-800">Update Category</h2>
-        <p className="text-gray-600">Fill in the details below.</p>
+        <h2 className="text-2xl font-semibold text-gray-800">Actualizar Categoria</h2>
+        <p className="text-gray-600">Complete los datos a continuación.</p>
       </div>
 
       {isError && (
@@ -97,21 +97,21 @@ const UpdateCategory = () => {
           id="type"
           className="w-full p-2 mt-1 border border-gray-300 rounded-md"
         >
-          <option value="">Select transaction type</option>
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
+          <option value="">Seleccione el tipo de transacción</option>
+          <option value="income">Ingreso</option>
+          <option value="expense">Gasto</option>
         </select>
       </div>
 
       {/* Name */}
       <div className="flex flex-col">
         <label htmlFor="name" className="text-gray-700 font-medium">
-          <SiDatabricks className="inline mr-2 text-blue-500" /> Name
+          <SiDatabricks className="inline mr-2 text-blue-500" /> Nombre
         </label>
         <input
           type="text"
           {...formik.getFieldProps("name")}
-          placeholder="Category Name"
+          placeholder="Nombre de Categoria"
           id="name"
           className="w-full mt-1 border border-gray-300 rounded-md py-2 px-3"
         />
@@ -119,7 +119,7 @@ const UpdateCategory = () => {
 
       {/* Emoji Picker */}
       <div className="space-y-2">
-        <label className="text-gray-700 font-medium">Emoji Icon</label>
+        <label className="text-gray-700 font-medium">Icono de Emoji</label>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -147,7 +147,7 @@ const UpdateCategory = () => {
         type="submit"
         className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
       >
-        Update Category
+        Actualizar Categoria
       </button>
     </form>
   );
