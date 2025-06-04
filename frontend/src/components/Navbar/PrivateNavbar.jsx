@@ -32,7 +32,7 @@ export default function PrivateNavbar() {
                   {/* Mobile menu button */}
                   <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
                     <span className="absolute -inset-0.5" />
-                    <span className="sr-only">Open main menu</span>
+                    <span className="sr-only">Abrir menu principal</span>
                     {open ? (
                       <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
                     ) : (
@@ -49,7 +49,7 @@ export default function PrivateNavbar() {
                     to="/"
                     className="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
                   >
-                    Church contable sistem
+                    Sistema Contable Iglesia
                   </Link>
                 </div>
                 <div className="hidden md:ml-6 md:flex md:space-x-8">
@@ -57,31 +57,31 @@ export default function PrivateNavbar() {
                     to="/add-transaction"
                     className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   >
-                    Add Transaction
+                   Agregar Transacción
                   </Link>
                   <Link
                     to="/add-category"
                     className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   >
-                    Add Category
+                    Agregar Categoria
                   </Link>
                   <Link
                     to="/categories"
                     className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   >
-                    Categories
+                    Categorias
                   </Link>
                   <Link
                     to="/profile"
                     className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   >
-                    Profile
+                    Perfil
                   </Link>
                   <Link
                     to="/dashboard"
                     className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                   >
-                    Dashboard
+                    Panel de Control
                   </Link>
                 </div>
               </div>
@@ -93,7 +93,7 @@ export default function PrivateNavbar() {
                     className="relative m-2 inline-flex items-center gap-x-1.5 rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600"
                   >
                     <IoLogOutOutline className="h-5 w-5" aria-hidden="true" />
-                    <span>Logout</span>
+                    <span>Salir</span>
                   </button>
                 </div>
                 <div className="hidden md:ml-1 md:flex md:flex-shrink-0 md:items-center">
@@ -102,7 +102,7 @@ export default function PrivateNavbar() {
                     <div>
                       <Menu.Button className="relative flex rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                         <span className="absolute -inset-1.5" />
-                        <span className="sr-only">Open user menu</span>
+                        <span className="sr-only">Abrir menu de usuario</span>
                       </Menu.Button>
                     </div>
                     <Transition
@@ -124,7 +124,7 @@ export default function PrivateNavbar() {
                                 "block px-4 py-2 text-sm text-gray-700"
                               )}
                             >
-                              My Dashboard
+                              Mi Panel
                             </Link>
                           )}
                         </Menu.Item>
@@ -137,7 +137,7 @@ export default function PrivateNavbar() {
                                 "block px-4 py-2 text-sm text-gray-700"
                               )}
                             >
-                              Sign out
+                              Salir
                             </button>
                           )}
                         </Menu.Item>
@@ -156,7 +156,7 @@ export default function PrivateNavbar() {
                   as="button"
                   className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
                 >
-                  Church Contable
+                  Sistema Contable Iglesia
                 </Disclosure.Button>
               </Link>
               <Link to="/add-transaction">
@@ -164,7 +164,7 @@ export default function PrivateNavbar() {
                   as="button"
                   className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
                 >
-                  Add Transaction
+                  Agregar Transacción
                 </Disclosure.Button>
               </Link>
               <Link to="/add-category">
@@ -172,7 +172,7 @@ export default function PrivateNavbar() {
                   as="button"
                   className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
                 >
-                  Add Category
+                  Agregar Categoria
                 </Disclosure.Button>
               </Link>
               <Link to="/categories">
@@ -180,7 +180,7 @@ export default function PrivateNavbar() {
                   as="button"
                   className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
                 >
-                  Categories
+                  Categorias
                 </Disclosure.Button>
               </Link>
               <Link to="/profile">
@@ -188,7 +188,7 @@ export default function PrivateNavbar() {
                   as="button"
                   className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
                 >
-                  Profile
+                  Perfil
                 </Disclosure.Button>
               </Link>
               <Link to="/dashboard">
@@ -196,7 +196,7 @@ export default function PrivateNavbar() {
                   as="button"
                   className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
                 >
-                  My Dashboard
+                  Mi Panel
                 </Disclosure.Button>
               </Link>
             </div>
@@ -208,7 +208,7 @@ export default function PrivateNavbar() {
                   // onClick={logoutHandler}
                   className="block px-4 py-2 text-base font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 sm:px-6"
                 >
-                  Sign out
+                  Calir
                 </Disclosure.Button>
               </div>
             </div>

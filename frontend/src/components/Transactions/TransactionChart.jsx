@@ -167,21 +167,21 @@ const TransactionChart = () => {
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center shadow-xl rounded-lg">
-          <h3 className="text-3xl font-bold text-[#36A2EB]">Total Ingresos</h3>
+        <div className="flex flex-col items-center justify-center">
+          <h3 className="text-2xl font-bold text-[#36A2EB]">Total Ingresos</h3>
           <div className="flex gap-2 items-center">
             <BsCashCoin className="text-3xl text-green-500" />
-            <span className="text-3xl font-bold">
+            <span className="text-2xl font-bold">
               S/. {totals.income.toFixed(2)}
             </span>
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center shadow-xl rounded-lg">
-          <h3 className="text-3xl font-bold text-[#FF6384]">Total Gastos</h3>
+        <div className="flex flex-col items-center justify-center ">
+          <h3 className="text-2xl font-bold text-[#FF6384]">Total Gastos</h3>
           <div className="flex gap-2 items-center">
             <BsHouseDash className="text-3xl text-red-500" />
-            <span className="text-3xl font-bold">
+            <span className="text-2xl font-bold">
               S/. {totals.expense.toFixed(2)}
             </span>
           </div>
