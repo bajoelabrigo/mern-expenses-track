@@ -26,7 +26,7 @@ categoryRouter.get(
 
 //! Update category
 categoryRouter.put(
-  "/api/v1/categories/update/:categoryId",
+  "/api/v1/categories/update/:id",
   isAuthenticated,
   categoryController.update
 );

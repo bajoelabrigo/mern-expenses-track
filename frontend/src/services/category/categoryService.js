@@ -10,10 +10,11 @@ export const addCategoryAPI = async ({ name, type }) => {
 };
 
 //! Update Category
-export const updateCategoryAPI = async ({ name, type, id }) => {
+export const updateCategoryAPI = async ({ name, type, icon, id }) => {
   const response = await axiosInstance.put(`/categories/update/${id}`, {
     name,
     type,
+    icon,
   });
   return response.data;
 };

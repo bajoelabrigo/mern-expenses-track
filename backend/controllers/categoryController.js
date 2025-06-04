@@ -47,10 +47,9 @@ const categoryController = {
 
   //! UPDATE
   update: asyncHandler(async (req, res) => {
-    const { categoryId } = req.params;
     const { type, name, icon } = req.body;
 
-    const category = await Category.findById(categoryId);
+    const category = await Category.findById(req.params.id);
 
     if (!category || category.user.toString() !== req.user._id.toString()) {
       throw new Error("Category not found or user not authorized");
