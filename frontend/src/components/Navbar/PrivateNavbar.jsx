@@ -14,6 +14,7 @@ function classNames(...classes) {
 export default function PrivateNavbar() {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
+  console.log(user);
 
   const logoutHandler = () => {
     dispatch(logoutAction());
@@ -52,12 +53,6 @@ export default function PrivateNavbar() {
                     <>
                       <Link to="/admin/users" className="nav-link text-red-600">
                         Lista de Usuarios
-                      </Link>
-                      <Link
-                        to="/admin/dashboard"
-                        className="nav-link text-red-600"
-                      >
-                        Panel Admin
                       </Link>
                     </>
                   )}

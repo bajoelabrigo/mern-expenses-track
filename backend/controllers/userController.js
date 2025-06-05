@@ -6,9 +6,9 @@ const User = require("../model/User");
 const usersController = {
   //! Register
   register: asyncHandler(async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, email, password, iglesia } = req.body;
 
-    if (!username || !email || !password) {
+    if (!username || !email || !password || !iglesia) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -24,6 +24,7 @@ const usersController = {
       email,
       username,
       password: hashedPassword,
+      iglesia,
     });
 
     res.status(201).json({
@@ -32,6 +33,8 @@ const usersController = {
         id: userCreated._id,
         username: userCreated.username,
         email: userCreated.email,
+        role: userCreated.role, // ✅
+        iglesia: userCreated.iglesia, // ✅
       },
     });
   }),
@@ -45,14 +48,20 @@ const usersController = {
       return res.status(401).json({ message: "Invalid login credentials" });
     }
 
+    if (!email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid login credentials" });
     }
 
-    const token = jwt.sign({ id: user._id }, "masynctechKey", {
-      expiresIn: "30d",
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.role }, // 🔴 Asegúrate de incluir el rol aquí
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
     // Guardar el token como cookie segura
     res.cookie("token", token, {
@@ -68,6 +77,8 @@ const usersController = {
         id: user._id,
         email: user.email,
         username: user.username,
+        role: user.role,
+        iglesia: user.iglesia,
       },
     });
   }),

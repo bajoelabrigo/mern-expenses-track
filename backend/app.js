@@ -42,7 +42,7 @@ app.use(express.json()); //?Pass incoming json data
 app.use("/", userRouter);
 app.use("/", categoryRouter);
 app.use("/", transactionRouter);
-app.use("/api/admin", adminRouter);
+app.use("/api/v1/admin", adminRouter);
 //!Error
 app.use(errorHandler);
 

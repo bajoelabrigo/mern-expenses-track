@@ -6,17 +6,18 @@ export const loginAPI = async ({ email, password }) => {
     email,
     password,
   });
-  return response.data;
+  return response.data.user;
 };
 
 //! Register
-export const registerAPI = async ({ email, password, username }) => {
+export const registerAPI = async ({ email, password, username, iglesia }) => {
   const response = await axiosInstance.post("/users/register", {
     email,
     password,
     username,
+    iglesia,
   });
-  return response.data;
+  return response.data.user;
 };
 
 //! Change Password

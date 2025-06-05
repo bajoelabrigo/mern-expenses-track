@@ -35,9 +35,9 @@ const LoginForm = () => {
     validationSchema,
     onSubmit: async (values) => {
       try {
-        const data = await mutateAsync(values);
-        dispatch(loginAction(data));
-        localStorage.setItem("userInfo", JSON.stringify(data));
+        const userData = await mutateAsync(values); // ✅ cambiar aquí
+        dispatch(loginAction(userData));
+        localStorage.setItem("userInfo", JSON.stringify(userData));
       } catch (e) {
         console.error("Login error:", e);
       }

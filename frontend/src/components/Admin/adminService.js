@@ -7,6 +7,6 @@ export const getAllUsersAPI = async () => {
 };
 
 export const getUserDashboardAPI = async (userId) => {
-  const res = await axiosInstance.get(`/admin/user-dashboard/${userId}`);
+  const res = await axiosInstance.get(`/admin/dashboard/${userId}`);
   return res.data;
 };

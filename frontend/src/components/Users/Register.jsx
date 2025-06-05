@@ -13,6 +13,7 @@ const validationSchema = Yup.object({
   email: Yup.string()
     .email("Invalid email address")
     .required("Email is required"),
+  iglesia: Yup.string().required("Iglesia is required"),
   password: Yup.string()
     .min(6, "Password must be at least 6 characters long")
     .required("Password is required"),
@@ -35,6 +36,7 @@ const RegistrationForm = () => {
       email: "",
       password: "",
       username: "",
+      iglesia: "",
     },
     //Validations
     validationSchema,
@@ -72,11 +74,9 @@ const RegistrationForm = () => {
       {isError && (
         <AlertMessage type="error" message={error.response.data.message} />
       )}
-      {isSuccess && (
-        <AlertMessage type="success" message="Registro exitoso" />
-      )}
+      {isSuccess && <AlertMessage type="success" message="Registro exitoso" />}
       <p className="text-sm text-center text-gray-500">
-      ¡Únete a nuestra comunidad ahora!
+        ¡Únete a nuestra comunidad ahora!
       </p>
 
       <div className="relative">
@@ -105,6 +105,21 @@ const RegistrationForm = () => {
         />
         {formik.touched.email && formik.errors.email && (
           <span className="text-xs text-red-500">{formik.errors.email}</span>
+        )}
+      </div>
+
+      {/* Input Field - Iglesia */}
+      <div className="relative">
+        <FaEnvelope className="absolute top-3 left-3 text-gray-400" />
+        <input
+          id="iglesia"
+          type="text"
+          {...formik.getFieldProps("iglesia")}
+          placeholder="Iglesia o Ministerio"
+          className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
+        />
+        {formik.touched.iglesia && formik.errors.iglesia && (
+          <span className="text-xs text-red-500">{formik.errors.iglesia}</span>
         )}
       </div>
 

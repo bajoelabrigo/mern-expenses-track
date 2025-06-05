@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -38,6 +39,8 @@ const periods = [
 ];
 
 const TransactionChart = () => {
+  const { user } = useSelector((state) => state.auth);
+
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
 
   const { data: categories = [] } = useQuery({
@@ -105,8 +108,8 @@ const TransactionChart = () => {
     <div className="p-6 space-y-6 bg-white rounded-lg shadow-xl border border-gray-200">
       <h2 className="text-2xl font-bold text-center">
         Resumen de Transacciones
-      </h2>
-
+      </h2>{" "}
+      <h3 className="text-2xl font-bold text-center">{user?.iglesia}</h3>
       <div className="flex justify-center gap-4">
         <select
           value={selectedPeriod}
@@ -126,7 +129,6 @@ const TransactionChart = () => {
           Exportar Excel
         </button>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="relative w-full flex justify-center items-center h-72">
           <div className="w-64 h-64 relative">
@@ -187,7 +189,6 @@ const TransactionChart = () => {
           </div>
         </div>
       </div>
-
       <div className="mt-8">
         <h2 className="text-2xl  font-bold mb-4">
           Evolución mensual de transacciones

@@ -4,9 +4,23 @@ import { createSlice } from "@reduxjs/toolkit";
 const getUserFromStorage = () => {
   try {
     const userInfo = localStorage.getItem("userInfo");
-    return userInfo ? JSON.parse(userInfo) : null;
+    if (!userInfo) return null;
+    const parsed = JSON.parse(userInfo);
+
+    // Verificar expiración si usas JWT con campo exp
+    const token = parsed?.token; // asegúrate que `userInfo` contiene un token
+    if (token) {
+      const { exp } = JSON.parse(atob(token.split(".")[1]));
+      if (Date.now() >= exp * 1000) {
+        localStorage.removeItem("userInfo");
+        return null;
+      }
+    }
+
+    return parsed;
   } catch (error) {
-    console.error("Error parsing userInfo from localStorage:", error);
+    console.error("Error parsing userInfo:", error);
+    localStorage.removeItem("userInfo");
     return null;
   }
 };
