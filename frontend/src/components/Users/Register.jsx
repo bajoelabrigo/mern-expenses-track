@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaLock, FaChurch } from "react-icons/fa";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
@@ -110,7 +110,7 @@ const RegistrationForm = () => {
 
       {/* Input Field - Iglesia */}
       <div className="relative">
-        <FaEnvelope className="absolute top-3 left-3 text-gray-400" />
+        <FaChurch size={20} className="absolute top-3 left-3 text-gray-400" />
         <input
           id="iglesia"
           type="text"
