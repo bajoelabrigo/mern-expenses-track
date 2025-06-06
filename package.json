@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend",
-    "start":"npm run start --prefix backend"
+    "start": "npm run start --prefix backend"
   },
   "repository": {
     "type": "git",
@@ -17,5 +17,8 @@
     "url": "https://github.com/bajoelabrigo/mern-expenses-track/issues"
   },
   "homepage": "https://github.com/bajoelabrigo/mern-expenses-track#readme",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "dotenv": "^16.5.0"
+  }
 }
