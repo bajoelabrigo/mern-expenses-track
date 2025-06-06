@@ -7,16 +7,17 @@ const dotenv = require("dotenv");
 const userRouter = require("./routes/userRouter");
 const categoryRouter = require("./routes/categoryRouter");
 const transactionRouter = require("./routes/transactionRouter");
-const adminRouter=require("./routes/adminRoutes")
+const adminRouter = require("./routes/adminRoutes");
+const path = require("path");
 
 const app = express();
 dotenv.config();
 
-//! Connect to mongodb
+//! Connect to MongoDB
 mongoose
   .connect(process.env.MONGO_URL)
   .then(() => console.log("DB connected"))
-  .catch((e) => console.log(e));
+  .catch((e) => console.error("DB connection error:", e));
 
 //! Cors config
 const corsOptions = {
@@ -30,22 +31,30 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // preflight support
 
-app.options("*", cors(corsOptions)); // <-- para responder preflight correctamente
+//! Middlewares
+app.use(cookieParser());
+app.use(express.json()); // Parse incoming JSON
 
-app.use(cookieParser()); // ✅ Esto es esencial
-
-//!Middlewares
-app.use(express.json()); //?Pass incoming json data
-
-//!Routes
+//! Routes
 app.use("/", userRouter);
 app.use("/", categoryRouter);
 app.use("/", transactionRouter);
 app.use("/api/v1/admin", adminRouter);
-//!Error
+
+//! Error handler
 app.use(errorHandler);
 
-//!Start the server
+//! Serve frontend in production
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+  });
+}
+
+//! Start the server
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
