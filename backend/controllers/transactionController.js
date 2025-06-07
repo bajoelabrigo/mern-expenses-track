@@ -4,38 +4,69 @@ const Category = require("../model/Category");
 const Transaction = require("../model/Transaccion");
 
 const transactionController = {
-  //! Crear transacción
+  //! Crear una o varias transacciones (si es recurrente)
   create: asyncHandler(async (req, res) => {
+    // 🔽 1. Extraer datos del cuerpo de la solicitud
     const {
-      type,
-      category,
-      amount,
-      date,
-      description,
-      icon,
-      recurrent,
-      recurrenceType,
-      recurrenceCount,
+      type, // tipo de transacción: 'income' o 'expense'
+      category, // categoría de la transacción (ej: 'comida', 'salario')
+      amount, // monto de dinero
+      date, // fecha base
+      description = "", // descripción opcional
+      icon = "", // emoji o ícono
+      recurrent = false, // si la transacción se repite
+      recurrenceType, // tipo de recurrencia: 'daily', 'weekly', etc.
+      recurrenceCount = 1, // cuántas veces se repite
     } = req.body;
 
-    if (!amount || !type || !date) {
-      throw new Error("Type, amount and date are required");
+    // 🔽 2. Validar campos obligatorios
+    if (!type || !amount || !date) {
+      return res
+        .status(400)
+        .json({ message: "Tipo, monto y fecha son obligatorios" });
     }
 
-    const baseDate = new Date(date);
-    const transactions = [];
+    // 🔽 3. Validar que el tipo sea válido
+    if (!["income", "expense"].includes(type)) {
+      return res
+        .status(400)
+        .json({ message: "El tipo debe ser 'income' o 'expense'" });
+    }
 
+    // 🔽 4. Validar y convertir el monto a número positivo
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res
+        .status(400)
+        .json({ message: "El monto debe ser un número positivo" });
+    }
+
+    // 🔽 5. Validar que la fecha sea válida
+    const baseDate = new Date(date);
+    if (isNaN(baseDate.getTime())) {
+      return res.status(400).json({ message: "Fecha inválida" });
+    }
+
+    // 🔽 6. Definir cuántos días representa cada tipo de recurrencia
     const recurrenceIntervals = {
       daily: 1,
       weekly: 7,
-      monthly: 30,
+      monthly: 30, // solo se usa para fallback
       yearly: 365,
     };
 
+    // 🔽 7. Determinar cuántas transacciones se deben crear
     const totalCount = recurrent && recurrenceCount > 0 ? recurrenceCount : 1;
 
+    // 🔽 8. Crear un arreglo para almacenar las transacciones
+    const transactions = [];
+
+    // 🔁 9. Generar cada transacción (una o más si es recurrente)
     for (let i = 0; i < totalCount; i++) {
+      // ✅ Copiar la fecha base para no modificarla directamente
       const txDate = new Date(baseDate);
+
+      // 🔁 Si es la segunda transacción o más, calcular la nueva fecha
       if (i > 0 && recurrent && recurrenceType) {
         switch (recurrenceType) {
           case "daily":
@@ -45,19 +76,24 @@ const transactionController = {
             txDate.setDate(txDate.getDate() + i * recurrenceIntervals.weekly);
             break;
           case "monthly":
-            txDate.setMonth(txDate.getMonth() + i);
+            txDate.setMonth(txDate.getMonth() + i); // sumar i meses
             break;
           case "yearly":
-            txDate.setFullYear(txDate.getFullYear() + i);
+            txDate.setFullYear(txDate.getFullYear() + i); // sumar i años
             break;
+          default:
+            return res
+              .status(400)
+              .json({ message: "Tipo de recurrencia inválido" });
         }
       }
 
+      // 🧾 Crear el objeto de transacción
       transactions.push({
-        user: req.user._id, // ✅ Usar solo el ID
+        user: req.user._id, // ID del usuario autenticado
         type,
         category,
-        amount,
+        amount: parsedAmount,
         description,
         icon,
         date: txDate,
@@ -67,25 +103,55 @@ const transactionController = {
       });
     }
 
+    // 💾 10. Insertar todas las transacciones en la base de datos
     const created = await Transaction.insertMany(transactions);
+
+    // 📤 11. Devolver las transacciones creadas al frontend
     res.status(201).json(created);
   }),
 
-  //! Listar con filtros
+  //! Listar transacciones con filtros (fechas, tipo y categoría)
   getFilteredTransactions: asyncHandler(async (req, res) => {
+    // 🔽 1. Extraer filtros desde los parámetros de consulta (query string)
     const { startDate, endDate, type, category } = req.query;
+
+    // 🔽 2. Iniciar filtros con el ID del usuario autenticado
     let filters = { user: req.user._id };
 
+    // 🔍 3. Filtrar por rango de fechas (si se especifica)
     if (startDate) {
-      filters.date = { ...filters.date, $gte: new Date(startDate) };
+      const parsedStart = new Date(startDate);
+      if (!isNaN(parsedStart)) {
+        filters.date = { ...filters.date, $gte: parsedStart };
+      } else {
+        return res.status(400).json({ message: "Fecha de inicio inválida" });
+      }
     }
+
     if (endDate) {
-      filters.date = { ...filters.date, $lte: new Date(endDate) };
+      const parsedEnd = new Date(endDate);
+      if (!isNaN(parsedEnd)) {
+        filters.date = { ...filters.date, $lte: parsedEnd };
+      } else {
+        return res.status(400).json({ message: "Fecha de fin inválida" });
+      }
     }
-    if (type) filters.type = type;
+
+    // 🔍 4. Filtrar por tipo de transacción ('income' o 'expense')
+    if (type) {
+      if (["income", "expense"].includes(type)) {
+        filters.type = type;
+      } else {
+        return res
+          .status(400)
+          .json({ message: "Tipo de transacción inválido" });
+      }
+    }
+
+    // 🔍 5. Filtrar por categoría (opcional)
     if (category) {
       if (category === "All") {
-        // no filtramos
+        // No filtramos por categoría
       } else if (category === "Uncategorized") {
         filters.category = "Uncategorized";
       } else {
@@ -93,125 +159,218 @@ const transactionController = {
       }
     }
 
+    // 📤 6. Buscar transacciones con los filtros aplicados, ordenadas por fecha descendente
     const transactions = await Transaction.find(filters).sort({ date: -1 });
-    res.json(transactions);
+
+    // ✅ 7. Responder con la lista filtrada
+    res.status(200).json(transactions);
   }),
 
-  //! Obtener una sola transacción
+  //! Obtener una sola transacción por ID (solo si pertenece al usuario autenticado)
   getOne: asyncHandler(async (req, res) => {
+    const { id } = req.params; // 🔽 1. Extraer el ID de la transacción desde los parámetros de la URL
+
+    // 🔍 2. Validar que el ID tenga formato válido (MongoDB ObjectId)
+    if (!id || id.length !== 24) {
+      return res.status(400).json({ message: "ID de transacción inválido" });
+    }
+
+    // 🔐 3. Buscar la transacción que coincida con el ID y que pertenezca al usuario autenticado
     const transaction = await Transaction.findOne({
-      _id: req.params.id,
+      _id: id,
       user: req.user._id,
     });
 
+    // ❌ 4. Si no se encuentra, devolver error 404
     if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" });
+      return res.status(404).json({ message: "Transacción no encontrada" });
     }
 
-    res.json(transaction);
+    // ✅ 5. Devolver la transacción encontrada
+    res.status(200).json(transaction);
   }),
 
-  //! Actualizar
+  //! Actualizar una transacción (solo si pertenece al usuario autenticado)
   update: asyncHandler(async (req, res) => {
-    const transaction = await Transaction.findById(req.params.id);
+    const { id } = req.params; // 🔽 1. Extraer el ID de la transacción desde los parámetros
 
+    // 🔍 2. Validar que el ID tenga formato de ObjectId (24 caracteres)
+    if (!id || id.length !== 24) {
+      return res.status(400).json({ message: "ID de transacción inválido" });
+    }
+
+    // 🔐 3. Buscar la transacción por ID
+    const transaction = await Transaction.findById(id);
+
+    // ❌ 4. Si no existe, devolver error 404
     if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" });
+      return res.status(404).json({ message: "Transacción no encontrada" });
     }
 
+    // 🔐 5. Verificar que la transacción le pertenezca al usuario autenticado
     if (transaction.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Unauthorized" });
+      return res
+        .status(403)
+        .json({ message: "No autorizado para modificar esta transacción" });
     }
 
+    // ✅ 6. Validar y asignar nuevos valores (solo si fueron enviados)
+    if (req.body.type && !["income", "expense"].includes(req.body.type)) {
+      return res.status(400).json({ message: "Tipo de transacción inválido" });
+    }
+
+    if (
+      req.body.amount &&
+      (isNaN(req.body.amount) || Number(req.body.amount) <= 0)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "El monto debe ser un número positivo" });
+    }
+
+    if (req.body.date && isNaN(new Date(req.body.date).getTime())) {
+      return res.status(400).json({ message: "Fecha inválida" });
+    }
+
+    // 📝 7. Actualizar campos (usando nullish coalescing)
     transaction.type = req.body.type ?? transaction.type;
     transaction.category = req.body.category ?? transaction.category;
     transaction.amount = req.body.amount ?? transaction.amount;
     transaction.date = req.body.date ?? transaction.date;
     transaction.description = req.body.description ?? transaction.description;
+    transaction.icon = req.body.icon ?? transaction.icon;
 
+    // 💾 8. Guardar la transacción actualizada
     const updatedTransaction = await transaction.save();
-    res.json(updatedTransaction);
+
+    // 📤 9. Enviar la respuesta
+    res.status(200).json(updatedTransaction);
   }),
 
-  //! Eliminar
+  //! Eliminar una transacción (solo si pertenece al usuario autenticado)
   delete: asyncHandler(async (req, res) => {
-    const transaction = await Transaction.findById(req.params.id);
+    const { id } = req.params; // 🔽 1. Extraer el ID de la transacción desde los parámetros
+
+    // 🔍 2. Validar formato del ID (ObjectId de 24 caracteres)
+    if (!id || id.length !== 24) {
+      return res.status(400).json({ message: "ID de transacción inválido" });
+    }
+
+    // 🔐 3. Buscar la transacción en la base de datos
+    const transaction = await Transaction.findById(id);
+
+    // ❌ 4. Si no existe, devolver error 404
     if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" });
+      return res.status(404).json({ message: "Transacción no encontrada" });
     }
 
+    // 🔒 5. Verificar que la transacción pertenezca al usuario autenticado
     if (transaction.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Unauthorized" });
+      return res
+        .status(403)
+        .json({ message: "No autorizado para eliminar esta transacción" });
     }
 
+    // 🗑️ 6. Eliminar la transacción
     await transaction.deleteOne();
-    res.json({ message: "Transaction removed" });
+
+    // ✅ 7. Enviar confirmación
+    res.status(200).json({ message: "Transacción eliminada exitosamente" });
   }),
 
-  //! Obtener transacciones por período
+  //! Obtener transacciones por período (mensual, bimestral, etc.)
   getByPeriod: asyncHandler(async (req, res) => {
-    const { period, type } = req.query;
-    const today = new Date();
-    let startDate;
+    const { period, type } = req.query; // 🔽 1. Obtener filtros desde la URL (query string)
+    const today = new Date(); // 📅 Fecha actual
+    let startDate; // 📆 Fecha desde la que filtraremos
 
+    // 🔁 2. Determinar fecha de inicio según el período solicitado
     switch (period) {
       case "monthly":
+        // Inicio del mes actual
         startDate = new Date(today.getFullYear(), today.getMonth(), 1);
         break;
       case "bimonthly":
+        // Inicio del mes anterior
         startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
         break;
       case "quarterly":
+        // Hace 2 meses
         startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
         break;
       case "semiannual":
+        // Hace 5 meses
         startDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
         break;
       case "annual":
+        // Hace 1 año exacto desde este mes
         startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
         break;
       default:
-        return res.status(400).json({ message: "Invalid period value" });
+        // ❌ Si el período no es válido, responder con error
+        return res.status(400).json({
+          message:
+            "Período inválido. Usa: monthly, bimonthly, quarterly, semiannual, annual",
+        });
     }
 
+    // 🔍 3. Construir filtros para la consulta a la base de datos
     const filters = {
-      user: req.user._id,
-      date: { $gte: startDate, $lte: today },
+      user: req.user._id, // Solo transacciones del usuario autenticado
+      date: { $gte: startDate, $lte: today }, // Entre la fecha de inicio y hoy
     };
 
-    if (type) filters.type = type;
+    // 🎯 4. Si se especifica el tipo, validar y agregarlo al filtro
+    if (type) {
+      if (!["income", "expense"].includes(type)) {
+        return res
+          .status(400)
+          .json({ message: "Tipo inválido. Usa 'income' o 'expense'" });
+      }
+      filters.type = type;
+    }
 
+    // 💾 5. Consultar transacciones con los filtros definidos
     const transactions = await Transaction.find(filters).sort({ date: -1 });
-    res.json(transactions);
+
+    // 📤 6. Devolver la lista de transacciones encontradas
+    res.status(200).json(transactions);
   }),
 
-  //! Resumen mensual para gráfico de barras
+  //! Resumen mensual de ingresos y egresos (últimos 12 meses) para gráfico de barras
   getMonthlySummary: asyncHandler(async (req, res) => {
-    const today = new Date();
-    const oneYearAgo = new Date(today);
-    oneYearAgo.setFullYear(today.getFullYear() - 1);
-    oneYearAgo.setMonth(today.getMonth());
-    oneYearAgo.setDate(1);
-    oneYearAgo.setHours(0, 0, 0, 0);
+    const today = new Date(); // 📅 Fecha actual
 
+    // 📆 1. Calcular fecha de inicio (mismo mes, pero un año antes)
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setFullYear(today.getFullYear() - 1); // restar 1 año
+    oneYearAgo.setMonth(today.getMonth()); // mantener el mismo mes
+    oneYearAgo.setDate(1); // establecer día 1
+    oneYearAgo.setHours(0, 0, 0, 0); // limpiar hora
+
+    // 🔍 2. Agregación en MongoDB
     const summary = await Transaction.aggregate([
       {
+        // 🎯 Filtro por usuario y por rango de fechas (últimos 12 meses)
         $match: {
           user: req.user._id,
           date: { $gte: oneYearAgo, $lte: today },
         },
       },
       {
+        // 📊 Agrupar por mes y año
         $group: {
           _id: {
             year: { $year: "$date" },
             month: { $month: "$date" },
           },
+          // ➕ Sumar ingresos
           totalIncome: {
             $sum: {
               $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
             },
           },
+          // ➖ Sumar gastos
           totalExpense: {
             $sum: {
               $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0],
@@ -219,81 +378,112 @@ const transactionController = {
           },
         },
       },
-      { $sort: { "_id.year": 1, "_id.month": 1 } },
+      {
+        // 🗂 Ordenar por año y mes ascendente
+        $sort: { "_id.year": 1, "_id.month": 1 },
+      },
     ]);
 
+    // 🔁 3. Formatear los resultados para el frontend
     const formatted = summary.map((item) => ({
       year: item._id.year,
       month: item._id.month,
       income: item.totalIncome,
       expense: item.totalExpense,
-      balance: item.totalIncome - item.totalExpense,
+      balance: item.totalIncome - item.totalExpense, // ➗ Calcular balance
     }));
 
-    res.json(formatted);
+    // 📤 4. Enviar el resumen formateado
+    res.status(200).json(formatted);
   }),
 
-  //! Balance general
+  //! Balance general del usuario
   getBalance: asyncHandler(async (req, res) => {
+    // 1️⃣  Obtener filtros opcionales de fecha desde la URL
+    const { startDate, endDate } = req.query;
+
+    // 2️⃣  Construir el objeto $match (siempre incluye el ID del usuario)
+    const match = { user: req.user._id };
+
+    // ── Validacion de fecha de inicio ────────────────────────────────────────────
+    if (startDate) {
+      const parsedStart = new Date(startDate);
+      if (isNaN(parsedStart)) {
+        return res.status(400).json({ message: "Fecha inicio invalida" });
+      }
+      match.date = { ...match.date, $gte: parsedStart };
+    }
+
+    // ── Validacion de fecha de fin ───────────────────────────────────────────────
+    if (endDate) {
+      const parsedEnd = new Date(endDate);
+      if (isNaN(parsedEnd)) {
+        return res.status(400).json({ message: "Fecha fin invalida" });
+      }
+      match.date = { ...match.date, $lte: parsedEnd };
+    }
+
+    // 3️⃣  Pipeline de agregacion: sumar ingresos y egresos
     const summary = await Transaction.aggregate([
-      {
-        $match: { user: req.user._id },
-      },
+      { $match: match },
       {
         $group: {
           _id: null,
           totalIncome: {
-            $sum: {
-              $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
-            },
+            $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] },
           },
           totalExpense: {
-            $sum: {
-              $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0],
-            },
+            $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] },
           },
         },
       },
     ]);
 
-    const result = summary[0] || { totalIncome: 0, totalExpense: 0 };
+    // 4️⃣  Si no hay resultados, usar 0 por defecto
+    const { totalIncome = 0, totalExpense = 0 } = summary[0] || {};
 
-    res.json({
-      income: result.totalIncome,
-      expense: result.totalExpense,
-      balance: result.totalIncome - result.totalExpense,
+    // 5️⃣  Enviar respuesta
+    res.status(200).json({
+      income: totalIncome, // total de ingresos
+      expense: totalExpense, // total de egresos
+      balance: totalIncome - totalExpense, // saldo neto
     });
   }),
 
-  //! Exportar a Excel
+  //! Exportar transacciones del usuario autenticado a un archivo Excel
   generateExcelReport: asyncHandler(async (req, res) => {
+    // 1️⃣ Obtener todas las transacciones del usuario, ordenadas por fecha descendente
     const transactions = await Transaction.find({ user: req.user._id }).sort({
       date: -1,
     });
 
+    // 2️⃣ Crear un nuevo libro de Excel y una hoja llamada "Transactions"
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet("Transactions");
+    const sheet = workbook.addWorksheet("Transacciones");
 
+    // 3️⃣ Definir las columnas con encabezados y claves
     sheet.columns = [
       { header: "Fecha", key: "date", width: 15 },
       { header: "Tipo", key: "type", width: 10 },
-      { header: "Categoria", key: "category", width: 20 },
-      { header: "Descripcion", key: "description", width: 30 },
-      { header: "Monto", key: "amount", width: 10 },
-      { header: "Icono", key: "icon", width: 10 },
+      { header: "Categoría", key: "category", width: 20 },
+      { header: "Descripción", key: "description", width: 30 },
+      { header: "Monto", key: "amount", width: 12 },
+      { header: "Ícono", key: "icon", width: 10 },
     ];
 
+    // 4️⃣ Agregar una fila por cada transacción
     transactions.forEach((tx) => {
       sheet.addRow({
-        date: new Date(tx.date).toLocaleDateString("es-PE"),
-        type: tx.type,
-        category: tx.category,
+        date: new Date(tx.date).toLocaleDateString("es-PE"), // formato local
+        type: tx.type === "income" ? "Ingreso" : "Gasto", // traducido
+        category: tx.category || "Sin categoría",
         description: tx.description || "",
         amount: tx.amount,
         icon: tx.icon || "",
       });
     });
 
+    // 5️⃣ Configurar los encabezados HTTP para descarga del archivo
     res.setHeader(
       "Content-Disposition",
       "attachment; filename=transacciones.xlsx"
@@ -303,7 +493,10 @@ const transactionController = {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
 
+    // 6️⃣ Escribir el archivo Excel directamente en la respuesta
     await workbook.xlsx.write(res);
+
+    // 7️⃣ Finalizar la respuesta
     res.end();
   }),
 };
