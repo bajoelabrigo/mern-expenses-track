@@ -113,7 +113,14 @@ const transactionController = {
   //! Listar transacciones con filtros (fechas, tipo y categoría)
   getFilteredTransactions: asyncHandler(async (req, res) => {
     // 🔽 1. Extraer filtros desde los parámetros de consulta (query string)
-    const { startDate, endDate, type, category } = req.query;
+    const {
+      startDate,
+      endDate,
+      type,
+      category,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
     // 🔽 2. Iniciar filtros con el ID del usuario autenticado
     let filters = { user: req.user._id };
@@ -149,21 +156,27 @@ const transactionController = {
     }
 
     // 🔍 5. Filtrar por categoría (opcional)
-    if (category) {
-      if (category === "All") {
-        // No filtramos por categoría
-      } else if (category === "Uncategorized") {
-        filters.category = "Uncategorized";
-      } else {
-        filters.category = category;
-      }
+    if (category && category !== "All") {
+      filters.category = category;
     }
 
-    // 📤 6. Buscar transacciones con los filtros aplicados, ordenadas por fecha descendente
-    const transactions = await Transaction.find(filters).sort({ date: -1 });
+    const skip = (Number(page) - 1) * Number(limit); // calcular qué registros omitir
+    // 🔽 Obtener total de resultados para calcular el total de páginas
+    const total = await Transaction.countDocuments(filters);
+
+    // 📤 6. Obtener transacciones paginadas y ordenadas
+    const transactions = await Transaction.find(filters)
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(Number(limit));
 
     // ✅ 7. Responder con la lista filtrada
-    res.status(200).json(transactions);
+    res.status(200).json({
+      total,
+      currentPage: Number(page),
+      totalPages: Math.ceil(total / Number(limit)),
+      transactions,
+    });
   }),
 
   //! Obtener una sola transacción por ID (solo si pertenece al usuario autenticado)

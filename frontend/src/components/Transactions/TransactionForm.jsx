@@ -73,7 +73,12 @@ const TransactionForm = () => {
     },
     validationSchema,
     onSubmit: (values) => {
-      mutateAsync(values)
+      const adjustedValues = {
+        ...values,
+        date: new Date(`${values.date}T12:00:00`).toISOString(), // Corrige la fecha para evitar desfase por zona horaria
+      };
+
+      mutateAsync(adjustedValues)
         .then((data) => {
           console.log(data);
         })
@@ -112,7 +117,10 @@ const TransactionForm = () => {
         />
       )}
       {isSuccess && (
-        <AlertMessage type="success" message="Transacción agregada exitosamente" />
+        <AlertMessage
+          type="success"
+          message="Transacción agregada exitosamente"
+        />
       )}
 
       {/* Type */}

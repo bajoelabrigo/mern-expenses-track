@@ -49,9 +49,11 @@ export const listTransationsAPI = async ({
   type,
   startDate,
   endDate,
+  page = 1,
+  limit = 5,
 }) => {
   const response = await axiosInstance.get("/transactions/lists", {
-    params: { category, type, startDate, endDate },
+    params: { category, type, startDate, endDate, page, limit },
   });
   return response.data;
 };

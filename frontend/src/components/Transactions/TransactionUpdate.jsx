@@ -49,9 +49,15 @@ const TransactionUpdate = () => {
       description: "",
     },
     onSubmit: (values) => {
-      console.log("Submitted values:", values); // 🔍 Verifica si type y category están vacíos
-      const data = { ...values, id };
-      mutateAsync(data).catch(console.error);
+      // Ajustamos la hora al mediodía para evitar desfase por zona horaria
+      const adjustedValues = {
+        ...values,
+        date: new Date(`${values.date}T12:00:00`).toISOString(),
+        id, // mantenemos el ID para la mutación
+      };
+
+      console.log("Submitted adjusted values:", adjustedValues);
+      mutateAsync(adjustedValues).catch(console.error);
     },
   });
 
@@ -164,7 +170,7 @@ const TransactionUpdate = () => {
           <div className="flex flex-col space-y-1">
             <label htmlFor="category" className="text-gray-700 font-medium">
               <FaRegCommentDots className="inline mr-2 text-blue-500" />
-             Categoria
+              Categoria
             </label>
             <select
               {...formik.getFieldProps("category")}
@@ -232,14 +238,14 @@ const TransactionUpdate = () => {
               type="submit"
               className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
             >
-             Actualiza Transacción
+              Actualiza Transacción
             </button>
             <Link
               to="/dashboard"
               type="submit"
               className="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-10 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
             >
-             Cancelar
+              Cancelar
             </Link>
           </div>
         </form>

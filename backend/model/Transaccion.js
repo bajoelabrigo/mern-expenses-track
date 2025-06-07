@@ -33,6 +33,10 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: "", // puedes cambiar a "💰" si quieres un ícono por defecto
     },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
     recurrent: {
       type: Boolean,
       default: false,

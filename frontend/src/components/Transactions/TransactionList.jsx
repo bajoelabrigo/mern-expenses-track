@@ -13,6 +13,8 @@ import { Link, useParams } from "react-router-dom";
 
 const TransactionList = () => {
   const { id } = useParams(); // Obtener ID desde URL (no usado aquí)
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(5);
 
   // 🧠 Estado local para filtros
   const [filters, setFilters] = useState({
@@ -47,8 +49,8 @@ const TransactionList = () => {
     isFetched,
     refetch,
   } = useQuery({
-    queryFn: () => listTransationsAPI(filters),
-    queryKey: ["list-transactions", filters],
+    queryFn: () => listTransationsAPI({ ...filters, page, limit }),
+    queryKey: ["list-transactions", filters, page, limit],
   });
 
   //! ❌ Eliminar una transacción
@@ -130,7 +132,7 @@ const TransactionList = () => {
           Transacciones filtradas
         </h3>
         <ul className="list-disc pl-5 space-y-2">
-          {transactions?.map((transaction) => (
+          {transactions?.transactions?.map((transaction) => (
             <li
               key={transaction._id}
               className="bg-white p-3 rounded-md shadow border flex justify-between items-center"
@@ -176,6 +178,23 @@ const TransactionList = () => {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="flex justify-between items-center mt-4">
+        <button
+          onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+          disabled={page === 1}
+          className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+        >
+          Anterior
+        </button>
+        <span className="text-sm text-gray-600">Página {page}</span>
+        <button
+          onClick={() => setPage((prev) => prev + 1)}
+          className="px-4 py-2 bg-gray-300 rounded"
+        >
+          Siguiente
+        </button>
       </div>
     </div>
   );
