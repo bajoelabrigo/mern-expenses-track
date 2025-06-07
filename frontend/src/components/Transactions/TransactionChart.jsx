@@ -1,4 +1,3 @@
-// TransactionChart.jsx
 import { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import {
@@ -45,9 +44,12 @@ const periods = [
 
 const TransactionChart = () => {
   const { user } = useSelector((state) => state.auth);
+
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
   const [selectedType, setSelectedType] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const { data: categories = [] } = useQuery({
     queryFn: listCategoriesAPI,
@@ -55,22 +57,26 @@ const TransactionChart = () => {
   });
 
   const { data: transactions = [] } = useQuery({
-    queryFn: () => getTransactionByPeriodAPI(selectedPeriod),
-    queryKey: ["transactions", selectedPeriod],
+    queryFn: () =>
+      getTransactionByPeriodAPI({
+        period: selectedPeriod,
+        type: selectedType,
+        category: selectedCategory,
+        startDate,
+        endDate,
+      }),
+    queryKey: [
+      "transactions",
+      selectedPeriod,
+      selectedType,
+      selectedCategory,
+      startDate,
+      endDate,
+    ],
   });
 
-  //! Filtrar por tipo y categoría seleccionados
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      const matchType = selectedType ? t.type === selectedType : true;
-      const matchCategory = selectedCategory
-        ? t.category === selectedCategory
-        : true;
-      return matchType && matchCategory;
-    });
-  }, [transactions, selectedType, selectedCategory]);
+  const filteredTransactions = useMemo(() => transactions, [transactions]);
 
-  //! Calcular totales
   const totals = useMemo(() => {
     return filteredTransactions.reduce(
       (acc, t) => {
@@ -82,7 +88,6 @@ const TransactionChart = () => {
     );
   }, [filteredTransactions]);
 
-  //! Preparar datos para gráfico de barras
   const chartData = useMemo(() => {
     const map = {};
     filteredTransactions.forEach((t) => {
@@ -112,12 +117,6 @@ const TransactionChart = () => {
     };
   }, [filteredTransactions]);
 
-  //! Preparar datos para gráfico de líneas
-  const lineChartData = useMemo(() => {
-    return chartData;
-  }, [chartData]);
-
-  //! Exportar a Excel
   const handleExportExcel = async () => {
     const response = await exportTransactionExcelAPI(selectedPeriod);
     const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -173,6 +172,33 @@ const TransactionChart = () => {
           ))}
         </select>
 
+        {/* Nuevos filtros de fecha */}
+        <div className="flex flex-col">
+          <label htmlFor="startDate" className="text-sm text-gray-600 mb-1">
+            Fecha inicial
+          </label>
+          <input
+            type="date"
+            name="startDate"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="p-2 rounded-lg border-gray-300 border"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label htmlFor="endDate" className="text-sm text-gray-600 mb-1">
+            Fecha final
+          </label>
+          <input
+            type="date"
+            name="endDate"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="p-2 rounded-lg border-gray-300 border"
+          />
+        </div>
+
         <button
           onClick={handleExportExcel}
           className="bg-green-500 text-white px-4 py-2 rounded-md"
@@ -208,7 +234,7 @@ const TransactionChart = () => {
                 maintainAspectRatio: false,
               }}
             />
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center ">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
               <GrMoney className="text-3xl text-blue-400 mb-1" />
               <span className="text-sm font-semibold text-gray-600">
                 Balance
@@ -267,14 +293,14 @@ const TransactionChart = () => {
         </div>
       </div>
 
-      {/* Gráfico de Línea opcional (usando mismo chartData) */}
-      <div className="mt-8 flex flex-col items-center justify-center ">
+      {/* Gráfico de Línea */}
+      <div className="mt-8 flex flex-col items-center justify-center">
         <h2 className="text-2xl font-bold mb-4 text-center">
           Tendencia mensual
         </h2>
         <div className="w-full max-w-4xl h-[400px]">
           <Line
-            data={lineChartData}
+            data={chartData}
             options={{
               responsive: true,
               plugins: {

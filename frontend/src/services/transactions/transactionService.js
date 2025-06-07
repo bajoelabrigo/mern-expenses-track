@@ -49,8 +49,8 @@ export const listTransationsAPI = async ({
   type,
   startDate,
   endDate,
-  page = 1,
-  limit = 5,
+  page,
+  limit,
 }) => {
   const response = await axiosInstance.get("/transactions/lists", {
     params: { category, type, startDate, endDate, page, limit },
@@ -65,11 +65,22 @@ export const fetchTransactionByIdAPI = async (id) => {
   return response.data;
 };
 
-//! Get Transactions by Period
-export const getTransactionByPeriodAPI = async (period = "monthly") => {
+//! 🔁 Obtener transacciones por periodo o rango personalizado
+export const getTransactionByPeriodAPI = async ({
+  period,
+  type,
+  startDate,
+  endDate,
+}) => {
   const response = await axiosInstance.get("/transactions/period", {
-    params: { period },
+    params: {
+      period,
+      type,
+      startDate,
+      endDate,
+    },
   });
+
   return response.data;
 };
 

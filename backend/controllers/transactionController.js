@@ -172,10 +172,11 @@ const transactionController = {
 
     // ✅ 7. Responder con la lista filtrada
     res.status(200).json({
-      total,
-      currentPage: Number(page),
-      totalPages: Math.ceil(total / Number(limit)),
-      transactions,
+      total, // Total de registros
+      currentPage: Number(page), // Página actual
+      totalPages: Math.ceil(total / Number(limit)), // Total de páginas
+      limit: Number(limit), // Cantidad por página
+      transactions, // Array de resultados
     });
   }),
 
@@ -293,121 +294,111 @@ const transactionController = {
 
   //! Obtener transacciones por período (mensual, bimestral, etc.)
   getByPeriod: asyncHandler(async (req, res) => {
-    const { period, type } = req.query; // 🔽 1. Obtener filtros desde la URL (query string)
-    const today = new Date(); // 📅 Fecha actual
-    let startDate; // 📆 Fecha desde la que filtraremos
+    // 🔽 1. Obtener filtros desde los parámetros de consulta (query string)
+    const { period, type, startDate, endDate } = req.query;
 
-    // 🔁 2. Determinar fecha de inicio según el período solicitado
-    switch (period) {
-      case "monthly":
-        // Inicio del mes actual
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        break;
-      case "bimonthly":
-        // Inicio del mes anterior
-        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        break;
-      case "quarterly":
-        // Hace 2 meses
-        startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-        break;
-      case "semiannual":
-        // Hace 5 meses
-        startDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
-        break;
-      case "annual":
-        // Hace 1 año exacto desde este mes
-        startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
-        break;
-      default:
-        // ❌ Si el período no es válido, responder con error
-        return res.status(400).json({
-          message:
-            "Período inválido. Usa: monthly, bimonthly, quarterly, semiannual, annual",
-        });
+    // 📅 Fecha actual del sistema (hoy)
+    const today = new Date();
+
+    // 🧱 Inicializamos variables para las fechas reales de filtrado
+    let finalStartDate = null;
+    let finalEndDate = null;
+
+    // 🗓️ 2. Si el frontend envía una fecha de inicio válida, la usamos
+    if (startDate) {
+      const parsedStart = new Date(startDate);
+      if (isNaN(parsedStart)) {
+        // ❌ Si la fecha es inválida, respondemos con error
+        return res.status(400).json({ message: "Fecha de inicio inválida" });
+      }
+      finalStartDate = parsedStart;
     }
 
-    // 🔍 3. Construir filtros para la consulta a la base de datos
+    // 🗓️ 3. Si el frontend envía una fecha de fin válida, la usamos
+    if (endDate) {
+      const parsedEnd = new Date(endDate);
+      if (isNaN(parsedEnd)) {
+        // ❌ Si la fecha es inválida, respondemos con error
+        return res.status(400).json({ message: "Fecha de fin inválida" });
+      }
+      finalEndDate = parsedEnd;
+    }
+
+    // 🔁 4. Si no se especificaron fechas personalizadas, aplicamos la lógica según el período
+    if (!finalStartDate || !finalEndDate) {
+      switch (period) {
+        case "monthly":
+          // 🟦 Desde el inicio del mes actual hasta hoy
+          finalStartDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          finalEndDate = today;
+          break;
+        case "bimonthly":
+          // 🟦 Desde el inicio del mes anterior hasta hoy
+          finalStartDate = new Date(
+            today.getFullYear(),
+            today.getMonth() - 1,
+            1
+          );
+          finalEndDate = today;
+          break;
+        case "quarterly":
+          // 🟦 Desde hace dos meses hasta hoy
+          finalStartDate = new Date(
+            today.getFullYear(),
+            today.getMonth() - 2,
+            1
+          );
+          finalEndDate = today;
+          break;
+        case "semiannual":
+          // 🟦 Desde hace cinco meses hasta hoy
+          finalStartDate = new Date(
+            today.getFullYear(),
+            today.getMonth() - 5,
+            1
+          );
+          finalEndDate = today;
+          break;
+        case "annual":
+          // 🟦 Desde hace un año exacto hasta hoy
+          finalStartDate = new Date(
+            today.getFullYear() - 1,
+            today.getMonth(),
+            1
+          );
+          finalEndDate = today;
+          break;
+        default:
+          // ❌ Si el período no es válido y no se enviaron fechas, respondemos con error
+          return res.status(400).json({
+            message:
+              "Período inválido. Usa: monthly, bimonthly, quarterly, semiannual, annual",
+          });
+      }
+    }
+
+    // 🔍 5. Construimos los filtros para la consulta en MongoDB
     const filters = {
-      user: req.user._id, // Solo transacciones del usuario autenticado
-      date: { $gte: startDate, $lte: today }, // Entre la fecha de inicio y hoy
+      user: req.user._id, // Solo obtener las transacciones del usuario autenticado
+      date: { $gte: finalStartDate, $lte: finalEndDate }, // Dentro del rango de fechas determinado
     };
 
-    // 🎯 4. Si se especifica el tipo, validar y agregarlo al filtro
+    // 🎯 6. Validamos y aplicamos el filtro por tipo (si se especifica)
     if (type) {
       if (!["income", "expense"].includes(type)) {
+        // ❌ Si el tipo no es válido, respondemos con error
         return res
           .status(400)
           .json({ message: "Tipo inválido. Usa 'income' o 'expense'" });
       }
-      filters.type = type;
+      filters.type = type; // ✅ Filtro por tipo aplicado
     }
 
-    // 💾 5. Consultar transacciones con los filtros definidos
+    // 🧾 7. Realizamos la consulta a la base de datos con los filtros definidos y ordenamos por fecha descendente
     const transactions = await Transaction.find(filters).sort({ date: -1 });
 
-    // 📤 6. Devolver la lista de transacciones encontradas
+    // 📤 8. Respondemos con las transacciones encontradas
     res.status(200).json(transactions);
-  }),
-
-  //! Resumen mensual de ingresos y egresos (últimos 12 meses) para gráfico de barras
-  getMonthlySummary: asyncHandler(async (req, res) => {
-    const today = new Date(); // 📅 Fecha actual
-
-    // 📆 1. Calcular fecha de inicio (mismo mes, pero un año antes)
-    const oneYearAgo = new Date(today);
-    oneYearAgo.setFullYear(today.getFullYear() - 1); // restar 1 año
-    oneYearAgo.setMonth(today.getMonth()); // mantener el mismo mes
-    oneYearAgo.setDate(1); // establecer día 1
-    oneYearAgo.setHours(0, 0, 0, 0); // limpiar hora
-
-    // 🔍 2. Agregación en MongoDB
-    const summary = await Transaction.aggregate([
-      {
-        // 🎯 Filtro por usuario y por rango de fechas (últimos 12 meses)
-        $match: {
-          user: req.user._id,
-          date: { $gte: oneYearAgo, $lte: today },
-        },
-      },
-      {
-        // 📊 Agrupar por mes y año
-        $group: {
-          _id: {
-            year: { $year: "$date" },
-            month: { $month: "$date" },
-          },
-          // ➕ Sumar ingresos
-          totalIncome: {
-            $sum: {
-              $cond: [{ $eq: ["$type", "income"] }, "$amount", 0],
-            },
-          },
-          // ➖ Sumar gastos
-          totalExpense: {
-            $sum: {
-              $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0],
-            },
-          },
-        },
-      },
-      {
-        // 🗂 Ordenar por año y mes ascendente
-        $sort: { "_id.year": 1, "_id.month": 1 },
-      },
-    ]);
-
-    // 🔁 3. Formatear los resultados para el frontend
-    const formatted = summary.map((item) => ({
-      year: item._id.year,
-      month: item._id.month,
-      income: item.totalIncome,
-      expense: item.totalExpense,
-      balance: item.totalIncome - item.totalExpense, // ➗ Calcular balance
-    }));
-
-    // 📤 4. Enviar el resumen formateado
-    res.status(200).json(formatted);
   }),
 
   //! Balance general del usuario
@@ -511,6 +502,33 @@ const transactionController = {
 
     // 7️⃣ Finalizar la respuesta
     res.end();
+  }),
+
+  getMonthlySummary: asyncHandler(async (req, res) => {
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const match = {
+      user: req.user._id,
+      date: { $gte: startOfMonth, $lte: today },
+    };
+
+    const summary = await Transaction.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$type",
+          total: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    const result = {
+      income: summary.find((s) => s._id === "income")?.total || 0,
+      expense: summary.find((s) => s._id === "expense")?.total || 0,
+    };
+
+    res.status(200).json(result);
   }),
 };
 
