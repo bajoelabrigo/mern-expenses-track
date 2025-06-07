@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FaTrash, FaEdit } from "react-icons/fa";
+
+//! 📦 Servicios que conectan con el backend
 import {
   deleteTransactionAPI,
   listTransationsAPI,
@@ -10,19 +12,23 @@ import { listCategoriesAPI } from "../../services/category/categoryService";
 import { Link, useParams } from "react-router-dom";
 
 const TransactionList = () => {
-  const { id } = useParams();
+  const { id } = useParams(); // Obtener ID desde URL (no usado aquí)
+
+  // 🧠 Estado local para filtros
   const [filters, setFilters] = useState({
     startDate: "",
-    enDate: "",
+    endDate: "", // ✅ CORREGIDO AQUÍ
     type: "",
     category: "",
   });
 
+  //! 🔄 Manejo de inputs de filtro
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
+  //! 📁 Obtener categorías
   const {
     data: categoryData,
     isLoading: categoryLoading,
@@ -32,6 +38,7 @@ const TransactionList = () => {
     queryKey: ["list-categories"],
   });
 
+  //! 📊 Obtener transacciones filtradas
   const {
     data: transactions,
     isError,
@@ -44,6 +51,7 @@ const TransactionList = () => {
     queryKey: ["list-transactions", filters],
   });
 
+  //! ❌ Eliminar una transacción
   const {
     mutateAsync,
     isPending,
@@ -60,12 +68,14 @@ const TransactionList = () => {
       .catch((e) => console.log(e));
   };
 
+  //! 🔎 Obtener ícono de categoría
   const getCategoryIcon = (categoryName) => {
     const matched = categoryData?.find((c) => c.name === categoryName);
-    return matched?.icon || "💼"; // Default icon
+    return matched?.icon || "💼"; // ícono por defecto
   };
 
   return (
+    //! 🧾 UI principal (render)
     <div className="my-4 p-4 shadow-lg rounded-lg bg-white">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <input
@@ -82,6 +92,8 @@ const TransactionList = () => {
           name="endDate"
           className="p-2 rounded-lg border-gray-300"
         />
+
+        //! 🧰 Selects de tipo y categoría
         <div className="relative">
           <select
             name="type"
@@ -113,6 +125,8 @@ const TransactionList = () => {
           <ChevronDownIcon className="w-5 h-5 absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500" />
         </div>
       </div>
+
+      //! 📄 Lista de transacciones renderizadas
       <div className="mt-6 bg-gray-50 p-4 rounded-lg shadow-inner">
         <h3 className="text-xl font-semibold mb-4 text-gray-800">
           Transacciones filtradas
