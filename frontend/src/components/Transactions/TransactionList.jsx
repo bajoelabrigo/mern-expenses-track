@@ -75,7 +75,6 @@ const TransactionList = () => {
   };
 
   return (
-    //! 🧾 UI principal (render)
     <div className="my-4 p-4 shadow-lg rounded-lg bg-white">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <input
@@ -92,8 +91,7 @@ const TransactionList = () => {
           name="endDate"
           className="p-2 rounded-lg border-gray-300"
         />
-
-        //! 🧰 Selects de tipo y categoría
+        {/* Selects de tipo y categoría */}
         <div className="relative">
           <select
             name="type"
@@ -126,7 +124,7 @@ const TransactionList = () => {
         </div>
       </div>
 
-      //! 📄 Lista de transacciones renderizadas
+      {/*📄 Lista de transacciones renderizadas */}
       <div className="mt-6 bg-gray-50 p-4 rounded-lg shadow-inner">
         <h3 className="text-xl font-semibold mb-4 text-gray-800">
           Transacciones filtradas
