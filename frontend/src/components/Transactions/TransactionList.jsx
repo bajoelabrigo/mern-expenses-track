@@ -86,7 +86,7 @@ const TransactionList = () => {
         />
         <input
           type="date"
-          value={filters.enDate}
+          value={filters.endDate}
           onChange={handleFilterChange}
           name="endDate"
           className="p-2 rounded-lg border-gray-300"

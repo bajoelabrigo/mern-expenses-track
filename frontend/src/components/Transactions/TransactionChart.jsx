@@ -1,3 +1,4 @@
+// TransactionChart.jsx
 import { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import {
@@ -9,8 +10,10 @@ import {
   LinearScale,
   BarElement,
   Title,
+  LineElement,
+  PointElement,
 } from "chart.js";
-import { Doughnut, Bar } from "react-chartjs-2";
+import { Doughnut, Bar, Line } from "react-chartjs-2";
 import { useQuery } from "@tanstack/react-query";
 import {
   getTransactionByPeriodAPI,
@@ -27,6 +30,8 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
   Title
 );
 
@@ -40,8 +45,9 @@ const periods = [
 
 const TransactionChart = () => {
   const { user } = useSelector((state) => state.auth);
-
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
+  const [selectedType, setSelectedType] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
 
   const { data: categories = [] } = useQuery({
     queryFn: listCategoriesAPI,
@@ -53,8 +59,20 @@ const TransactionChart = () => {
     queryKey: ["transactions", selectedPeriod],
   });
 
+  //! Filtrar por tipo y categoría seleccionados
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((t) => {
+      const matchType = selectedType ? t.type === selectedType : true;
+      const matchCategory = selectedCategory
+        ? t.category === selectedCategory
+        : true;
+      return matchType && matchCategory;
+    });
+  }, [transactions, selectedType, selectedCategory]);
+
+  //! Calcular totales
   const totals = useMemo(() => {
-    return transactions.reduce(
+    return filteredTransactions.reduce(
       (acc, t) => {
         if (t.type === "income") acc.income += Number(t.amount);
         else acc.expense += Number(t.amount);
@@ -62,11 +80,12 @@ const TransactionChart = () => {
       },
       { income: 0, expense: 0 }
     );
-  }, [transactions]);
+  }, [filteredTransactions]);
 
+  //! Preparar datos para gráfico de barras
   const chartData = useMemo(() => {
     const map = {};
-    transactions.forEach((t) => {
+    filteredTransactions.forEach((t) => {
       const date = new Date(t.date);
       const key = `${date.getFullYear()}-${(date.getMonth() + 1)
         .toString()
@@ -91,8 +110,14 @@ const TransactionChart = () => {
         },
       ],
     };
-  }, [transactions]);
+  }, [filteredTransactions]);
 
+  //! Preparar datos para gráfico de líneas
+  const lineChartData = useMemo(() => {
+    return chartData;
+  }, [chartData]);
+
+  //! Exportar a Excel
   const handleExportExcel = async () => {
     const response = await exportTransactionExcelAPI(selectedPeriod);
     const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -108,9 +133,11 @@ const TransactionChart = () => {
     <div className="p-6 space-y-6 bg-white rounded-lg shadow-xl border border-gray-200">
       <h2 className="text-2xl font-bold text-center">
         Resumen de Transacciones
-      </h2>{" "}
-      <h3 className="text-2xl font-bold text-center">{user?.iglesia}</h3>
-      <div className="flex justify-center gap-4">
+      </h2>
+      <h3 className="text-xl font-semibold text-center">{user?.iglesia}</h3>
+
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-4 justify-center">
         <select
           value={selectedPeriod}
           onChange={(e) => setSelectedPeriod(e.target.value)}
@@ -122,6 +149,30 @@ const TransactionChart = () => {
             </option>
           ))}
         </select>
+
+        <select
+          value={selectedType}
+          onChange={(e) => setSelectedType(e.target.value)}
+          className="border p-2 rounded-md"
+        >
+          <option value="">Todos los tipos</option>
+          <option value="income">Ingreso</option>
+          <option value="expense">Gasto</option>
+        </select>
+
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+          className="border p-2 rounded-md"
+        >
+          <option value="">Todas las categorías</option>
+          {categories.map((cat) => (
+            <option key={cat._id} value={cat.name}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+
         <button
           onClick={handleExportExcel}
           className="bg-green-500 text-white px-4 py-2 rounded-md"
@@ -129,6 +180,8 @@ const TransactionChart = () => {
           Exportar Excel
         </button>
       </div>
+
+      {/* Gráfico Dona */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="relative w-full flex justify-center items-center h-72">
           <div className="w-64 h-64 relative">
@@ -148,9 +201,7 @@ const TransactionChart = () => {
                   title: {
                     display: true,
                     text: "Ingreso vs Gasto",
-                    font: {
-                      size: 16,
-                    },
+                    font: { size: 16 },
                   },
                 },
                 cutout: "80%",
@@ -169,6 +220,7 @@ const TransactionChart = () => {
           </div>
         </div>
 
+        {/* Totales */}
         <div className="flex flex-col items-center justify-center">
           <h3 className="text-2xl font-bold text-[#36A2EB]">Total Ingresos</h3>
           <div className="flex gap-2 items-center">
@@ -179,7 +231,7 @@ const TransactionChart = () => {
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center ">
+        <div className="flex flex-col items-center justify-center">
           <h3 className="text-2xl font-bold text-[#FF6384]">Total Gastos</h3>
           <div className="flex gap-2 items-center">
             <BsHouseDash className="text-3xl text-red-500" />
@@ -189,20 +241,47 @@ const TransactionChart = () => {
           </div>
         </div>
       </div>
-      <div className="mt-8">
-        <h2 className="text-2xl  font-bold mb-4">
+
+      {/* Gráfico de Barras */}
+      <div className="mt-8 flex flex-col items-center justify-center">
+        <h2 className="text-2xl font-bold mb-4 text-center">
           Evolución mensual de transacciones
         </h2>
-        <div className="h-[400px]">
+        <div className="w-full max-w-4xl h-[400px]">
           <Bar
             data={chartData}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { position: "top" },
+                title: {
+                  display: true,
+                  text: `Historial de Ingresos y Gastos (${
+                    periods.find((p) => p.value === selectedPeriod)?.label
+                  })`,
+                },
+              },
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Gráfico de Línea opcional (usando mismo chartData) */}
+      <div className="mt-8 flex flex-col items-center justify-center ">
+        <h2 className="text-2xl font-bold mb-4 text-center">
+          Tendencia mensual
+        </h2>
+        <div className="w-full max-w-4xl h-[400px]">
+          <Line
+            data={lineChartData}
             options={{
               responsive: true,
               plugins: {
                 legend: { position: "top" },
                 title: {
                   display: true,
-                  text: `Historial de Ingresos y Gastos (${
+                  text: `Tendencia mensual (${
                     periods.find((p) => p.value === selectedPeriod)?.label
                   })`,
                 },
