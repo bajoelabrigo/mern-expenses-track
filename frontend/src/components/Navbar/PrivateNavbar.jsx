@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Disclosure, Menu, Transition } from "@headlessui/react";
+import { Disclosure } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,7 +14,6 @@ function classNames(...classes) {
 export default function PrivateNavbar() {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.auth.user);
-  console.log(user);
 
   const logoutHandler = () => {
     dispatch(logoutAction());
@@ -22,7 +21,7 @@ export default function PrivateNavbar() {
   };
 
   return (
-    <Disclosure as="nav" className="bg-white">
+    <Disclosure as="nav" className="bg-white shadow-sm sticky top-0 z-10">
       {({ open }) => (
         <>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -32,34 +31,63 @@ export default function PrivateNavbar() {
                 <Link to="/" className="text-lg font-semibold text-gray-800">
                   Sistema Contable Iglesia
                 </Link>
+
+                {/* Menú en escritorio */}
                 <div className="hidden md:flex gap-6">
-                  <Link to="/add-transaction" className="nav-link">
+                  <Link
+                    to="/add-transaction"
+                    className="text-gray-700 hover:text-blue-600"
+                  >
                     Agregar Transacción
                   </Link>
-                  <Link to="/add-category" className="nav-link">
+                  <Link
+                    to="/add-category"
+                    className="text-gray-700 hover:text-blue-600"
+                  >
                     Agregar Categoría
                   </Link>
-                  <Link to="/categories" className="nav-link">
+                  <Link
+                    to="/categories"
+                    className="text-gray-700 hover:text-blue-600"
+                  >
                     Categorías
                   </Link>
-                  <Link to="/profile" className="nav-link">
+                  <Link
+                    to="/profile"
+                    className="text-gray-700 hover:text-blue-600"
+                  >
                     Perfil
                   </Link>
-                  <Link to="/dashboard" className="nav-link">
+                  <Link
+                    to="/dashboard"
+                    className="text-gray-700 hover:text-blue-600"
+                  >
                     Panel de Control
                   </Link>
-
                   {user?.role === "admin" && (
-                    <>
-                      <Link to="/admin/users" className="nav-link text-red-600">
-                        Lista de Usuarios
-                      </Link>
-                    </>
+                    <Link
+                      to="/admin/users"
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Lista de Usuarios
+                    </Link>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center">
+              {/* Botón hamburguesa en móvil */}
+              <div className="md:hidden">
+                <Disclosure.Button className="inline-flex items-center justify-center rounded-md p-2 text-gray-700 hover:bg-gray-100 focus:outline-none">
+                  {open ? (
+                    <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
+                  ) : (
+                    <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
+                  )}
+                </Disclosure.Button>
+              </div>
+
+              {/* Botón salir en escritorio */}
+              <div className="hidden md:flex items-center">
                 <button
                   onClick={logoutHandler}
                   className="inline-flex items-center gap-2 px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700"
@@ -71,58 +99,48 @@ export default function PrivateNavbar() {
             </div>
           </div>
 
-          {/* Mobile Navigation */}
+          {/* Menú en móvil */}
           <Disclosure.Panel className="md:hidden px-4 pt-2 pb-3 space-y-1">
-            <Link to="/add-transaction">
-              <Disclosure.Button className="mobile-link">
-                Agregar Transacción
-              </Disclosure.Button>
-            </Link>
-            <Link to="/add-category">
-              <Disclosure.Button className="mobile-link">
-                Agregar Categoría
-              </Disclosure.Button>
-            </Link>
-            <Link to="/categories">
-              <Disclosure.Button className="mobile-link">
-                Categorías
-              </Disclosure.Button>
-            </Link>
-            <Link to="/profile">
-              <Disclosure.Button className="mobile-link">
-                Perfil
-              </Disclosure.Button>
-            </Link>
-            <Link to="/dashboard">
-              <Disclosure.Button className="mobile-link">
-                Panel de Control
-              </Disclosure.Button>
-            </Link>
-
+            <MobileLink to="/add-transaction" label="Agregar Transacción" />
+            <MobileLink to="/add-category" label="Agregar Categoría" />
+            <MobileLink to="/categories" label="Categorías" />
+            <MobileLink to="/profile" label="Perfil" />
+            <MobileLink to="/dashboard" label="Panel de Control" />
             {user?.role === "admin" && (
               <>
-                <Link to="/admin/users">
-                  <Disclosure.Button className="mobile-link text-red-600">
-                    Lista de Usuarios
-                  </Disclosure.Button>
-                </Link>
-                <Link to="/admin/dashboard">
-                  <Disclosure.Button className="mobile-link text-red-600">
-                    Panel Admin
-                  </Disclosure.Button>
-                </Link>
+                <MobileLink
+                  to="/admin/users"
+                  label="Lista de Usuarios"
+                  color="text-red-600"
+                />
+                <MobileLink
+                  to="/admin/dashboard"
+                  label="Panel Admin"
+                  color="text-red-600"
+                />
               </>
             )}
-
-            <Disclosure.Button
+            <button
               onClick={logoutHandler}
-              className="block w-full text-left px-4 py-2 text-base font-medium text-gray-600 hover:bg-gray-100"
+              className="block w-full text-left px-4 py-2 text-base font-medium text-red-600 hover:bg-gray-100"
             >
               Salir
-            </Disclosure.Button>
+            </button>
           </Disclosure.Panel>
         </>
       )}
     </Disclosure>
   );
 }
+
+// Componente para enlaces móviles
+const MobileLink = ({ to, label, color = "text-gray-700" }) => (
+  <Link to={to}>
+    <Disclosure.Button
+      as="span"
+      className={`block w-full px-4 py-2 text-base font-medium hover:bg-gray-100 ${color}`}
+    >
+      {label}
+    </Disclosure.Button>
+  </Link>
+);
