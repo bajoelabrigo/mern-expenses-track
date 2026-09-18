@@ -130,3 +130,8 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+
+# Variables de entorno (nunca se versionan, salvo el ejemplo)
+.env
+.env.*
+!.env.example
