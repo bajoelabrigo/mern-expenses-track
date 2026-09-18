@@ -71,7 +71,8 @@ const run = async () => {
   try {
     const prueba = db.collection("_prueba_conexion");
     await prueba.insertOne({ creado: new Date() });
-    await prueba.deleteMany({});
+    //! Se elimina la colección entera para no dejar rastro en la base
+    await prueba.drop();
     console.log("✓ Escritura correcta (el usuario tiene readWrite)");
   } catch (err) {
     console.error("✗ Sin permisos de escritura:", err.message);
