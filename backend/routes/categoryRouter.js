@@ -1,41 +1,22 @@
 const express = require("express");
 const isAuthenticated = require("../middlewares/isAuth");
+const validateObjectId = require("../middlewares/validateObjectId");
 const categoryController = require("../controllers/categoryController");
+
 const categoryRouter = express.Router();
 
-//! Create category
-categoryRouter.post(
-  "/api/v1/categories/create",
-  isAuthenticated,
-  categoryController.create
-);
+//! Todas las rutas de categorías requieren sesión
+categoryRouter.use(isAuthenticated);
 
-//! Get all categories for user
-categoryRouter.get(
-  "/api/v1/categories/lists",
-  isAuthenticated,
-  categoryController.lists
-);
-
-//! Get one category by ID
-categoryRouter.get(
-  "/api/v1/categories/:id",
-  isAuthenticated,
-  categoryController.getOne
-);
-
-//! Update category
-categoryRouter.put(
-  "/api/v1/categories/update/:id",
-  isAuthenticated,
-  categoryController.update
-);
-
-//! Delete category
+categoryRouter.post("/create", categoryController.create);
+categoryRouter.get("/lists", categoryController.lists);
+categoryRouter.put("/update/:id", validateObjectId(), categoryController.update);
 categoryRouter.delete(
-  "/api/v1/categories/delete/:id",
-  isAuthenticated,
+  "/delete/:id",
+  validateObjectId(),
   categoryController.delete
 );
+//! Ruta con parámetro al final para no capturar /lists ni /create
+categoryRouter.get("/:id", validateObjectId(), categoryController.getOne);
 
 module.exports = categoryRouter;

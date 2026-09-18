@@ -1,69 +1,36 @@
 const express = require("express");
 const isAuthenticated = require("../middlewares/isAuth");
+const validateObjectId = require("../middlewares/validateObjectId");
 const transactionController = require("../controllers/transactionController");
 
 const transactionRouter = express.Router();
 
-//! Crear transacción
-transactionRouter.post(
-  "/api/v1/transactions/create",
-  isAuthenticated,
-  transactionController.create
-);
+//! Todas las rutas de transacciones requieren sesión
+transactionRouter.use(isAuthenticated);
 
-//! Obtener transacciones filtradas
+transactionRouter.post("/create", transactionController.create);
+transactionRouter.get("/lists", transactionController.getFilteredTransactions);
+transactionRouter.get("/period", transactionController.getByPeriod);
+transactionRouter.get("/balance", transactionController.getBalance);
 transactionRouter.get(
-  "/api/v1/transactions/lists",
-  isAuthenticated,
-  transactionController.getFilteredTransactions
-);
-
-//! Obtener transacciones por periodo (mensual, bimestral, etc)
-transactionRouter.get(
-  "/api/v1/transactions/period",
-  isAuthenticated,
-  transactionController.getByPeriod
-);
-
-//! Actualizar transacción
-transactionRouter.put(
-  "/api/v1/transactions/update/:id",
-  isAuthenticated,
-  transactionController.update
-);
-
-//! Eliminar transacción
-transactionRouter.delete(
-  "/api/v1/transactions/delete/:id",
-  isAuthenticated,
-  transactionController.delete
-);
-
-//! Resumen mensual de ingresos y gastos
-transactionRouter.get(
-  "/api/v1/transactions/summary/monthly",
-  isAuthenticated,
+  "/summary/monthly",
   transactionController.getMonthlySummary
 );
-
-//! Balance general
 transactionRouter.get(
-  "/api/v1/transactions/balance",
-  isAuthenticated,
-  transactionController.getBalance
-);
-
-//! Exportar a Excel
-transactionRouter.get(
-  "/api/v1/transactions/export/excel",
-  isAuthenticated,
+  "/export/excel",
   transactionController.generateExcelReport
 );
-
-transactionRouter.get(
-  "/api/v1/transactions/:id",
-  isAuthenticated,
-  transactionController.getOne
+transactionRouter.put(
+  "/update/:id",
+  validateObjectId(),
+  transactionController.update
 );
+transactionRouter.delete(
+  "/delete/:id",
+  validateObjectId(),
+  transactionController.delete
+);
+//! Ruta con parámetro al final
+transactionRouter.get("/:id", validateObjectId(), transactionController.getOne);
 
 module.exports = transactionRouter;

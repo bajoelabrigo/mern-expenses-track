@@ -1,29 +1,25 @@
 const express = require("express");
 const usersController = require("../controllers/userController");
 const isAuthenticated = require("../middlewares/isAuth");
+const { authLimiter } = require("../middlewares/rateLimiters");
+
 const userRouter = express.Router();
 
-//!Register
-userRouter.post("/api/v1/users/register", usersController.register);
-//!Login
-userRouter.post("/api/v1/users/login", usersController.login);
-//!Profile
-userRouter.get(
-  "/api/v1/users/profile",
-  isAuthenticated,
-  usersController.profile
-);
+//! Rutas públicas con límite de intentos (anti fuerza bruta)
+userRouter.post("/register", authLimiter, usersController.register);
+userRouter.post("/login", authLimiter, usersController.login);
+userRouter.post("/logout", usersController.logout);
 
-//!Change password
+//! Rutas protegidas
+userRouter.get("/profile", isAuthenticated, usersController.profile);
 userRouter.put(
-  "/api/v1/users/change-password",
+  "/change-password",
   isAuthenticated,
+  authLimiter,
   usersController.changeUserPassword
 );
-
-//!Update profile
 userRouter.put(
-  "/api/v1/users/update-profile",
+  "/update-profile",
   isAuthenticated,
   usersController.updateUserProfile
 );

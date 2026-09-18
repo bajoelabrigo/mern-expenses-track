@@ -9,33 +9,37 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      required: true,
-      enum: ["income", "expense"],
+      required: [true, "El tipo de transacción es obligatorio"],
+      enum: {
+        values: ["income", "expense"],
+        message: "El tipo debe ser 'income' o 'expense'",
+      },
     },
     category: {
       type: String,
       required: true,
-      default: "Uncategorized",
+      trim: true,
+      lowercase: true,
+      default: "uncategorized",
     },
     amount: {
       type: Number,
-      required: true,
-      min: 0,
+      required: [true, "El monto es obligatorio"],
+      min: [0, "El monto no puede ser negativo"],
     },
     date: {
       type: Date,
       default: Date.now,
+      required: true,
     },
     description: {
       type: String,
+      trim: true,
+      maxlength: [500, "La descripción no puede superar los 500 caracteres"],
     },
     icon: {
       type: String,
-      default: "", // puedes cambiar a "💰" si quieres un ícono por defecto
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
+      default: "",
     },
     recurrent: {
       type: Boolean,
@@ -43,17 +47,22 @@ const transactionSchema = new mongoose.Schema(
     },
     recurrenceType: {
       type: String,
-      enum: ["daily", "weekly", "monthly", "yearly"],
+      enum: ["daily", "weekly", "monthly", "yearly", null],
       default: null,
     },
     recurrenceCount: {
-      type: Number, // ¿cuántas veces se repetirá?
+      type: Number,
       default: 0,
+      min: 0,
     },
   },
   {
     timestamps: true,
   }
 );
+
+//! Todas las consultas filtran por usuario y ordenan por fecha
+transactionSchema.index({ user: 1, date: -1 });
+transactionSchema.index({ user: 1, category: 1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);
