@@ -33,7 +33,9 @@ const corsOptions = {
     if (!origin || CORS_ORIGINS.includes(origin)) {
       return callback(null, true);
     }
-    return callback(new Error(`Origen no permitido por CORS: ${origin}`));
+    //! Origen no permitido: se responde sin cabeceras CORS (el navegador bloquea
+    //! la respuesta). Lanzar un error aquí convertía la petición en un 500.
+    return callback(null, false);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

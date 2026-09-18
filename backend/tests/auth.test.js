@@ -179,3 +179,29 @@ describe("Autenticación", () => {
     assert.match(res.body.message, /no encontrada/i);
   });
 });
+
+describe("CORS", () => {
+  before(setupDatabase);
+  after(teardownDatabase);
+
+  test("un origen permitido recibe las cabeceras CORS", async () => {
+    const res = await request(app)
+      .get("/health")
+      .set("Origin", "http://localhost:5173")
+      .expect(200);
+
+    assert.equal(
+      res.headers["access-control-allow-origin"],
+      "http://localhost:5173"
+    );
+  });
+
+  test("un origen no permitido no recibe cabeceras CORS ni provoca un 500", async () => {
+    const res = await request(app)
+      .get("/health")
+      .set("Origin", "https://sitio-malicioso.com")
+      .expect(200);
+
+    assert.equal(res.headers["access-control-allow-origin"], undefined);
+  });
+});
