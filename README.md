@@ -76,7 +76,7 @@ demasiado corto: es intencional, evita desplegar con una configuración insegura
 
 ```bash
 npm test --prefix backend    # 44 pruebas de integración sobre la API real
-npm test --prefix frontend   # 19 pruebas de componentes, servicios y estado
+npm test --prefix frontend   # 23 pruebas de componentes, servicios y estado
 ```
 
 El backend levanta un MongoDB en memoria: no toca la base de datos real y no
@@ -170,14 +170,52 @@ Para convertir a un usuario en administrador hay que cambiar su campo `role` a
 
 ## Despliegue
 
-Dos opciones:
+### Opción A: frontend en Netlify + API en Render (recomendada)
 
-1. **Un solo servicio** (por ejemplo Render sirviendo también el frontend):
-   `SERVE_FRONTEND=true` y `npm run build && npm start` desde la raíz. El
-   frontend usa rutas relativas (`/api/v1`).
-2. **Servicios separados** (frontend en Netlify/Vercel, API en Render):
-   define `VITE_API_URL` con la URL pública de la API, añade el dominio del
-   frontend a `CORS_ORIGINS` y deja `COOKIE_SAMESITE=none`.
+El frontend se sirve desde la CDN de Netlify (carga instantánea) y la API vive
+en Render. `netlify.toml` ya trae la configuración del build y el redirect de
+SPA; solo hay que definir las variables de entorno en cada panel.
+
+**Netlify** (Site configuration → Environment variables):
+
+| Variable       | Valor                                          |
+| -------------- | ---------------------------------------------- |
+| `VITE_API_URL` | `https://TU-API.onrender.com/api/v1`           |
+
+**Render** (Environment):
+
+| Variable         | Valor                                  |
+| ---------------- | -------------------------------------- |
+| `NODE_ENV`       | `production`                           |
+| `MONGO_URL`      | cadena de conexión de Atlas            |
+| `JWT_SECRET`     | secreto de 48 bytes                    |
+| `CORS_ORIGINS`   | `https://TU-SITIO.netlify.app`         |
+| `SERVE_FRONTEND` | `false`                                |
+
+Al estar en dominios distintos, la cookie de sesión se emite con
+`SameSite=None; Secure`. Los navegadores que bloquean cookies de terceros
+(Safari, Brave) la descartan, pero la sesión sigue funcionando porque el
+frontend también envía el token en la cabecera `Authorization`.
+
+### Opción B: un solo servicio
+
+Render (o similar) sirve la API y los archivos estáticos: `SERVE_FRONTEND=true`
+y `npm run build && npm start` desde la raíz. El frontend usa rutas relativas
+(`/api/v1`) y no hace falta configurar CORS ni `VITE_API_URL`.
+
+### Arranque en frío del plan gratuito
+
+Render duerme los servicios gratuitos tras 15 minutos sin tráfico y la primera
+petición tarda cerca de un minuto. La app lo mitiga así:
+
+- al abrir la web se lanza un `GET /health` (`src/lib/wakeApi.js`) que empieza a
+  despertar la API mientras la persona escribe sus credenciales;
+- si el login tarda más de 4 segundos, se avisa en pantalla de que el servidor
+  está despertando en lugar de dejar el botón bloqueado sin explicación.
+
+Para eliminar la espera del todo hay que evitar que el servicio se duerma: un
+ping externo cada 10-14 minutos (cron-job.org, UptimeRobot) contra `/health`, o
+pasar el servicio a un plan de pago.
 
 ## Licencia
 

@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { loginAPI } from "../../services/users/userService";
 import { loginAction } from "../../redux/slice/authSlice";
 import { getErrorMessage } from "../../lib/axios";
+import { useEsperaLarga } from "../../hooks/useEsperaLarga";
 import AlertMessage from "../Alert/AlertMessage";
 
 const validationSchema = Yup.object({
@@ -28,6 +29,9 @@ const LoginForm = () => {
     mutationFn: loginAPI,
     mutationKey: ["login"],
   });
+
+  //! El servidor gratuito puede tardar hasta un minuto en despertar
+  const despertandoServidor = useEsperaLarga(isPending);
 
   const formik = useFormik({
     initialValues: {
@@ -62,7 +66,16 @@ const LoginForm = () => {
         Iniciar sesión
       </h2>
 
-      {isPending && <AlertMessage type="loading" message="Ingresando..." />}
+      {isPending && (
+        <AlertMessage
+          type="loading"
+          message={
+            despertandoServidor
+              ? "El servidor está despertando, esto puede tardar hasta un minuto la primera vez..."
+              : "Ingresando..."
+          }
+        />
+      )}
       {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
       {isSuccess && (
         <AlertMessage type="success" message="Sesión iniciada correctamente" />

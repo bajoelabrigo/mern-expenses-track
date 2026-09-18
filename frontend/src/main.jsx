@@ -8,6 +8,7 @@ import App from "./App.jsx";
 import "./index.css";
 import { store } from "./redux/store/store.js";
 import ErrorBoundary from "./components/common/ErrorBoundary.jsx";
+import { wakeApi } from "./lib/wakeApi.js";
 
 const client = new QueryClient({
   defaultOptions: {
@@ -20,6 +21,9 @@ const client = new QueryClient({
     },
   },
 });
+
+//! El hosting gratuito duerme la API: se la despierta al abrir la web
+wakeApi();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
