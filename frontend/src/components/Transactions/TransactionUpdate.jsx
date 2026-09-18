@@ -1,8 +1,8 @@
-import React, { use, useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useFormik } from "formik";
-import { Link, useNavigate, useParams } from "react-router-dom";
 import * as Yup from "yup";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FaDollarSign,
   FaCalendarAlt,
@@ -14,85 +14,93 @@ import {
   fetchTransactionByIdAPI,
   updateTransactionAPI,
 } from "../../services/transactions/transactionService";
+import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
 
+const validationSchema = Yup.object({
+  type: Yup.string()
+    .required("El tipo es obligatorio")
+    .oneOf(["income", "expense"], "Tipo inválido"),
+  amount: Yup.number()
+    .typeError("El monto debe ser un número")
+    .required("El monto es obligatorio")
+    .positive("El monto debe ser positivo"),
+  category: Yup.string().required("La categoría es obligatoria"),
+  date: Yup.date()
+    .typeError("Fecha inválida")
+    .required("La fecha es obligatoria"),
+  description: Yup.string(),
+});
+
 const TransactionUpdate = () => {
-  //Id Params
   const { id } = useParams();
-
-  //Navigate
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  // Mutation
+  //! Datos de la transacción a editar (con React Query, no con un efecto manual)
   const {
-    mutateAsync,
-    isPending,
-    isError: isAddTranErr,
-    error: transErr,
-    isSuccess,
-  } = useMutation({
-    mutationFn: updateTransactionAPI,
-    mutationKey: ["update-transaction"],
+    data: transaction,
+    isLoading,
+    isError: isLoadError,
+    error: loadError,
+  } = useQuery({
+    queryKey: ["transaction", id],
+    queryFn: () => fetchTransactionByIdAPI(id),
+    enabled: Boolean(id),
   });
-  //fetching
-  const { data, isError, isLoading, isFetched, error, refetch } = useQuery({
+
+  const {
+    data: categories = [],
+    isError: isCategoriesError,
+    error: categoriesError,
+  } = useQuery({
     queryFn: listCategoriesAPI,
     queryKey: ["list-categories"],
   });
 
-  const formik = useFormik({
-    initialValues: {
-      type: "",
-      amount: "",
-      category: "",
-      date: "",
-      description: "",
-    },
-    onSubmit: (values) => {
-      // Ajustamos la hora al mediodía para evitar desfase por zona horaria
-      const adjustedValues = {
-        ...values,
-        date: new Date(`${values.date}T12:00:00`).toISOString(),
-        id, // mantenemos el ID para la mutación
-      };
-
-      console.log("Submitted adjusted values:", adjustedValues);
-      mutateAsync(adjustedValues).catch(console.error);
+  const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
+    mutationFn: updateTransactionAPI,
+    mutationKey: ["update-transaction"],
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["list-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transaction", id] });
     },
   });
 
-  // ⬇️ Cargar la transacción existente al montar
-  useEffect(() => {
-    const loadTransaction = async () => {
+  const formik = useFormik({
+    initialValues: {
+      type: transaction?.type || "",
+      amount: transaction?.amount ?? "",
+      category: transaction?.category || "",
+      date: transaction?.date?.slice(0, 10) || "",
+      description: transaction?.description || "",
+    },
+    enableReinitialize: true,
+    validationSchema,
+    onSubmit: async (values) => {
       try {
-        const transaction = await fetchTransactionByIdAPI(id);
-        formik.setValues({
-          type: transaction.type || "",
-          amount: transaction.amount || "",
-          category: transaction.category || "",
-          date: transaction.date?.slice(0, 10) || "",
-          description: transaction.description || "",
+        await mutateAsync({
+          ...values,
+          //! Mediodía local evita el desfase de zona horaria
+          date: new Date(`${values.date}T12:00:00`).toISOString(),
+          id,
         });
-      } catch (e) {
-        console.error("Error fetching transaction:", e);
+      } catch {
+        // el mensaje se muestra con AlertMessage
       }
-    };
-
-    if (id) {
-      loadTransaction();
-    }
-  }, [id]);
+    },
+  });
 
   useEffect(() => {
-    setTimeout(() => {
-      if (isSuccess) {
-        navigate("/dashboard");
-      }
-    }, 1000);
-  }, [isPending, isAddTranErr, transErr, isSuccess]);
+    if (!isSuccess) return undefined;
+
+    const timeout = setTimeout(() => navigate("/dashboard"), 1000);
+    return () => clearTimeout(timeout);
+  }, [isSuccess, navigate]);
 
   return (
-    <div className="fixed left-0 top-0 z-50 flex h-full min-h-screen w-full items-center justify-center bg-black/70 px-4 py-5">
+    <div className="fixed left-0 top-0 z-50 flex h-full min-h-screen w-full items-center justify-center bg-black/70 px-4 py-5 overflow-y-auto">
       <div className="md:px-16 w-full max-w-2xl rounded-lg bg-white md:py-8 py-12">
         <form
           onSubmit={formik.handleSubmit}
@@ -106,24 +114,27 @@ const TransactionUpdate = () => {
               Llene los campos que desea actualizar.
             </p>
           </div>
-          {/* Display alert message */}
 
-          {isError && (
+          {isLoading && <AlertMessage type="loading" message="Cargando..." />}
+          {isLoadError && (
+            <AlertMessage type="error" message={getErrorMessage(loadError)} />
+          )}
+          {isCategoriesError && (
             <AlertMessage
               type="error"
-              message={
-                error?.response?.data?.message ||
-                "Algo pasó, por favor inténtalo de nuevo más tarde."
-              }
+              message={getErrorMessage(categoriesError)}
             />
+          )}
+          {isError && (
+            <AlertMessage type="error" message={getErrorMessage(error)} />
           )}
           {isSuccess && (
             <AlertMessage
               type="success"
-              message="Transacción agregada exitosamente"
+              message="Transacción actualizada correctamente"
             />
           )}
-          {/* Transaction Type Field */}
+
           <div className="space-y-2">
             <label
               htmlFor="type"
@@ -135,9 +146,9 @@ const TransactionUpdate = () => {
             <select
               {...formik.getFieldProps("type")}
               id="type"
-              className="block w-full p-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+              className="block w-full p-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-blue-500"
             >
-              <option value="">Selecciona el tipo de Transacción</option>
+              <option value="">Selecciona el tipo</option>
               <option value="income">Ingreso</option>
               <option value="expense">Gasto</option>
             </select>
@@ -146,7 +157,6 @@ const TransactionUpdate = () => {
             )}
           </div>
 
-          {/* Amount Field */}
           <div className="flex flex-col space-y-1">
             <label htmlFor="amount" className="text-gray-700 font-medium">
               <FaDollarSign className="inline mr-2 text-blue-500" />
@@ -154,10 +164,11 @@ const TransactionUpdate = () => {
             </label>
             <input
               type="number"
+              step="0.01"
               {...formik.getFieldProps("amount")}
               id="amount"
               placeholder="Cantidad"
-              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500"
             />
             {formik.touched.amount && formik.errors.amount && (
               <p className="text-red-500 text-xs italic">
@@ -166,25 +177,22 @@ const TransactionUpdate = () => {
             )}
           </div>
 
-          {/* Category Field */}
           <div className="flex flex-col space-y-1">
             <label htmlFor="category" className="text-gray-700 font-medium">
               <FaRegCommentDots className="inline mr-2 text-blue-500" />
-              Categoria
+              Categoría
             </label>
             <select
               {...formik.getFieldProps("category")}
               id="category"
-              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500"
             >
-              <option value="">Seleccione la Categoria</option>
-              {data?.map((category) => {
-                return (
-                  <option key={category?._id} value={category?.name}>
-                    {category?.name}
-                  </option>
-                );
-              })}
+              <option value="">Seleccione la categoría</option>
+              {categories.map((category) => (
+                <option key={category._id} value={category.name}>
+                  {category.icon} {category.name}
+                </option>
+              ))}
             </select>
             {formik.touched.category && formik.errors.category && (
               <p className="text-red-500 text-xs italic">
@@ -193,7 +201,6 @@ const TransactionUpdate = () => {
             )}
           </div>
 
-          {/* Date Field */}
           <div className="flex flex-col space-y-1">
             <label htmlFor="date" className="text-gray-700 font-medium">
               <FaCalendarAlt className="inline mr-2 text-blue-500" />
@@ -203,47 +210,38 @@ const TransactionUpdate = () => {
               type="date"
               {...formik.getFieldProps("date")}
               id="date"
-              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
+              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500"
             />
             {formik.touched.date && formik.errors.date && (
-              <p className="text-red-500 text-xs italic">
-                {formik.errors.date}
-              </p>
+              <p className="text-red-500 text-xs italic">{formik.errors.date}</p>
             )}
           </div>
 
-          {/* Description Field */}
           <div className="flex flex-col space-y-1">
             <label htmlFor="description" className="text-gray-700 font-medium">
               <FaRegCommentDots className="inline mr-2 text-blue-500" />
-              Descripción (Opcional)
+              Descripción (opcional)
             </label>
             <textarea
               {...formik.getFieldProps("description")}
               id="description"
               placeholder="Descripción"
               rows="3"
-              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-            ></textarea>
-            {formik.touched.description && formik.errors.description && (
-              <p className="text-red-500 text-xs italic">
-                {formik.errors.description}
-              </p>
-            )}
+              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500"
+            />
           </div>
 
-          {/* Submit Button */}
           <div className="flex items-center justify-between gap-8">
             <button
               type="submit"
-              className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
+              disabled={isPending}
+              className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none transition-colors duration-200 disabled:opacity-60"
             >
-              Actualiza Transacción
+              {isPending ? "Actualizando..." : "Actualizar transacción"}
             </button>
             <Link
               to="/dashboard"
-              type="submit"
-              className="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-10 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
+              className="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-10 rounded focus:outline-none transition-colors duration-200"
             >
               Cancelar
             </Link>

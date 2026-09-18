@@ -1,0 +1,32 @@
+# Configuración de despliegue del frontend en Netlify.
+# La API vive en otro servicio (Render): su URL se define en la variable de
+# entorno VITE_API_URL desde el panel de Netlify.
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Aplicación de una sola página: cualquier ruta devuelve index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Cabeceras de seguridad (helmet cubre la API; esto cubre los archivos estáticos)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# Los archivos con hash en el nombre se pueden cachear indefinidamente
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

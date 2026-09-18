@@ -1,11 +1,10 @@
 const isAdmin = (req, res, next) => {
-  console.log("User from token:", req.user);
   if (req.user && req.user.role === "admin") {
-    next();
-  } else {
-    console.warn("Unauthorized access attempt:", req.user);
-    res.status(403).json({ message: "Admin access only" });
+    return next();
   }
+  return res
+    .status(403)
+    .json({ message: "Acceso restringido a administradores" });
 };
 
 module.exports = isAdmin;

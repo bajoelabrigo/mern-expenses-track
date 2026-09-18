@@ -1,49 +1,43 @@
 import { createSlice } from "@reduxjs/toolkit";
+import {
+  clearStoredAuth,
+  getStoredAuth,
+  setStoredAuth,
+} from "../../utils/storage";
 
-// Obtener el usuario del localStorage de forma segura
-const getUserFromStorage = () => {
-  try {
-    const userInfo = localStorage.getItem("userInfo");
-    if (!userInfo) return null;
-    const parsed = JSON.parse(userInfo);
-
-    // Verificar expiración si usas JWT con campo exp
-    const token = parsed?.token; // asegúrate que `userInfo` contiene un token
-    if (token) {
-      const { exp } = JSON.parse(atob(token.split(".")[1]));
-      if (Date.now() >= exp * 1000) {
-        localStorage.removeItem("userInfo");
-        return null;
-      }
-    }
-
-    return parsed;
-  } catch (error) {
-    console.error("Error parsing userInfo:", error);
-    localStorage.removeItem("userInfo");
-    return null;
-  }
-};
+const stored = getStoredAuth();
 
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    user: getUserFromStorage(),
+    user: stored?.user || null,
+    token: stored?.token || null,
   },
   reducers: {
+    //! payload: { token, user }
     loginAction: (state, action) => {
+      const { token, user } = action.payload || {};
+      state.user = user || null;
+      state.token = token || null;
+      if (token && user) {
+        setStoredAuth({ token, user });
+      }
+    },
+    //! Actualiza los datos del perfil sin tocar el token
+    updateUserAction: (state, action) => {
       state.user = action.payload;
-      localStorage.setItem("userInfo", JSON.stringify(action.payload)); // sincroniza con localStorage
+      if (state.token && action.payload) {
+        setStoredAuth({ token: state.token, user: action.payload });
+      }
     },
     logoutAction: (state) => {
       state.user = null;
-      localStorage.removeItem("userInfo"); // limpia localStorage
+      state.token = null;
+      clearStoredAuth();
     },
   },
 });
 
-// Exportar acciones
-export const { loginAction, logoutAction } = authSlice.actions;
+export const { loginAction, logoutAction, updateUserAction } = authSlice.actions;
 
-// Exportar reducer
 export default authSlice.reducer;

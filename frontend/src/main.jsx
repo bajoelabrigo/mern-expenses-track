@@ -7,16 +7,34 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import App from "./App.jsx";
 import "./index.css";
 import { store } from "./redux/store/store.js";
+import ErrorBoundary from "./components/common/ErrorBoundary.jsx";
+import { wakeApi } from "./lib/wakeApi.js";
 
-//!instance react query
-const client = new QueryClient();
+const client = new QueryClient({
+  defaultOptions: {
+    queries: {
+      //! Los 401 no se reintentan: el interceptor ya redirige al login
+      retry: (failureCount, error) =>
+        error?.response?.status === 401 ? false : failureCount < 2,
+      refetchOnWindowFocus: false,
+      staleTime: 30 * 1000,
+    },
+  },
+});
+
+//! El hosting gratuito duerme la API: se la despierta al abrir la web
+wakeApi();
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <Provider store={store}>
-      <QueryClientProvider client={client}>
-        <App />
-        <ReactQueryDevtools initialIsOpen={false}/>
-      </QueryClientProvider>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <QueryClientProvider client={client}>
+          <App />
+          {/* Las devtools solo se incluyen en desarrollo */}
+          {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+        </QueryClientProvider>
+      </Provider>
+    </ErrorBoundary>
   </StrictMode>
 );

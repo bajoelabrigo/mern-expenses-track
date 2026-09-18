@@ -1,53 +1,37 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import ProfileForm from "./ProfileForm";
 import UpdatePasswordForm from "./UpdatePasswordForm";
 
-const UserProfile = () => {
-  const [openTab, setOpenTab] = useState();
+const TABS = [
+  { id: "perfil", label: "Actualizar perfil" },
+  { id: "password", label: "Actualizar contraseña" },
+];
 
-  const activeClasses = "text-blue-500 border-blue-500";
-  const inactiveClasses = "border-transparent";
+const UserProfile = () => {
+  //! Antes iniciaba en undefined y no se veía ninguna pestaña
+  const [openTab, setOpenTab] = useState("perfil");
 
   return (
-    <div className="w-fulll rounded-sm border border-gray-50 bg-white py-7 px-20 shadow-lg">
-      {/*Buttons for tabs */}
-      <div className="mb-6 flex flex-wrap gap-5 border-b border-gray-50 sm:gap-10">
-        <Link
-          to="#"
-          className={`border-b-2 py-4 text-sm font-medium hover:text-blue-500 md:text-base ${
-            openTab === 1 ? activeClasses : inactiveClasses
-          }`}
-          onClick={() => {
-            setOpenTab(1);
-          }}
-        >
-          Actualizar Perfil
-        </Link>
-        <Link
-          to="#"
-          className={`border-b-2 py-4 text-sm font-medium hover:text-blue-500 md:text-base ${
-            openTab === 2 ? activeClasses : inactiveClasses
-          }`}
-          onClick={() => {
-            setOpenTab(2);
-          }}
-        >
-          Actualizar Password
-        </Link>
+    <div className="w-full rounded-sm border border-gray-100 bg-white py-7 px-4 sm:px-10 lg:px-20 shadow-lg">
+      <div className="mb-6 flex flex-wrap gap-5 border-b border-gray-100 sm:gap-10">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setOpenTab(tab.id)}
+            aria-current={openTab === tab.id}
+            className={`border-b-2 py-4 text-sm font-medium hover:text-blue-500 md:text-base ${
+              openTab === tab.id
+                ? "text-blue-500 border-blue-500"
+                : "border-transparent"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
-      {/*Contents for tabs */}
-      <div className="">
-        <div className={`${openTab === 1 ? "block" : "hidden"}`}>
-          {/*Profile form */}
-          <ProfileForm />
-        </div>
-        <div className={`${openTab === 2 ? "block" : "hidden"}`}>
-          {/*Update password form */}
-          <UpdatePasswordForm />
-        </div>
-      </div>
-      <div></div>
+
+      {openTab === "perfil" ? <ProfileForm /> : <UpdatePasswordForm />}
     </div>
   );
 };

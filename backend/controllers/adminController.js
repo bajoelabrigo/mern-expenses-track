@@ -1,52 +1,133 @@
 const asyncHandler = require("express-async-handler");
+const mongoose = require("mongoose");
 const User = require("../model/User");
 const Transaction = require("../model/Transaccion");
 const Category = require("../model/Category");
+const { parseStartDate, parseEndDate } = require("../utils/dates");
 
-//! ✅ a) Ver lista de usuarios
+const TYPES = ["income", "expense"];
+const DEFAULT_CATEGORY = "uncategorized";
+const MAX_LIMIT = 200;
+
+//! a) Listado de usuarios (sin contraseñas)
 exports.getAllUsers = asyncHandler(async (req, res) => {
-  // 🔍 Buscar todos los usuarios, excluyendo el campo "password"
-  const users = await User.find().select("-password");
-
-  // 📤 Enviar la lista al frontend
+  const users = await User.find().sort({ createdAt: -1 });
   res.json(users);
 });
 
-//! ✅ b) Acceder al dashboard completo de un usuario
+//! b) Dashboard completo de un usuario (transacciones paginadas + totales)
 exports.getUserDashboard = asyncHandler(async (req, res) => {
-  const userId = req.params.id; // 🔽 ID del usuario solicitado
+  const userId = req.params.id;
+  const { page = 1, limit = 50, startDate, endDate } = req.query;
 
-  // 🔍 Obtener sus transacciones
-  const transactions = await Transaction.find({ user: userId });
-
-  // 🔍 Obtener sus categorías
-  const categories = await Category.find({ user: userId });
-
-  // 📤 Enviar ambas listas juntas
-  res.json({ transactions, categories });
-});
-
-//! ✅ c) Editar una categoría de otro usuario
-exports.updateUserCategory = asyncHandler(async (req, res) => {
-  const { name, type, icon } = req.body;
-  const { categoryId } = req.params;
-
-  // 🔍 Buscar la categoría por su ID
-  const category = await Category.findById(categoryId);
-  if (!category) {
-    return res.status(404).json({ message: "Category not found" });
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({ message: "Usuario no encontrado" });
   }
 
-  // 📝 Actualizar los campos si se proporcionan
-  if (name) category.name = name.toLowerCase();
-  if (type) category.type = type;
+  const filters = { user: userId };
+
+  const parsedStart = parseStartDate(startDate);
+  if (parsedStart === undefined) {
+    return res.status(400).json({ message: "Fecha de inicio inválida" });
+  }
+  const parsedEnd = parseEndDate(endDate);
+  if (parsedEnd === undefined) {
+    return res.status(400).json({ message: "Fecha de fin inválida" });
+  }
+  if (parsedStart) filters.date = { ...filters.date, $gte: parsedStart };
+  if (parsedEnd) filters.date = { ...filters.date, $lte: parsedEnd };
+
+  const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+  const parsedLimit = Math.min(
+    MAX_LIMIT,
+    Math.max(1, parseInt(limit, 10) || 50)
+  );
+
+  const [total, transactions, categories, totals] = await Promise.all([
+    Transaction.countDocuments(filters),
+    Transaction.find(filters)
+      .sort({ date: -1 })
+      .skip((parsedPage - 1) * parsedLimit)
+      .limit(parsedLimit),
+    Category.find({ user: userId }).sort({ name: 1 }),
+    Transaction.aggregate([
+      { $match: { ...filters, user: new mongoose.Types.ObjectId(userId) } },
+      {
+        $group: {
+          _id: null,
+          income: {
+            $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] },
+          },
+          expense: {
+            $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] },
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const { income = 0, expense = 0 } = totals[0] || {};
+
+  res.json({
+    user,
+    transactions,
+    categories,
+    totals: { income, expense, balance: income - expense },
+    total,
+    currentPage: parsedPage,
+    totalPages: Math.max(1, Math.ceil(total / parsedLimit)),
+    limit: parsedLimit,
+  });
+});
+
+//! c) Editar categoría de otro usuario
+exports.updateUserCategory = asyncHandler(async (req, res) => {
+  const { name, type, icon } = req.body;
+
+  const category = await Category.findById(req.params.categoryId);
+  if (!category) {
+    return res.status(404).json({ message: "Categoría no encontrada" });
+  }
+
+  //! Se guarda ANTES de mutar el documento: de lo contrario oldName y el nombre
+  //! nuevo son siempre iguales y las transacciones nunca se actualizan.
+  const oldName = category.name;
+
+  if (name) {
+    const normalizedName = String(name).trim().toLowerCase();
+    if (!normalizedName) {
+      return res
+        .status(400)
+        .json({ message: "El nombre de la categoría no puede estar vacío" });
+    }
+
+    const duplicate = await Category.findOne({
+      name: normalizedName,
+      user: category.user,
+      _id: { $ne: category._id },
+    });
+    if (duplicate) {
+      return res
+        .status(409)
+        .json({ message: "Ya existe una categoría con ese nombre" });
+    }
+
+    category.name = normalizedName;
+  }
+
+  if (type) {
+    const normalizedType = String(type).trim().toLowerCase();
+    if (!TYPES.includes(normalizedType)) {
+      return res.status(400).json({ message: "Tipo de categoría inválido" });
+    }
+    category.type = normalizedType;
+  }
+
   if (icon) category.icon = icon;
 
-  // 💾 Guardar cambios
   const updatedCategory = await category.save();
 
-  // 🔄 Si cambió el nombre, actualizar también las transacciones relacionadas
-  const oldName = category.name;
   if (oldName !== updatedCategory.name) {
     await Transaction.updateMany(
       { user: category.user, category: oldName },
@@ -54,72 +135,79 @@ exports.updateUserCategory = asyncHandler(async (req, res) => {
     );
   }
 
-  // 📤 Enviar la categoría actualizada
   res.json(updatedCategory);
 });
 
-//! ✅ d) Eliminar categoría de otro usuario
+//! d) Eliminar categoría de otro usuario
 exports.deleteUserCategory = asyncHandler(async (req, res) => {
-  // 🔍 Buscar la categoría por ID
   const category = await Category.findById(req.params.categoryId);
   if (!category) {
-    return res.status(404).json({ message: "Category not found" });
+    return res.status(404).json({ message: "Categoría no encontrada" });
   }
 
-  // 🔁 Establecer categoría por defecto
-  const defaultCategory = "Uncategorized";
-
-  // 🔄 Actualizar las transacciones asociadas para que usen la categoría por defecto
   await Transaction.updateMany(
     { user: category.user, category: category.name },
-    { $set: { category: defaultCategory } }
+    { $set: { category: DEFAULT_CATEGORY } }
   );
 
-  // ❌ Eliminar la categoría
   await category.deleteOne();
 
-  // 📤 Confirmar eliminación
-  res.json({ message: "Category deleted and transactions updated" });
+  res.json({ message: "Categoría eliminada y transacciones actualizadas" });
 });
 
-//! ✅ e) Editar transacción de otro usuario
+//! e) Editar transacción de otro usuario
 exports.updateUserTransaction = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { type, category, amount, date, description } = req.body;
+  const { type, category, amount, date, description, icon } = req.body;
 
-  // 🔍 Buscar la transacción por ID
-  const transaction = await Transaction.findById(id);
+  const transaction = await Transaction.findById(req.params.id);
   if (!transaction) {
-    return res.status(404).json({ message: "Transaction not found" });
+    return res.status(404).json({ message: "Transacción no encontrada" });
   }
 
-  // 📝 Actualizar campos solo si se envían
-  transaction.type = type ?? transaction.type;
-  transaction.category = category ?? transaction.category;
-  transaction.amount = amount ?? transaction.amount;
-  transaction.date = date ?? transaction.date;
-  transaction.description = description ?? transaction.description;
+  if (type !== undefined) {
+    if (!TYPES.includes(type)) {
+      return res.status(400).json({ message: "Tipo de transacción inválido" });
+    }
+    transaction.type = type;
+  }
 
-  // 💾 Guardar los cambios
+  if (amount !== undefined) {
+    const parsedAmount = parseFloat(amount);
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res
+        .status(400)
+        .json({ message: "El monto debe ser un número positivo" });
+    }
+    transaction.amount = parsedAmount;
+  }
+
+  if (date !== undefined) {
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ message: "Fecha inválida" });
+    }
+    transaction.date = parsedDate;
+  }
+
+  if (category !== undefined) {
+    transaction.category = String(category).trim().toLowerCase();
+  }
+  if (description !== undefined) transaction.description = description;
+  if (icon !== undefined) transaction.icon = icon;
+
   const updated = await transaction.save();
 
-  // 📤 Enviar la transacción actualizada
   res.json(updated);
 });
 
-//! ✅ f) Eliminar transacción de otro usuario
+//! f) Eliminar transacción de otro usuario
 exports.deleteUserTransaction = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  // 🔍 Buscar transacción por ID
-  const transaction = await Transaction.findById(id);
+  const transaction = await Transaction.findById(req.params.id);
   if (!transaction) {
-    return res.status(404).json({ message: "Transaction not found" });
+    return res.status(404).json({ message: "Transacción no encontrada" });
   }
 
-  // ❌ Eliminarla
   await transaction.deleteOne();
 
-  // 📤 Confirmar al frontend
-  res.json({ message: "Transaction deleted" });
+  res.json({ message: "Transacción eliminada" });
 });

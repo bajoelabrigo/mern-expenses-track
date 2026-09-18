@@ -1,23 +1,26 @@
-import { Fragment } from "react";
 import { Disclosure } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { IoLogOutOutline } from "react-icons/io5";
 import { FaChurch } from "react-icons/fa6";
 import { logoutAction } from "../../redux/slice/authSlice";
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
+import { logoutAPI } from "../../services/users/userService";
 
 export default function PrivateNavbar() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const user = useSelector((state) => state.auth.user);
 
-  const logoutHandler = () => {
+  const logoutHandler = async () => {
+    try {
+      //! Limpia también la cookie httpOnly en el servidor
+      await logoutAPI();
+    } catch {
+      // aunque falle la llamada, la sesión local se cierra igual
+    }
     dispatch(logoutAction());
-    localStorage.removeItem("userInfo");
+    navigate("/", { replace: true });
   };
 
   return (
@@ -89,6 +92,7 @@ export default function PrivateNavbar() {
               {/* Botón salir en escritorio */}
               <div className="hidden md:flex items-center">
                 <button
+                  type="button"
                   onClick={logoutHandler}
                   className="inline-flex items-center gap-2 px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700"
                 >
@@ -107,20 +111,14 @@ export default function PrivateNavbar() {
             <MobileLink to="/profile" label="Perfil" />
             <MobileLink to="/dashboard" label="Panel de Control" />
             {user?.role === "admin" && (
-              <>
-                <MobileLink
-                  to="/admin/users"
-                  label="Lista de Usuarios"
-                  color="text-red-600"
-                />
-                <MobileLink
-                  to="/admin/dashboard"
-                  label="Panel Admin"
-                  color="text-red-600"
-                />
-              </>
+              <MobileLink
+                to="/admin/users"
+                label="Lista de Usuarios"
+                color="text-red-600"
+              />
             )}
             <button
+              type="button"
               onClick={logoutHandler}
               className="block w-full text-left px-4 py-2 text-base font-medium text-red-600 hover:bg-gray-100"
             >
