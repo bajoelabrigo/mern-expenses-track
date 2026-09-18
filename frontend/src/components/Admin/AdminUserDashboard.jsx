@@ -1,7 +1,6 @@
-import React from "react";
-import { useParams } from "react-router-dom";
+import { useMemo } from "react";
+import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getUserDashboardAPI } from "./adminService";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -11,96 +10,134 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { getUserDashboardAPI } from "../../services/admin/adminService";
+import { getErrorMessage } from "../../lib/axios";
+import AlertMessage from "../Alert/AlertMessage";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 const AdminUserDashboard = () => {
   const { id } = useParams();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["user-dashboard", id],
     queryFn: () => getUserDashboardAPI(id),
-    enabled: !!id,
+    enabled: Boolean(id),
   });
 
-  if (isLoading) return <p>Cargando datos del usuario...</p>;
-  if (error) return <p>Error al cargar el dashboard del usuario</p>;
+  //! useMemo evita que el array recién creado dispare el cálculo en cada render
+  const transactions = useMemo(() => data?.transactions || [], [data]);
+  const categories = data?.categories || [];
+  const totals = data?.totals || { income: 0, expense: 0, balance: 0 };
 
-  const { transactions, categories } = data;
+  const chartData = useMemo(() => {
+    const resumen = transactions.reduce((acc, t) => {
+      const mes = new Date(t.date).toLocaleString("es-PE", {
+        month: "short",
+        year: "numeric",
+      });
+      if (!acc[mes]) acc[mes] = { income: 0, expense: 0 };
+      if (t.type === "income") acc[mes].income += t.amount;
+      else acc[mes].expense += t.amount;
+      return acc;
+    }, {});
 
-  const monthlySummary = transactions.reduce((acc, t) => {
-    const month = new Date(t.date).toLocaleString("default", {
-      month: "short",
-      year: "numeric",
-    });
-    if (!acc[month]) {
-      acc[month] = { income: 0, expense: 0 };
-    }
-    if (t.type === "income") {
-      acc[month].income += t.amount;
-    } else {
-      acc[month].expense += t.amount;
-    }
-    return acc;
-  }, {});
+    const labels = Object.keys(resumen);
+    return {
+      labels,
+      datasets: [
+        {
+          label: "Ingresos",
+          data: labels.map((m) => resumen[m].income),
+          backgroundColor: "rgba(54, 162, 235, 0.6)",
+        },
+        {
+          label: "Egresos",
+          data: labels.map((m) => resumen[m].expense),
+          backgroundColor: "rgba(255, 99, 132, 0.6)",
+        },
+        {
+          label: "Balance neto",
+          data: labels.map((m) => resumen[m].income - resumen[m].expense),
+          backgroundColor: "rgba(75, 192, 192, 0.6)",
+        },
+      ],
+    };
+  }, [transactions]);
 
-  const labels = Object.keys(monthlySummary);
-  const incomeData = labels.map((m) => monthlySummary[m].income);
-  const expenseData = labels.map((m) => monthlySummary[m].expense);
-  const netData = labels.map(
-    (m) => monthlySummary[m].income - monthlySummary[m].expense
-  );
-
-  const chartData = {
-    labels,
-    datasets: [
-      {
-        label: "Ingresos",
-        data: incomeData,
-        backgroundColor: "rgba(54, 162, 235, 0.6)",
-      },
-      {
-        label: "Egresos",
-        data: expenseData,
-        backgroundColor: "rgba(255, 99, 132, 0.6)",
-      },
-      {
-        label: "Balance Neto",
-        data: netData,
-        backgroundColor: "rgba(75, 192, 192, 0.6)",
-      },
-    ],
-  };
+  if (isLoading) return <p className="p-6">Cargando datos del usuario...</p>;
+  if (isError) {
+    return (
+      <div className="p-6">
+        <AlertMessage type="error" message={getErrorMessage(error)} />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Dashboard de Usuario</h2>
-
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold mb-2">Resumen Mensual</h3>
-        <Bar data={chartData} />
+    <div className="p-6 space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-2xl font-bold">
+          Dashboard de {data?.user?.username}
+        </h2>
+        <Link to="/admin/users" className="text-blue-600 hover:underline">
+          ← Volver al listado
+        </Link>
       </div>
 
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold mb-2">Categorías</h3>
-        <ul className="space-y-1">
-          {categories.map((c) => (
-            <li key={c._id}>
-              <span>
-                {c.icon} {c.name} ({c.type})
-              </span>
-            </li>
-          ))}
-        </ul>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <p className="text-sm text-gray-600">Ingresos</p>
+          <p className="text-xl font-bold">S/. {totals.income.toFixed(2)}</p>
+        </div>
+        <div className="bg-red-50 p-4 rounded-lg">
+          <p className="text-sm text-gray-600">Gastos</p>
+          <p className="text-xl font-bold">S/. {totals.expense.toFixed(2)}</p>
+        </div>
+        <div className="bg-green-50 p-4 rounded-lg">
+          <p className="text-sm text-gray-600">Balance</p>
+          <p className="text-xl font-bold">S/. {totals.balance.toFixed(2)}</p>
+        </div>
       </div>
 
       <div>
-        <h3 className="text-xl font-semibold mb-2">Transacciones</h3>
+        <h3 className="text-xl font-semibold mb-2">Resumen mensual</h3>
+        {transactions.length > 0 ? (
+          <Bar data={chartData} />
+        ) : (
+          <p className="text-gray-500">Este usuario no tiene transacciones.</p>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-xl font-semibold mb-2">Categorías</h3>
+        {categories.length > 0 ? (
+          <ul className="space-y-1">
+            {categories.map((c) => (
+              <li key={c._id} className="capitalize">
+                {c.icon} {c.name} ({c.type === "income" ? "ingreso" : "gasto"})
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-500">Sin categorías.</p>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-xl font-semibold mb-2">
+          Transacciones{" "}
+          <span className="text-sm font-normal text-gray-500">
+            (mostrando {transactions.length} de {data?.total || 0})
+          </span>
+        </h3>
         <ul className="space-y-1">
           {transactions.map((t) => (
             <li key={t._id}>
-              {t.date.slice(0, 10)} - {t.description || "Sin descripción"} - S/.
-              {t.amount} ({t.type})
+              {new Date(t.date).toLocaleDateString("es-PE")} -{" "}
+              {t.description || "Sin descripción"} - S/.
+              {Number(t.amount).toFixed(2)} (
+              {t.type === "income" ? "ingreso" : "gasto"})
             </li>
           ))}
         </ul>

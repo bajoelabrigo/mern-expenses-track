@@ -1,66 +1,83 @@
-import React from "react";
 import { FaTrash, FaEdit } from "react-icons/fa";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import {
   deleteCategoryAPI,
   listCategoriesAPI,
 } from "../../services/category/categoryService";
+import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
-import { Link, useNavigate } from "react-router-dom";
 
 const CategoriesList = () => {
-  //navigate
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  //fetching
-  const { data, isError, isLoading, isFetched, error, refetch } = useQuery({
+  const {
+    data: categories = [],
+    isError,
+    isLoading,
+    error,
+  } = useQuery({
     queryFn: listCategoriesAPI,
     queryKey: ["list-categories"],
   });
 
-  //Mutation
   const {
     mutateAsync,
-    isPending,
-    error: categoryErr,
-    isSuccess,
+    isError: isDeleteError,
+    error: deleteError,
   } = useMutation({
     mutationFn: deleteCategoryAPI,
     mutationKey: ["delete-category"],
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["list-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["list-transactions"] });
+    },
   });
 
-  //Delete handler
-  const handleDelete = (id) => {
-    mutateAsync(id)
-      .then((data) => {
-        //refetch
-        refetch();
-      })
-      .catch((e) => console.log(e));
+  const handleDelete = async (id, nombre) => {
+    //! Borrar una categoría reasigna sus transacciones: conviene confirmar
+    const confirmado = window.confirm(
+      `¿Eliminar la categoría "${nombre}"? Sus transacciones pasarán a "uncategorized".`
+    );
+    if (!confirmado) return;
+
+    try {
+      await mutateAsync(id);
+    } catch {
+      // el mensaje se muestra con AlertMessage
+    }
   };
 
   return (
     <div className="max-w-md mx-auto my-10 bg-white p-6 rounded-lg shadow-lg">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-4">Categorias</h2>
+      <h2 className="text-2xl font-semibold text-gray-800 mb-4">Categorías</h2>
 
-      {/* Display message */}
       {isLoading && <AlertMessage type="loading" message="Cargando..." />}
-      {isError && (
-        <AlertMessage type="error" message={error.response.data.message} />
+      {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
+      {isDeleteError && (
+        <AlertMessage type="error" message={getErrorMessage(deleteError)} />
       )}
+
+      {!isLoading && categories.length === 0 && (
+        <p className="text-gray-500 text-sm">
+          Todavía no tienes categorías.{" "}
+          <Link to="/add-category" className="text-blue-600 hover:underline">
+            Crea la primera
+          </Link>
+          .
+        </p>
+      )}
+
       <ul className="space-y-4">
-        {data?.map((category) => (
+        {categories.map((category) => (
           <li
             key={category._id}
             className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
           >
             <div className="flex items-center gap-2">
-              {/* Emoji/icon */}
               <span className="text-xl">{category?.icon || "📁"}</span>
-
-              {/* Name and Type */}
               <div>
-                <span className="text-gray-800 font-medium">
+                <span className="text-gray-800 font-medium capitalize">
                   {category?.name}
                 </span>
                 <span
@@ -70,23 +87,24 @@ const CategoriesList = () => {
                       : "bg-red-100 text-red-800"
                   }`}
                 >
-                  {category?.type?.charAt(0).toUpperCase() +
-                    category?.type?.slice(1)}
+                  {category.type === "income" ? "Ingreso" : "Gasto"}
                 </span>
               </div>
             </div>
 
-            {/* Edit/Delete buttons */}
             <div className="flex space-x-3">
               <Link
                 to={`/update-category/${category._id}`}
                 className="text-blue-500 hover:text-blue-700"
+                aria-label={`Editar ${category.name}`}
               >
                 <FaEdit />
               </Link>
               <button
-                onClick={() => handleDelete(category._id)}
+                type="button"
+                onClick={() => handleDelete(category._id, category.name)}
                 className="text-red-500 hover:text-red-700"
+                aria-label={`Eliminar ${category.name}`}
               >
                 <FaTrash />
               </button>

@@ -1,12 +1,15 @@
 import { axiosInstance } from "../../lib/axios";
 
-//! Add Transaction
+//! Crear transacción (soporta recurrencia)
 export const addTransactionAPI = async ({
   type,
   category,
   date,
   description,
   amount,
+  recurrent,
+  recurrenceType,
+  recurrenceCount,
 }) => {
   const response = await axiosInstance.post("/transactions/create", {
     type,
@@ -14,11 +17,14 @@ export const addTransactionAPI = async ({
     date,
     amount,
     description,
+    recurrent,
+    recurrenceType,
+    recurrenceCount,
   });
   return response.data;
 };
 
-//! Update Transaction
+//! Actualizar transacción
 export const updateTransactionAPI = async ({
   type,
   category,
@@ -37,13 +43,13 @@ export const updateTransactionAPI = async ({
   return response.data;
 };
 
-//! Delete Transaction
+//! Eliminar transacción
 export const deleteTransactionAPI = async (id) => {
   const response = await axiosInstance.delete(`/transactions/delete/${id}`);
   return response.data;
 };
 
-//! List Transactions with Filters
+//! Listado paginado con filtros
 export const listTransationsAPI = async ({
   category,
   type,
@@ -58,35 +64,51 @@ export const listTransationsAPI = async ({
   return response.data;
 };
 
-//! Get Single Transaction by ID
+//! Una transacción por id
 export const fetchTransactionByIdAPI = async (id) => {
-  if (!id) throw new Error("Transaction ID is required");
+  if (!id) throw new Error("El id de la transacción es obligatorio");
   const response = await axiosInstance.get(`/transactions/${id}`);
   return response.data;
 };
 
-//! 🔁 Obtener transacciones por periodo o rango personalizado
+//! Transacciones por período o rango personalizado
 export const getTransactionByPeriodAPI = async ({
   period,
   type,
+  category,
   startDate,
   endDate,
 }) => {
   const response = await axiosInstance.get("/transactions/period", {
-    params: {
-      period,
-      type,
-      startDate,
-      endDate,
-    },
+    params: { period, type, category, startDate, endDate },
   });
-
   return response.data;
 };
 
-//! Export Transactions to Excel
-export const exportTransactionExcelAPI = async () => {
+//! Balance (ingresos, gastos y saldo) con los mismos filtros del listado
+export const getBalanceAPI = async ({ startDate, endDate, type, category } = {}) => {
+  const response = await axiosInstance.get("/transactions/balance", {
+    params: { startDate, endDate, type, category },
+  });
+  return response.data;
+};
+
+//! Resumen del mes en curso
+export const getMonthlySummaryAPI = async () => {
+  const response = await axiosInstance.get("/transactions/summary/monthly");
+  return response.data;
+};
+
+//! Exporta a Excel respetando los filtros y dispara la descarga en el navegador.
+//! Devuelve el nombre del archivo generado.
+export const exportTransactionExcelAPI = async ({
+  startDate,
+  endDate,
+  type,
+  category,
+} = {}) => {
   const response = await axiosInstance.get("/transactions/export/excel", {
+    params: { startDate, endDate, type, category },
     responseType: "blob",
   });
 
@@ -94,11 +116,15 @@ export const exportTransactionExcelAPI = async () => {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
+  const fileName = `transacciones_${new Date().toISOString().slice(0, 10)}.xlsx`;
   const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "transactions_report.xlsx";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url); // libera memoria
+
+  return fileName;
 };

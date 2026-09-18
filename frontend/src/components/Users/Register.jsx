@@ -1,31 +1,33 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { FaUser, FaEnvelope, FaLock, FaChurch } from "react-icons/fa";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
-import { registerAPI } from "../../services/users/userService";
 import { useNavigate } from "react-router-dom";
+import { registerAPI } from "../../services/users/userService";
+import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
 
-//Validations
 const validationSchema = Yup.object({
-  username: Yup.string().required("Username is required"),
+  username: Yup.string()
+    .min(3, "El nombre de usuario debe tener al menos 3 caracteres")
+    .required("El nombre de usuario es obligatorio"),
   email: Yup.string()
-    .email("Invalid email address")
-    .required("Email is required"),
-  iglesia: Yup.string().required("Iglesia is required"),
+    .email("Correo inválido")
+    .required("El correo es obligatorio"),
+  iglesia: Yup.string().required("La iglesia es obligatoria"),
+  //! Mismo mínimo que exige el backend (8 caracteres)
   password: Yup.string()
-    .min(6, "Password must be at least 6 characters long")
-    .required("Password is required"),
+    .min(8, "La contraseña debe tener al menos 8 caracteres")
+    .required("La contraseña es obligatoria"),
   confirmPassword: Yup.string()
-    .oneOf([Yup.ref("password"), null], "Passwords must match")
-    .required("Confirming your password is required"),
+    .oneOf([Yup.ref("password")], "Las contraseñas no coinciden")
+    .required("Debes confirmar la contraseña"),
 });
 
 const RegistrationForm = () => {
-  //Navigate
   const navigate = useNavigate();
-  //Mutation
+
   const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
     mutationFn: registerAPI,
     mutationKey: ["register"],
@@ -33,33 +35,29 @@ const RegistrationForm = () => {
 
   const formik = useFormik({
     initialValues: {
-      email: "",
-      password: "",
       username: "",
+      email: "",
       iglesia: "",
+      password: "",
+      confirmPassword: "",
     },
-    //Validations
     validationSchema,
-    //Submit
-    onSubmit: (values) => {
-      console.log(values);
-      //http request
-      mutateAsync(values)
-        .then((data) => {
-          console.log(data);
-        })
-        .catch((e) => console.log(e));
+    onSubmit: async ({ username, email, iglesia, password }) => {
+      try {
+        await mutateAsync({ username, email, iglesia, password });
+      } catch {
+        // el mensaje se muestra con AlertMessage
+      }
     },
   });
 
-  //Redirect
+  //! Redirige al login tras un registro exitoso (con limpieza del temporizador)
   useEffect(() => {
-    setTimeout(() => {
-      if (isSuccess) {
-        navigate("/login");
-      }
-    }, 1000);
-  }, [isPending, isError, error, isSuccess]);
+    if (!isSuccess) return undefined;
+
+    const timeout = setTimeout(() => navigate("/login"), 1200);
+    return () => clearTimeout(timeout);
+  }, [isSuccess, navigate]);
 
   return (
     <form
@@ -67,14 +65,18 @@ const RegistrationForm = () => {
       className="max-w-md mx-auto my-10 bg-white p-6 rounded-xl shadow-lg space-y-4 border border-gray-200"
     >
       <h2 className="text-3xl font-semibold text-center text-gray-800">
-        Registrar
+        Registrarse
       </h2>
-      {/* Display messages */}
-      {isPending && <AlertMessage type="loading" message="Cargando..." />}
-      {isError && (
-        <AlertMessage type="error" message={error.response.data.message} />
+
+      {isPending && <AlertMessage type="loading" message="Creando cuenta..." />}
+      {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
+      {isSuccess && (
+        <AlertMessage
+          type="success"
+          message="Registro exitoso, te llevamos al login..."
+        />
       )}
-      {isSuccess && <AlertMessage type="success" message="Registro exitoso" />}
+
       <p className="text-sm text-center text-gray-500">
         ¡Únete a nuestra comunidad ahora!
       </p>
@@ -83,9 +85,10 @@ const RegistrationForm = () => {
         <FaUser className="absolute top-3 left-3 text-gray-400" />
         <input
           id="username"
-          type="username"
+          type="text"
+          autoComplete="username"
           {...formik.getFieldProps("username")}
-          placeholder="Username"
+          placeholder="Nombre de usuario"
           className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
         />
         {formik.touched.username && formik.errors.username && (
@@ -93,14 +96,14 @@ const RegistrationForm = () => {
         )}
       </div>
 
-      {/* Input Field - Email */}
       <div className="relative">
         <FaEnvelope className="absolute top-3 left-3 text-gray-400" />
         <input
           id="email"
           type="email"
+          autoComplete="email"
           {...formik.getFieldProps("email")}
-          placeholder="Email"
+          placeholder="Correo"
           className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
         />
         {formik.touched.email && formik.errors.email && (
@@ -108,7 +111,6 @@ const RegistrationForm = () => {
         )}
       </div>
 
-      {/* Input Field - Iglesia */}
       <div className="relative">
         <FaChurch size={20} className="absolute top-3 left-3 text-gray-400" />
         <input
@@ -123,14 +125,14 @@ const RegistrationForm = () => {
         )}
       </div>
 
-      {/* Input Field - Password */}
       <div className="relative">
         <FaLock className="absolute top-3 left-3 text-gray-400" />
         <input
-          type="password"
           id="password"
+          type="password"
+          autoComplete="new-password"
           {...formik.getFieldProps("password")}
-          placeholder="Password"
+          placeholder="Contraseña (mínimo 8 caracteres)"
           className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
         />
         {formik.touched.password && formik.errors.password && (
@@ -138,14 +140,14 @@ const RegistrationForm = () => {
         )}
       </div>
 
-      {/* Input Field - Confirm Password */}
       <div className="relative">
         <FaLock className="absolute top-3 left-3 text-gray-400" />
         <input
           id="confirmPassword"
           type="password"
+          autoComplete="new-password"
           {...formik.getFieldProps("confirmPassword")}
-          placeholder="Confirmar Contraseña"
+          placeholder="Confirmar contraseña"
           className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
         />
         {formik.touched.confirmPassword && formik.errors.confirmPassword && (
@@ -154,12 +156,13 @@ const RegistrationForm = () => {
           </span>
         )}
       </div>
-      {/* Submit Button */}
+
       <button
         type="submit"
-        className="w-full bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline transition duration-150 ease-in-out"
+        disabled={isPending}
+        className="w-full bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white font-bold py-2 px-4 rounded-md focus:outline-none transition duration-150 ease-in-out disabled:opacity-60"
       >
-        Registrar
+        {isPending ? "Registrando..." : "Registrar"}
       </button>
     </form>
   );

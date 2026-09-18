@@ -1,15 +1,16 @@
 import { axiosInstance } from "../../lib/axios";
 
-//! Add Category
-export const addCategoryAPI = async ({ name, type }) => {
+//! Crear categoría
+export const addCategoryAPI = async ({ name, type, icon }) => {
   const response = await axiosInstance.post("/categories/create", {
     name,
     type,
+    icon,
   });
   return response.data;
 };
 
-//! Update Category
+//! Actualizar categoría
 export const updateCategoryAPI = async ({ name, type, icon, id }) => {
   const response = await axiosInstance.put(`/categories/update/${id}`, {
     name,
@@ -19,19 +20,19 @@ export const updateCategoryAPI = async ({ name, type, icon, id }) => {
   return response.data;
 };
 
-//! Delete Category
+//! Eliminar categoría
 export const deleteCategoryAPI = async (id) => {
   const response = await axiosInstance.delete(`/categories/delete/${id}`);
   return response.data;
 };
 
-//! List Categories
+//! Listar categorías del usuario
 export const listCategoriesAPI = async () => {
   const response = await axiosInstance.get("/categories/lists");
   return response.data;
 };
 
-//! Get One Category
+//! Obtener una categoría por id
 export const getCategoryByIdAPI = async (id) => {
   const response = await axiosInstance.get(`/categories/${id}`);
   return response.data;

@@ -1,33 +1,42 @@
 import axios from "axios";
-import { getUserFromStorage } from "../utils/getUserFromStorage";
 import { BASE_URL } from "../utils/url";
+import { clearStoredAuth, getStoredToken } from "../utils/storage";
 
-// Creamos la instancia principal
 export const axiosInstance = axios.create({
   baseURL: BASE_URL,
-  withCredentials: true,
+  withCredentials: true, // envía la cookie httpOnly cuando el dominio coincide
 });
 
-// Interceptor de request: agrega token si existe
+//! Request: adjunta el token (necesario cuando el frontend vive en otro dominio
+//! y la cookie SameSite no viaja).
 axiosInstance.interceptors.request.use((config) => {
-  const token = getUserFromStorage();
+  const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Interceptor de respuesta: redirige si el token expiró o no es válido
+//! Evita disparar varias redirecciones si fallan varias peticiones a la vez
+let redirigiendo = false;
+
+//! Response: cualquier 401 cierra la sesión local y manda al login.
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (
-      error.response?.status === 401 &&
-      error.response?.data?.message === "Token expired, login again"
-    ) {
-      localStorage.removeItem("userInfo"); // limpia sesión
-      window.location.href = "/login"; // redirige al login
+    const status = error.response?.status;
+    const enLogin = window.location.pathname === "/login";
+
+    if (status === 401 && !enLogin && !redirigiendo) {
+      redirigiendo = true;
+      clearStoredAuth();
+      window.location.assign("/login");
     }
+
     return Promise.reject(error);
   }
 );
+
+//! Mensaje de error legible para la UI (evita "Cannot read properties of undefined")
+export const getErrorMessage = (error, fallback = "Algo salió mal. Inténtalo de nuevo.") =>
+  error?.response?.data?.message || error?.message || fallback;

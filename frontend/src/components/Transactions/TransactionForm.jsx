@@ -1,8 +1,8 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { useFormik } from "formik";
 import { useNavigate } from "react-router-dom";
 import * as Yup from "yup";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FaDollarSign,
   FaCalendarAlt,
@@ -11,51 +11,62 @@ import {
 } from "react-icons/fa";
 import { listCategoriesAPI } from "../../services/category/categoryService";
 import { addTransactionAPI } from "../../services/transactions/transactionService";
+import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
 
 const validationSchema = Yup.object({
   type: Yup.string()
-    .required("Transaction type is required")
-    .oneOf(["income", "expense"]),
+    .required("El tipo de transacción es obligatorio")
+    .oneOf(["income", "expense"], "Tipo inválido"),
   amount: Yup.number()
-    .required("Amount is required")
-    .positive("Amount must be positive"),
-  category: Yup.string().required("Category is required"),
-  date: Yup.date().required("Date is required"),
+    .typeError("El monto debe ser un número")
+    .required("El monto es obligatorio")
+    .positive("El monto debe ser positivo"),
+  category: Yup.string().required("La categoría es obligatoria"),
+  date: Yup.date()
+    .typeError("Fecha inválida")
+    .required("La fecha es obligatoria"),
   description: Yup.string(),
   recurrent: Yup.boolean(),
   recurrenceType: Yup.string().when("recurrent", {
     is: true,
     then: (schema) =>
       schema
-        .required("Recurrence type is required")
-        .oneOf(["daily", "weekly", "monthly", "yearly"]),
+        .required("El tipo de recurrencia es obligatorio")
+        .oneOf(["daily", "weekly", "monthly", "yearly"], "Recurrencia inválida"),
   }),
   recurrenceCount: Yup.number().when("recurrent", {
     is: true,
     then: (schema) =>
       schema
-        .required("Recurrence count is required")
-        .min(1, "Must be at least 1")
-        .max(365, "Too many recurrences"),
+        .typeError("Debe ser un número")
+        .required("Indica cuántas veces se repite")
+        .min(1, "Debe ser al menos 1")
+        .max(365, "Demasiadas repeticiones (máximo 365)"),
   }),
 });
 
 const TransactionForm = () => {
   const navigate = useNavigate();
 
-  const {
-    mutateAsync,
-    isPending,
-    isError: isAddTranErr,
-    error: transErr,
-    isSuccess,
-  } = useMutation({
+  const queryClient = useQueryClient();
+
+  const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
     mutationFn: addTransactionAPI,
     mutationKey: ["add-transaction"],
+    onSuccess: () => {
+      //! Refresca listado, gráficos y balances
+      queryClient.invalidateQueries({ queryKey: ["list-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+    },
   });
 
-  const { data, isError, isLoading, error, refetch } = useQuery({
+  //! Categorías para el desplegable
+  const {
+    data: categories = [],
+    isError: isCategoriesError,
+    error: categoriesError,
+  } = useQuery({
     queryFn: listCategoriesAPI,
     queryKey: ["list-categories"],
   });
@@ -72,17 +83,19 @@ const TransactionForm = () => {
       recurrenceCount: "",
     },
     validationSchema,
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       const adjustedValues = {
         ...values,
-        date: new Date(`${values.date}T12:00:00`).toISOString(), // Corrige la fecha para evitar desfase por zona horaria
+        //! Mediodía local evita el desfase de zona horaria al guardar la fecha
+        date: new Date(`${values.date}T12:00:00`).toISOString(),
+        recurrenceCount: values.recurrent ? Number(values.recurrenceCount) : 0,
       };
 
-      mutateAsync(adjustedValues)
-        .then((data) => {
-          console.log(data);
-        })
-        .catch((e) => console.log(e));
+      try {
+        await mutateAsync(adjustedValues);
+      } catch {
+        // el mensaje se muestra con AlertMessage
+      }
     },
   });
 
@@ -107,15 +120,11 @@ const TransactionForm = () => {
         <p className="text-gray-600">Llena todos los campos a continuación.</p>
       </div>
 
-      {isError && (
-        <AlertMessage
-          type="error"
-          message={
-            error?.response?.data?.message ||
-            "Algo salió mal. Inténtalo de nuevo."
-          }
-        />
+      {isPending && <AlertMessage type="loading" message="Guardando..." />}
+      {isCategoriesError && (
+        <AlertMessage type="error" message={getErrorMessage(categoriesError)} />
       )}
+      {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
       {isSuccess && (
         <AlertMessage
           type="success"
@@ -175,10 +184,10 @@ const TransactionForm = () => {
           id="category"
           className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
         >
-          <option value="">Seleccione una Categoria</option>
-          {data?.map((category) => (
+          <option value="">Seleccione una categoría</option>
+          {categories.map((category) => (
             <option key={category._id} value={category.name}>
-              {category.name}
+              {category.icon} {category.name}
             </option>
           ))}
         </select>
@@ -298,9 +307,10 @@ const TransactionForm = () => {
       {/* Submit */}
       <button
         type="submit"
-        className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200"
+        disabled={isPending}
+        className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none transition-colors duration-200 disabled:opacity-60"
       >
-        Enviar transacción
+        {isPending ? "Guardando..." : "Enviar transacción"}
       </button>
     </form>
   );

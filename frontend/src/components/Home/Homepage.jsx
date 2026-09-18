@@ -1,4 +1,3 @@
-import React from "react";
 import {
   FaChartPie,
   FaList,
@@ -92,16 +91,16 @@ const HeroSection = () => {
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <FaQuoteLeft className="text-xl text-gray-400" />
             <p>
-              "Esta app ha revolucionado la forma en que controlo mis gastos.
-              Súper intuitiva y fácil de usar."
+              &quot;Esta app ha revolucionado la forma en que controlo mis
+              gastos. Súper intuitiva y fácil de usar.&quot;
             </p>
             <p className="mt-4 font-bold">- Jane Doe</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-lg">
             <FaQuoteLeft className="text-xl text-gray-400" />
             <p className="mt-4">
-              "Finalmente una forma sencilla de manejar mis finanzas. ¡Los
-              reportes son una maravilla!"
+              &quot;Finalmente una forma sencilla de manejar mis finanzas. ¡Los
+              reportes son una maravilla!&quot;
             </p>
             <p className="mt-4 font-bold">- John Smith</p>
           </div>
