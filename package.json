@@ -4,7 +4,10 @@
   "main": "index.js",
   "scripts": {
     "build": "npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend",
-    "start": "npm run start --prefix backend"
+    "start": "npm run start --prefix backend",
+    "dev": "npm run dev --prefix backend",
+    "test": "npm test --prefix backend && npm test --prefix frontend",
+    "lint": "npm run lint --prefix frontend"
   },
   "repository": {
     "type": "git",
@@ -12,10 +15,13 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/bajoelabrigo/mern-expenses-track/issues"
   },
   "homepage": "https://github.com/bajoelabrigo/mern-expenses-track#readme",
-  "description": ""
+  "description": "Sistema contable de ingresos y gastos para iglesias (MERN)",
+  "engines": {
+    "node": ">=20"
+  }
 }
