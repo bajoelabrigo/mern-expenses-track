@@ -1,59 +1,83 @@
+const path = require("path");
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
+const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
-const errorHandler = require("./middlewares/errorHandlerMiddleware");
-const dotenv = require("dotenv");
+const mongoSanitize = require("express-mongo-sanitize");
+
+const { notFound, errorHandler } = require("./middlewares/errorHandlerMiddleware");
+const { apiLimiter } = require("./middlewares/rateLimiters");
 const userRouter = require("./routes/userRouter");
 const categoryRouter = require("./routes/categoryRouter");
 const transactionRouter = require("./routes/transactionRouter");
 const adminRouter = require("./routes/adminRoutes");
-const path = require("path");
+const { CORS_ORIGINS, SERVE_FRONTEND, isProduction } = require("./config/env");
 
 const app = express();
-dotenv.config();
 
-//! Connect to MongoDB
-mongoose
-  .connect(process.env.MONGO_URL)
-  .then(() => console.log("DB connected"))
-  .catch((e) => console.error("DB connection error:", e));
+//! Detrás de Render/Netlify/Nginx hace falta confiar en el proxy para que
+//! el rate limit y las cookies "secure" funcionen con la IP real.
+app.set("trust proxy", 1);
 
-//! Cors config
+//! Cabeceras de seguridad
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+//! CORS: orígenes definidos por variable de entorno
 const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "https://controldegastosiglesia.netlify.app",
-  ],
+  origin: (origin, callback) => {
+    //! Permite herramientas sin origin (curl, health checks) y los orígenes listados
+    if (!origin || CORS_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Origen no permitido por CORS: ${origin}`));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions)); // preflight support
+app.options("*", cors(corsOptions));
 
-//! Middlewares
+//! Parsers con límite de tamaño
+app.use(express.json({ limit: "200kb" }));
+app.use(express.urlencoded({ extended: true, limit: "200kb" }));
 app.use(cookieParser());
-app.use(express.json()); // Parse incoming JSON
 
-//! Routes
-app.use("/", userRouter);
-app.use("/", categoryRouter);
-app.use("/", transactionRouter);
+//! Elimina operadores de Mongo ($, .) del input del usuario
+app.use(mongoSanitize());
+
+//! Health check para el hosting
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", uptime: process.uptime() });
+});
+
+//! Rutas de la API
+app.use("/api/v1", apiLimiter);
+app.use("/api/v1/users", userRouter);
+app.use("/api/v1/categories", categoryRouter);
+app.use("/api/v1/transactions", transactionRouter);
 app.use("/api/v1/admin", adminRouter);
 
-//! Error handler
-app.use(errorHandler);
+//! Servir el frontend compilado solo si se activa explícitamente
+if (SERVE_FRONTEND) {
+  const distPath = path.join(__dirname, "..", "frontend", "dist");
+  app.use(express.static(distPath));
 
-//! Serve frontend in production
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+  app.get(/^(?!\/api\/).*/, (req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+} else if (!isProduction) {
+  app.get("/", (req, res) => {
+    res.json({ message: "API del sistema contable. Endpoints bajo /api/v1" });
   });
 }
 
-//! Start the server
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+//! 404 + manejador central de errores (siempre al final)
+app.use(notFound);
+app.use(errorHandler);
+
+module.exports = app;
