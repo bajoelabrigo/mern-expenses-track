@@ -1,6 +1,8 @@
 const ExcelJS = require("exceljs");
+const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const Transaction = require("../model/Transaccion");
+const Fund = require("../model/Fund");
 const {
   parseStartDate,
   parseEndDate,
@@ -10,6 +12,7 @@ const {
 const { toCents, fromCents } = require("../utils/money");
 const { audit, transactionSnapshot } = require("../utils/audit");
 const { receiptStorage } = require("../services/receiptStorage");
+const { GENERAL_KEY, fundName, resolveFund } = require("../services/fundService");
 
 const TYPES = ["income", "expense"];
 const RECURRENCE_TYPES = ["daily", "weekly", "monthly", "yearly"];
@@ -35,7 +38,7 @@ const parseAmount = (amount) => {
 //! Construye el filtro común (espacio + fechas + tipo + categoría + anulados).
 //! Devuelve { error } si alguno de los parámetros es inválido.
 const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {}) => {
-  const { startDate, endDate, type, category, includeVoided, q, recurrent } = query;
+  const { startDate, endDate, type, category, includeVoided, q, recurrent, fund } = query;
   const filters = { workspace: workspaceId };
 
   //! Búsqueda en descripción y categoría. El texto se escapa: es una búsqueda
@@ -51,6 +54,14 @@ const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {
 
   if (recurrent !== undefined && recurrent !== "") {
     filters.recurrent = String(recurrent) === "true";
+  }
+
+  //! Fondo: "general" son los que no tienen fondo (null también cubre los
+  //! movimientos viejos que no tienen el campo)
+  if (fund !== undefined && fund !== "") {
+    if (fund === GENERAL_KEY) filters.fund = null;
+    else if (mongoose.isValidObjectId(fund)) filters.fund = fund;
+    else return { error: "Fondo inválido" };
   }
 
   const parsedStart = parseStartDate(startDate);
@@ -128,6 +139,7 @@ const transactionController = {
       recurrenceType,
       recurrenceCount = 1,
       clientId,
+      fund,
     } = req.body;
 
     //! Reenvío de un movimiento registrado sin conexión que ya había llegado:
@@ -192,6 +204,10 @@ const transactionController = {
       ? String(category).trim().toLowerCase()
       : "uncategorized";
 
+    const resolved = await resolveFund(req.workspace._id, fund);
+    if (resolved.error) return res.status(resolved.status).json({ message: resolved.error });
+    const fundDoc = resolved.fund || null;
+
     const transactions = [];
 
     for (let i = 0; i < totalCount; i += 1) {
@@ -223,6 +239,7 @@ const transactionController = {
         createdBy: req.user._id,
         type,
         category: normalizedCategory,
+        fund: fundDoc ? fundDoc._id : null,
         amountCents: cents,
         description,
         icon,
@@ -255,7 +272,9 @@ const transactionController = {
       action: "transaction.create",
       entity: "transaction",
       entityId: created[0]._id,
-      after: transactionSnapshot(created[0]),
+      //! El fondo solo se anota si no es el General (en un espacio sin fondos
+      //! sería ruido en cada entrada)
+      after: transactionSnapshot(created[0], fundDoc ? fundName(fundDoc) : undefined),
       note: created.length > 1 ? `Serie de ${created.length} movimientos` : "",
     });
 
@@ -283,7 +302,8 @@ const transactionController = {
         .skip(skip)
         .limit(parsedLimit)
         .populate("createdBy", "username")
-        .populate("voidedBy", "username"),
+        .populate("voidedBy", "username")
+        .populate("fund", "name icon"),
     ]);
 
     res.status(200).json({
@@ -320,8 +340,18 @@ const transactionController = {
       });
     }
 
-    const before = transactionSnapshot(transaction);
-    const { type, category, amount, date, description, icon } = req.body;
+    const { type, category, amount, date, description, icon, fund } = req.body;
+
+    //! Nombre del fondo antes y después, para que el historial se lea solo
+    const currentFund = transaction.fund
+      ? await Fund.findOne({ _id: transaction.fund, workspace: req.workspace._id })
+      : null;
+    const resolved = await resolveFund(req.workspace._id, fund, { current: transaction.fund });
+    if (resolved.error) return res.status(resolved.status).json({ message: resolved.error });
+    const nextFund = resolved.unchanged ? currentFund : resolved.fund;
+    //! Se anota si alguno de los dos no es el General (así se ve "Misiones → General")
+    const fundLabel = (f) => (currentFund || nextFund ? fundName(f) : undefined);
+    const before = transactionSnapshot(transaction, fundLabel(currentFund));
 
     if (type !== undefined && !TYPES.includes(type)) {
       return res.status(400).json({ message: "Tipo de transacción inválido" });
@@ -347,6 +377,7 @@ const transactionController = {
     }
     if (description !== undefined) transaction.description = description;
     if (icon !== undefined) transaction.icon = icon;
+    if (!resolved.unchanged) transaction.fund = nextFund ? nextFund._id : null;
 
     const updatedTransaction = await transaction.save();
 
@@ -355,7 +386,7 @@ const transactionController = {
       entity: "transaction",
       entityId: transaction._id,
       before,
-      after: transactionSnapshot(updatedTransaction),
+      after: transactionSnapshot(updatedTransaction, fundLabel(nextFund)),
     });
 
     res.status(200).json(updatedTransaction);
@@ -680,7 +711,9 @@ const transactionController = {
     const { filters, error } = buildFilters(req.workspace._id, req.query);
     if (error) return res.status(400).json({ message: error });
 
-    const transactions = await Transaction.find(filters).sort({ date: -1 });
+    const transactions = await Transaction.find(filters)
+      .sort({ date: -1 })
+      .populate("fund", "name");
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Transacciones");
@@ -689,6 +722,7 @@ const transactionController = {
       { header: "Fecha", key: "date", width: 15 },
       { header: "Tipo", key: "type", width: 10 },
       { header: "Categoría", key: "category", width: 20 },
+      { header: "Fondo", key: "fund", width: 18 },
       { header: "Descripción", key: "description", width: 30 },
       { header: `Monto (${req.workspace.currency})`, key: "amount", width: 14 },
       { header: "Estado", key: "status", width: 12 },
@@ -709,6 +743,7 @@ const transactionController = {
         date: new Date(tx.date).toLocaleDateString("es-PE"),
         type: tx.type === "income" ? "Ingreso" : "Gasto",
         category: tx.category || "Sin categoría",
+        fund: fundName(tx.fund),
         description: tx.description || "",
         amount: tx.amount,
         status: tx.voided ? "Anulado" : "",

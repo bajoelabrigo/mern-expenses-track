@@ -83,3 +83,28 @@ export const formatTypedAmount = (typed, currency = "USD") => {
     return `${currency} ${typed || "0"}`;
   }
 };
+
+//! Monto escrito a mano ("1500", "1,500.50", "1.500,50", "150,5") → número, o
+//! null si no es un monto. Si aparecen coma y punto, el último es el decimal;
+//! si solo hay uno, es decimal cuando lo siguen 1 o 2 cifras.
+export const parseTypedAmount = (text) => {
+  const raw = String(text ?? "").replace(/\s/g, "");
+  if (!raw || !/^[0-9.,]+$/.test(raw)) return null;
+  const lastComma = raw.lastIndexOf(",");
+  const lastDot = raw.lastIndexOf(".");
+  let normalized;
+  if (lastComma !== -1 && lastDot !== -1) {
+    const decimal = lastComma > lastDot ? "," : ".";
+    const thousands = decimal === "," ? "." : ",";
+    normalized = raw.split(thousands).join("").replace(decimal, ".");
+  } else if (lastComma !== -1 || lastDot !== -1) {
+    const sep = lastComma !== -1 ? "," : ".";
+    const parts = raw.split(sep);
+    const isDecimal = parts.length === 2 && parts[1].length >= 1 && parts[1].length <= 2;
+    normalized = isDecimal ? parts.join(".") : parts.join("");
+  } else {
+    normalized = raw;
+  }
+  const value = Number(normalized);
+  return Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : null;
+};

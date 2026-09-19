@@ -38,6 +38,10 @@ const AcceptInvitation = lazy(() =>
   import("./components/Workspaces/AcceptInvitation")
 );
 const MovementsPage = lazy(() => import("./components/Transactions/MovementsPage"));
+const FundsPage = lazy(() => import("./components/Funds/FundsPage"));
+const FundDetail = lazy(() => import("./components/Funds/FundDetail"));
+const FundEditor = lazy(() => import("./components/Funds/FundEditor"));
+const TransferPage = lazy(() => import("./components/Funds/TransferPage"));
 const AdminUsersList = lazy(() => import("./components/Admin/AdminUsersList"));
 
 const Cargando = () => (
@@ -121,6 +125,46 @@ const App = () => (
             element={
               <Privada>
                 <MovementsPage />
+              </Privada>
+            }
+          />
+          <Route
+            path="fondos"
+            element={
+              <Privada>
+                <FundsPage />
+              </Privada>
+            }
+          />
+          <Route
+            path="fondos/nuevo"
+            element={
+              <Privada>
+                <FundEditor />
+              </Privada>
+            }
+          />
+          <Route
+            path="fondos/mover"
+            element={
+              <Privada>
+                <TransferPage />
+              </Privada>
+            }
+          />
+          <Route
+            path="fondos/:id"
+            element={
+              <Privada>
+                <FundDetail />
+              </Privada>
+            }
+          />
+          <Route
+            path="fondos/:id/editar"
+            element={
+              <Privada>
+                <FundEditor />
               </Privada>
             }
           />

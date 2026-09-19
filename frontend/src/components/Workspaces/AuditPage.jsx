@@ -28,6 +28,13 @@ const ACTION_LABELS = {
   "invitation.accept": "se unió al espacio",
   "workspace.create": "creó el espacio",
   "workspace.update": "cambió los ajustes del espacio",
+  "fund.create": "creó un fondo",
+  "fund.update": "editó un fondo",
+  "fund.archive": "archivó un fondo",
+  "fund.unarchive": "volvió a usar un fondo",
+  "fund.delete": "borró un fondo",
+  "fund.transfer": "pasó dinero entre fondos",
+  "fund.transfer.void": "anuló un pase entre fondos",
 };
 
 const FIELD_LABELS = {
@@ -44,12 +51,18 @@ const FIELD_LABELS = {
   email: "Correo",
   currency: "Moneda",
   kind: "Tipo de espacio",
+  fund: "Fondo",
+  from: "Sale de",
+  to: "Entra a",
+  goal: "Meta",
+  archived: "Archivado",
+  note: "Motivo",
 };
 
 //! Valor legible de un campo del historial
 const formatValue = (field, value, currency) => {
   if (value === null || value === undefined || value === "") return "—";
-  if (field === "amount") return formatMoney(value, currency);
+  if (field === "amount" || field === "goal") return formatMoney(value, currency);
   if (field === "date") return new Date(value).toLocaleDateString("es");
   if (field === "type") return value === "income" ? "Ingreso" : "Gasto";
   if (field === "role") return ROLE_LABELS[value] || value;

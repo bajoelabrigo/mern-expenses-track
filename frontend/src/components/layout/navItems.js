@@ -2,6 +2,7 @@ import {
   LuHistory,
   LuHouse,
   LuLayers,
+  LuPiggyBank,
   LuReceiptText,
   LuShield,
   LuTags,
@@ -14,6 +15,7 @@ import {
 export const NAV_ITEMS = [
   { to: "/dashboard", label: "Inicio", icon: LuHouse, primary: true },
   { to: "/movimientos", label: "Movimientos", icon: LuReceiptText, primary: true },
+  { to: "/fondos", label: "Fondos", icon: LuPiggyBank },
   { to: "/categories", label: "Categorías", icon: LuTags },
   { to: "/espacio/miembros", label: "Miembros", icon: LuUsers, primary: true },
   { to: "/espacio/historial", label: "Historial", icon: LuHistory, when: ({ can }) => can("audit:read") },

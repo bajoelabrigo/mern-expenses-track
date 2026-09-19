@@ -29,6 +29,12 @@ const transactionSchema = new mongoose.Schema(
       lowercase: true,
       default: "uncategorized",
     },
+    //! Fondo al que pertenece; null = fondo General (lo que no tiene fondo)
+    fund: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Fund",
+      default: null,
+    },
     //! Centavos enteros. La API expone `amount` (virtual) en unidades.
     amountCents: {
       type: Number,
@@ -128,5 +134,6 @@ transactionSchema.index(
   { unique: true, partialFilterExpression: { clientId: { $type: "string" } } }
 );
 transactionSchema.index({ workspace: 1, category: 1 });
+transactionSchema.index({ workspace: 1, fund: 1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);

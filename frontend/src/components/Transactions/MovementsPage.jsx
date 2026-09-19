@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { LuCalendarRange, LuDownload, LuSearch, LuX } from "react-icons/lu";
 import {
@@ -8,6 +9,7 @@ import {
 import { listCategoriesAPI } from "../../services/category/categoryService";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useIsDesktop } from "../../hooks/useMediaQuery";
+import { useFunds } from "../../hooks/useFunds";
 import { getErrorMessage } from "../../lib/axios";
 import { formatMoney, fromCents } from "../../lib/money";
 import { dayLabel } from "../../lib/periods";
@@ -47,9 +49,20 @@ const MovementsPage = () => {
   const [showDates, setShowDates] = useState(false);
   const [dates, setDates] = useState({ startDate: "", endDate: "" });
   const q = useDebounced(search.trim());
+  //! Filtro por fondo desde la URL (/movimientos?fondo=…), p. ej. desde un fondo
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fund = searchParams.get("fondo") || undefined;
+  const { findFund } = useFunds();
+  const fundInfo = fund ? findFund(fund) : null;
+  const clearFund = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("fondo");
+    setSearchParams(next, { replace: true });
+  };
 
   const params = {
     q,
+    fund,
     type: filter === "income" || filter === "expense" ? filter : undefined,
     recurrent: filter === "recurrent",
     includeVoided: filter === "voided",
@@ -78,7 +91,10 @@ const MovementsPage = () => {
     mutationFn: () =>
       exportTransactionExcelAPI({
         ...dates,
+        q,
+        fund,
         type: params.type,
+        recurrent: params.recurrent,
         includeVoided: filter === "voided",
       }),
   });
@@ -117,12 +133,19 @@ const MovementsPage = () => {
           />
         </div>
 
-        <div className="mt-3 lg:mt-0 -mx-4 px-4 lg:mx-0 lg:px-0 flex gap-2 overflow-x-auto pb-1 lg:pb-0 [scrollbar-width:none]">
+        <div className="mt-3 lg:mt-0 -mx-4 px-4 lg:mx-0 lg:px-0 flex lg:flex-wrap gap-2 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0 [scrollbar-width:none]">
           {FILTERS.map((f) => (
             <Chip key={f.value} selected={filter === f.value} onClick={() => setFilter(f.value)}>
               {f.label}
             </Chip>
           ))}
+          {fund && (
+            <Chip selected onClick={clearFund} aria-label={`Quitar el filtro del fondo ${fundInfo?.name || ""}`}>
+              <span className="inline-flex items-center gap-1.5">
+                {fundInfo ? `${fundInfo.icon} ${fundInfo.name}` : "Fondo"} <LuX aria-hidden="true" />
+              </span>
+            </Chip>
+          )}
           <Chip
             selected={showDates || Boolean(dates.startDate || dates.endDate)}
             onClick={() => setShowDates((v) => !v)}

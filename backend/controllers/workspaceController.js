@@ -6,6 +6,8 @@ const Membership = require("../model/Membership");
 const Invitation = require("../model/Invitation");
 const Transaction = require("../model/Transaccion");
 const Category = require("../model/Category");
+const Fund = require("../model/Fund");
+const FundTransfer = require("../model/FundTransfer");
 const AuditLog = require("../model/AuditLog");
 const User = require("../model/User");
 const {
@@ -160,6 +162,8 @@ exports.remove = asyncHandler(async (req, res) => {
   await Promise.all([
     Transaction.deleteMany({ workspace: workspaceId }),
     Category.deleteMany({ workspace: workspaceId }),
+    Fund.deleteMany({ workspace: workspaceId }),
+    FundTransfer.deleteMany({ workspace: workspaceId }),
     Invitation.deleteMany({ workspace: workspaceId }),
     AuditLog.deleteMany({ workspace: workspaceId }),
     Membership.deleteMany({ workspace: workspaceId }),

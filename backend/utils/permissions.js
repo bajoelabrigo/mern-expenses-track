@@ -12,6 +12,8 @@ const PERMISSIONS = {
   //! Borrar un movimiento definitivamente (lo normal es anularlo)
   "tx:purge": ["propietario"],
   "category:write": ["propietario", "tesorero", "contador"],
+  //! Crear, editar y archivar fondos, y pasar dinero entre ellos
+  "fund:manage": ["propietario", "tesorero"],
   //! Invitar, cambiar roles y quitar miembros
   "members:manage": ["propietario", "tesorero"],
   "audit:read": ["propietario", "tesorero", "auditor"],
