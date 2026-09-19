@@ -21,7 +21,7 @@ export const CURRENCIES = [
   { code: "MXN", label: "Peso mexicano", locale: "es-MX" },
   { code: "COP", label: "Peso colombiano", locale: "es-CO" },
   { code: "ARS", label: "Peso argentino", locale: "es-AR" },
-  { code: "CLP", label: "Peso chileno", locale: "es-CL" },
+  { code: "CLP", label: "Peso chileno", locale: "es-CL", decimals: 0 },
   { code: "BOB", label: "Boliviano", locale: "es-BO" },
   { code: "VES", label: "Bolívar venezolano", locale: "es-VE" },
   { code: "GTQ", label: "Quetzal", locale: "es-GT" },
@@ -29,21 +29,26 @@ export const CURRENCIES = [
   { code: "NIO", label: "Córdoba", locale: "es-NI" },
   { code: "CRC", label: "Colón costarricense", locale: "es-CR" },
   { code: "DOP", label: "Peso dominicano", locale: "es-DO" },
-  { code: "PYG", label: "Guaraní", locale: "es-PY" },
+  { code: "PYG", label: "Guaraní", locale: "es-PY", decimals: 0 },
   { code: "UYU", label: "Peso uruguayo", locale: "es-UY" },
   { code: "BRL", label: "Real brasileño", locale: "pt-BR" },
 ];
 
-const LOCALES = Object.fromEntries(CURRENCIES.map((c) => [c.code, c.locale]));
+const BY_CODE = Object.fromEntries(CURRENCIES.map((c) => [c.code, c]));
 
 //! Formatea con el símbolo y los separadores del país de la moneda. Los
-//! decimales son los habituales de cada moneda (el peso chileno no usa).
+//! decimales se fijan aquí (2, o 0 para peso chileno y guaraní) en vez de
+//! dejarlos a los datos regionales del navegador: según la versión, el mismo
+//! peso colombiano salía "$ 1.234,50" en un sitio y "$ 1.235" en otro.
 export const formatMoney = (amount, currency = "USD") => {
+  const decimals = BY_CODE[currency]?.decimals ?? 2;
   try {
-    return new Intl.NumberFormat(LOCALES[currency] || "es", {
+    return new Intl.NumberFormat(BY_CODE[currency]?.locale || "es", {
       style: "currency",
       currency,
       currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     }).format(Number(amount || 0));
   } catch {
     //! Código de moneda que el navegador no conoce
