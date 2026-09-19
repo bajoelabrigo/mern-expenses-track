@@ -27,9 +27,22 @@ const workspaceNameFor = (user) => (user.iglesia || "").trim();
 
 const toCents = (amount) => Math.round(Number(amount) * 100);
 
+//! Todos los modelos cuyos índices se sincronizan. Se cargan aquí porque, al
+//! ejecutar el script solo (sin la app), Mongoose únicamente conoce los que se
+//! hayan requerido: faltaba "Invitation" y la migración de producción del
+//! 2026-09-18 terminó con un error en el último paso.
+const MODELS = {
+  Workspace: require("../model/Workspace"),
+  Membership: require("../model/Membership"),
+  Invitation: require("../model/Invitation"),
+  AuditLog: require("../model/AuditLog"),
+  Transaction: require("../model/Transaccion"),
+  Category: require("../model/Category"),
+  User: require("../model/User"),
+};
+
 const migrate = async ({ apply = false, backupDir = null, log = console.log } = {}) => {
-  const Workspace = require("../model/Workspace");
-  const Membership = require("../model/Membership");
+  const { Workspace, Membership } = MODELS;
   const summary = {
     users: 0,
     workspacesCreated: 0,
@@ -39,6 +52,7 @@ const migrate = async ({ apply = false, backupDir = null, log = console.log } = 
     orphanTransactions: 0,
     orphanCategories: 0,
     backupFile: null,
+    indexErrors: [],
   };
 
   const users = await col("users").find({}).toArray();
@@ -158,11 +172,15 @@ const migrate = async ({ apply = false, backupDir = null, log = console.log } = 
         if (existing.includes(name)) await col(collection).dropIndex(name);
       }
     }
-    await Promise.all(
-      ["Workspace", "Membership", "Invitation", "AuditLog", "Transaction", "Category", "User"].map(
-        (name) => mongoose.model(name).syncIndexes()
-      )
-    );
+    //! Uno a uno y sin abortar: con Promise.all, un fallo cerraba la conexión
+    //! con otros en curso y el PoolClosedError tapaba el error real.
+    for (const [name, Model] of Object.entries(MODELS)) {
+      try {
+        await Model.syncIndexes();
+      } catch (err) {
+        summary.indexErrors.push(`${name}: ${err.message}`);
+      }
+    }
   }
 
   return summary;
@@ -185,6 +203,9 @@ if (require.main === module) {
     });
 
     console.log("\nResumen:", summary);
+    if (summary.indexErrors.length) {
+      console.log("Aviso: algunos índices no se crearon. Volver a ejecutar con --aplicar es seguro.");
+    }
     if (summary.orphanTransactions || summary.orphanCategories) {
       console.log(
         "Aviso: hay datos de usuarios que ya no existen; no se tocaron (ver resumen)."

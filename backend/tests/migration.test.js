@@ -13,6 +13,7 @@ const {
   teardownDatabase,
   clearDatabase,
 } = require("./helpers");
+const { execFileSync } = require("child_process");
 const { migrate } = require("../scripts/migrar-espacios");
 
 const col = (name) => mongoose.connection.collection(name);
@@ -68,6 +69,29 @@ describe("Migración a espacios", () => {
     }
   });
 
+  test("el script, ejecutado solo, registra todos los modelos que sincroniza", () => {
+    //! En un proceso aparte, como en producción: aquí la app ya cargó todos los
+    //! modelos y el fallo real (faltaba "Invitation") no se veía.
+    const out = execFileSync(
+      process.execPath,
+      [
+        "-e",
+        `require("./scripts/migrar-espacios");
+         console.log(JSON.stringify(require("mongoose").modelNames().sort()));`,
+      ],
+      { cwd: path.join(__dirname, ".."), env: { ...process.env, NODE_ENV: "test" } }
+    );
+    assert.deepEqual(JSON.parse(out.toString().trim().split("\n").pop()), [
+      "AuditLog",
+      "Category",
+      "Invitation",
+      "Membership",
+      "Transaction",
+      "User",
+      "Workspace",
+    ]);
+  });
+
   test("la simulación no escribe nada", async () => {
     await seedLegacy();
 
@@ -94,6 +118,7 @@ describe("Migración a espacios", () => {
     assert.equal(summary.categoriesMoved, 2);
     assert.equal(summary.amountsConverted, 5);
     assert.equal(summary.orphanTransactions, 1);
+    assert.deepEqual(summary.indexErrors, []);
     assert.ok(fs.existsSync(summary.backupFile));
     const backup = JSON.parse(fs.readFileSync(summary.backupFile, "utf8"));
     assert.equal(backup.transactions.length, 5);
