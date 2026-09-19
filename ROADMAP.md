@@ -24,7 +24,7 @@ despliega Netlify y Render) cuando está verificada.
 - [x] **Migración** de los datos existentes: cada usuario actual pasa a ser
       propietario de un espacio de iglesia con sus movimientos
       (`scripts/migrar-espacios.js`, probado con datos de la forma actual).
-- [ ] **Desplegar**: fusionar en `main` y ejecutar la migración en producción.
+- [x] **Desplegar**: fusionado en `main` y migración aplicada en producción (2026-09-18).
 
 ## Fase 2 — App instalable (PWA) y APK
 
