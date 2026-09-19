@@ -120,13 +120,13 @@ const migrate = async ({ apply = false, backupDir = null, log = console.log } = 
     }
   }
 
-  //! Datos cuyo usuario ya no existe: se informan y se dejan como están
-  summary.orphanTransactions = await col("transactions").countDocuments({
-    workspace: { $exists: false },
-  });
-  summary.orphanCategories = await col("categories").countDocuments({
-    workspace: { $exists: false },
-  });
+  //! Datos cuyo usuario ya no existe: se informan y se dejan como están. Se
+  //! cuentan por usuario inexistente (no por "sin espacio"): en la simulación
+  //! nada se movió todavía y todo saldría como huérfano.
+  const userIds = users.map((u) => u._id);
+  const orphanFilter = { workspace: { $exists: false }, user: { $nin: userIds } };
+  summary.orphanTransactions = await col("transactions").countDocuments(orphanFilter);
+  summary.orphanCategories = await col("categories").countDocuments(orphanFilter);
 
   //! 4. amount -> amountCents. Se calcula con Math.round en JS (el $round de
   //! Mongo redondea al par y daría otro centavo en los .5).

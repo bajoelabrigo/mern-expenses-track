@@ -77,6 +77,8 @@ describe("Migración a espacios", () => {
     assert.equal(summary.workspacesCreated, 3);
     assert.equal(summary.transactionsMoved, 4);
     assert.equal(summary.amountsConverted, 5);
+    //! Solo el movimiento del usuario inexistente cuenta como huérfano
+    assert.equal(summary.orphanTransactions, 1);
     assert.equal(await col("workspaces").countDocuments(), 0);
     assert.equal(await col("transactions").countDocuments({ amountCents: { $exists: true } }), 0);
   });
