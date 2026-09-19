@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const Transaction = require("../model/Transaccion");
 const Fund = require("../model/Fund");
+const Category = require("../model/Category");
+const { effectiveIncomeKind, inferIncomeKind } = require("../utils/incomeKinds");
 const {
   parseStartDate,
   parseEndDate,
@@ -15,6 +17,13 @@ const { receiptStorage } = require("../services/receiptStorage");
 const { GENERAL_KEY, fundName, resolveFund } = require("../services/fundService");
 
 const TYPES = ["income", "expense"];
+const INCOME_KIND_LABELS = {
+  diezmo: "Diezmo",
+  ofrenda: "Ofrenda",
+  primicia: "Primicia",
+  especial: "Ofrenda especial",
+  otro: "Otro ingreso",
+};
 const RECURRENCE_TYPES = ["daily", "weekly", "monthly", "yearly"];
 const MAX_RECURRENCES = 365;
 const MAX_LIMIT = 100;
@@ -715,6 +724,19 @@ const transactionController = {
       .sort({ date: -1 })
       .populate("fund", "name");
 
+    //! En una iglesia, cada ingreso lleva su tipo (diezmo, ofrenda…) según su
+    //! categoría; si la categoría ya no existe, se deduce de su nombre
+    const isChurch = req.workspace.kind === "iglesia";
+    const kindByCategory = new Map();
+    if (isChurch) {
+      const categories = await Category.find({ workspace: req.workspace._id });
+      categories.forEach((c) => kindByCategory.set(c.name, effectiveIncomeKind(c)));
+    }
+    const incomeKindOf = (tx) =>
+      tx.type === "income"
+        ? INCOME_KIND_LABELS[kindByCategory.get(tx.category) || inferIncomeKind(tx.category)]
+        : "";
+
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Transacciones");
 
@@ -722,6 +744,7 @@ const transactionController = {
       { header: "Fecha", key: "date", width: 15 },
       { header: "Tipo", key: "type", width: 10 },
       { header: "Categoría", key: "category", width: 20 },
+      ...(isChurch ? [{ header: "Tipo de ingreso", key: "incomeKind", width: 18 }] : []),
       { header: "Fondo", key: "fund", width: 18 },
       { header: "Descripción", key: "description", width: 30 },
       { header: `Monto (${req.workspace.currency})`, key: "amount", width: 14 },
@@ -743,6 +766,7 @@ const transactionController = {
         date: new Date(tx.date).toLocaleDateString("es-PE"),
         type: tx.type === "income" ? "Ingreso" : "Gasto",
         category: tx.category || "Sin categoría",
+        ...(isChurch ? { incomeKind: incomeKindOf(tx) } : {}),
         fund: fundName(tx.fund),
         description: tx.description || "",
         amount: tx.amount,

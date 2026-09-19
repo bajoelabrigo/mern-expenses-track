@@ -6,6 +6,7 @@ import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
 import { PageHeader } from "../ui";
 import CategoryForm from "./CategoryForm";
+import { useWorkspace } from "../../hooks/useWorkspace";
 
 const AddCategory = () => {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ const AddCategory = () => {
   const { state } = useLocation();
   const returnTo = state?.returnTo || "/categories";
   const queryClient = useQueryClient();
+  const { workspace } = useWorkspace();
 
   const { mutate, isPending, isError, error, isSuccess } = useMutation({
     mutationFn: addCategoryAPI,
@@ -43,6 +45,7 @@ const AddCategory = () => {
           submitLabel="Crear categoría"
           pendingLabel="Creando…"
           isPending={isPending}
+          withIncomeKind={workspace?.kind === "iglesia"}
           disabled={isSuccess}
         />
       </div>

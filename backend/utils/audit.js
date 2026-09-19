@@ -1,4 +1,5 @@
 const AuditLog = require("../model/AuditLog");
+const { effectiveIncomeKind } = require("./incomeKinds");
 
 //! Campos de un movimiento que se guardan en el historial (antes/después).
 //! Se guardan en unidades, igual que los ve el usuario.
@@ -21,6 +22,7 @@ const categorySnapshot = (category) =>
     name: category.name,
     type: category.type,
     icon: category.icon,
+    ...(category.type === "income" ? { incomeKind: effectiveIncomeKind(category) } : {}),
   };
 
 const fundSnapshot = (fund) =>

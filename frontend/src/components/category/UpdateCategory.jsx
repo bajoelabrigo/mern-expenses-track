@@ -9,11 +9,13 @@ import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
 import { PageHeader } from "../ui";
 import CategoryForm from "./CategoryForm";
+import { useWorkspace } from "../../hooks/useWorkspace";
 
 const UpdateCategory = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { workspace } = useWorkspace();
 
   const {
     data: category,
@@ -56,11 +58,17 @@ const UpdateCategory = () => {
         {isSuccess && <AlertMessage type="success" message="Categoría guardada." />}
         {category && (
           <CategoryForm
-            initialValues={{ name: category.name, type: category.type, icon: category.icon || "" }}
+            initialValues={{
+              name: category.name,
+              type: category.type,
+              icon: category.icon || "",
+              incomeKind: category.incomeKind || "",
+            }}
             onSubmit={(values) => mutate({ ...values, id })}
             submitLabel="Guardar cambios"
             pendingLabel="Guardando…"
             isPending={isPending}
+          withIncomeKind={workspace?.kind === "iglesia"}
             disabled={isSuccess}
           />
         )}

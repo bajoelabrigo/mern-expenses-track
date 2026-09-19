@@ -2,13 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { LuChevronRight, LuPlus, LuTrash2 } from "react-icons/lu";
 import {
+  addChurchDefaultsAPI,
   deleteCategoryAPI,
   listCategoriesAPI,
 } from "../../services/category/categoryService";
+import { incomeKindLabel, missingChurchKinds } from "../../lib/incomeKinds";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
 import { useWorkspace } from "../../hooks/useWorkspace";
-import { ButtonLink, CategoryIcon, EmptyState, ListGroup, PageHeader } from "../ui";
+import { Button, ButtonLink, Card, CategoryIcon, EmptyState, ListGroup, PageHeader } from "../ui";
 import { capitalize } from "../ui/styles";
 
 const GROUPS = [
@@ -18,8 +20,9 @@ const GROUPS = [
 
 const CategoriesList = () => {
   const queryClient = useQueryClient();
-  const { can } = useWorkspace();
+  const { can, workspace } = useWorkspace();
   const canWrite = can("category:write");
+  const isChurch = workspace?.kind === "iglesia";
 
   const {
     data: categories = [],
@@ -43,6 +46,14 @@ const CategoriesList = () => {
       queryClient.invalidateQueries({ queryKey: ["list-transactions"] });
     },
   });
+
+  //! Categorías base de iglesia (Diezmos, Ofrendas, Primicias, Ofrenda especial)
+  const addDefaults = useMutation({
+    mutationFn: addChurchDefaultsAPI,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["list-categories"] }),
+  });
+  const missing = isChurch && canWrite && !isLoading && !isError ? missingChurchKinds(categories) : [];
+  const missingText = missing.map((k) => k.plural).join(", ").replace(/, ([^,]*)$/, " y $1");
 
   const handleDelete = async (id, nombre) => {
     //! Borrar una categoría reasigna sus transacciones: conviene confirmar
@@ -76,6 +87,21 @@ const CategoriesList = () => {
         {isLoading && <AlertMessage type="loading" message="Cargando…" />}
         {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
         {isDeleteError && <AlertMessage type="error" message={getErrorMessage(deleteError)} />}
+        {addDefaults.isError && <AlertMessage type="error" message={getErrorMessage(addDefaults.error)} />}
+
+        {missing.length > 0 && (
+          <Card className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              <p className="font-bold text-ink">Faltan categorías de iglesia</p>
+              <p className="mt-1 text-sm text-ink-2">
+                {missingText}. Con ellas, los informes separan cada tipo de ingreso.
+              </p>
+            </div>
+            <Button onClick={() => addDefaults.mutate()} disabled={addDefaults.isPending}>
+              {addDefaults.isPending ? "Agregando…" : "Agregarlas"}
+            </Button>
+          </Card>
+        )}
 
         {!isLoading && !isError && categories.length === 0 && (
           <EmptyState
@@ -104,12 +130,24 @@ const CategoriesList = () => {
                         className="flex-1 min-w-0 flex items-center gap-2 font-semibold text-ink"
                         aria-label={`Editar ${category.name}`}
                       >
-                        <span className="truncate">{capitalize(category.name)}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate">{capitalize(category.name)}</span>
+                          {isChurch && category.incomeKind && (
+                            <span className="block text-xs font-medium text-muted">
+                              {incomeKindLabel(category.incomeKind)}
+                            </span>
+                          )}
+                        </span>
                         <LuChevronRight aria-hidden="true" className="ml-auto text-muted shrink-0" />
                       </Link>
                     ) : (
-                      <span className="flex-1 min-w-0 truncate font-semibold text-ink">
-                        {capitalize(category.name)}
+                      <span className="flex-1 min-w-0 font-semibold text-ink">
+                        <span className="block truncate">{capitalize(category.name)}</span>
+                        {isChurch && category.incomeKind && (
+                          <span className="block text-xs font-medium text-muted">
+                            {incomeKindLabel(category.incomeKind)}
+                          </span>
+                        )}
                       </span>
                     )}
                     {canWrite && (
