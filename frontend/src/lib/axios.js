@@ -62,5 +62,15 @@ axiosInstance.interceptors.response.use(
 );
 
 //! Mensaje de error legible para la UI (evita "Cannot read properties of undefined")
-export const getErrorMessage = (error, fallback = "Algo salió mal. Inténtalo de nuevo.") =>
-  error?.response?.data?.message || error?.message || fallback;
+//! Sin respuesta del servidor (sin conexión, servidor caído o despertando):
+//! axios dice "Network Error", en inglés y sin explicar nada.
+export const NETWORK_ERROR_MESSAGE =
+  "No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.";
+
+export const getErrorMessage = (error, fallback = "Algo salió mal. Inténtalo de nuevo.") => {
+  if (error?.response?.data?.message) return error.response.data.message;
+  if (error && !error.response && (error.code === "ERR_NETWORK" || error.message === "Network Error")) {
+    return NETWORK_ERROR_MESSAGE;
+  }
+  return error?.message || fallback;
+};

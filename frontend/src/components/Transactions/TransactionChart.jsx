@@ -253,7 +253,8 @@ const TransactionChart = () => {
 
       {isLoading && <p className="text-center text-gray-500">Cargando...</p>}
 
-      {!isLoading && !hayDatos && (
+      {/* Con error no se sabe si hay datos: decir "no hay" sería falso */}
+      {!isLoading && !isError && !hayDatos && (
         <p className="text-center text-gray-500">
           No hay transacciones en el período seleccionado.
         </p>

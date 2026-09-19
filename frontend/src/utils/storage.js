@@ -20,9 +20,16 @@ export const isTokenExpired = (token) => {
   return Date.now() >= expiresAt;
 };
 
+//! Datos de la API guardados en el dispositivo (ver lib/queryClient.js)
+const QUERY_CACHE_KEY = "cg-cache";
+
+//! Al borrar la sesión se borran también los datos guardados: si caduca (401)
+//! no se pasa por "Salir", y el siguiente usuario del dispositivo vería los
+//! del anterior al abrir la app.
 export const clearStoredAuth = () => {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(QUERY_CACHE_KEY);
   } catch {
     //! Modo privado o almacenamiento bloqueado: no hay nada que limpiar
   }

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { FaEnvelope, FaLock } from "react-icons/fa";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginAPI } from "../../services/users/userService";
@@ -24,6 +24,7 @@ const LoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   //! Página a la que volver tras entrar (una ruta privada o una invitación)
   const destino = location.state?.from || "/dashboard";
   const user = useSelector((state) => state.auth.user);
@@ -46,6 +47,9 @@ const LoginForm = () => {
       //! El error se muestra con isError; aquí solo evitamos la promesa sin capturar
       try {
         const data = await mutateAsync(values);
+        //! Nada de lo que hubiera en caché (otra cuenta en este dispositivo)
+        //! debe verse con la sesión nueva
+        queryClient.clear();
         dispatch(loginAction(data)); // guarda token + usuario
       } catch {
         // mensaje mostrado por AlertMessage
