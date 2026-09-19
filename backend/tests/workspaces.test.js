@@ -455,6 +455,53 @@ describe("Anulación, centavos e historial", () => {
   });
 });
 
+describe("Movimientos registrados sin conexión (clientId)", () => {
+  before(setupDatabase);
+  after(teardownDatabase);
+  beforeEach(clearDatabase);
+
+  test("reenviar el mismo movimiento no lo duplica", async () => {
+    const user = await createUser();
+    const body = { amount: 50, clientId: "offline-abc12345" };
+
+    const primero = await crearMovimiento(user, null, body).expect(201);
+    const reenvio = await crearMovimiento(user, null, body).expect(200);
+
+    assert.equal(reenvio.body[0]._id, primero.body[0]._id);
+    const lista = await as("get", "/api/v1/transactions/lists", user);
+    assert.equal(lista.body.total, 1);
+  });
+
+  test("dos reenvíos a la vez tampoco lo duplican", async () => {
+    const user = await createUser();
+    const body = { amount: 50, clientId: "offline-simultaneo1" };
+
+    const [a, b] = await Promise.all([
+      crearMovimiento(user, null, body),
+      crearMovimiento(user, null, body),
+    ]);
+
+    assert.deepEqual([a.status, b.status].sort(), [200, 201]);
+    const lista = await as("get", "/api/v1/transactions/lists", user);
+    assert.equal(lista.body.total, 1);
+  });
+
+  test("el mismo clientId en otro espacio es otro movimiento", async () => {
+    const pastor = await createUser({ iglesia: "Iglesia Betel" });
+    const [iglesia, personal] = (await as("get", "/api/v1/workspaces", pastor)).body;
+    const body = { amount: 10, clientId: "offline-mismo-id" };
+
+    await crearMovimiento(pastor, iglesia._id, body).expect(201);
+    await crearMovimiento(pastor, personal._id, body).expect(201);
+  });
+
+  test("un clientId con caracteres raros se rechaza", async () => {
+    const user = await createUser();
+    await crearMovimiento(user, null, { amount: 5, clientId: "<script>" }).expect(400);
+    await crearMovimiento(user, null, { amount: 5, clientId: { $ne: 1 } }).expect(400);
+  });
+});
+
 describe("Recuperación de contraseña", () => {
   before(setupDatabase);
   after(teardownDatabase);

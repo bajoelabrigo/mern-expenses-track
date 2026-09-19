@@ -1,26 +1,37 @@
 import { axiosInstance } from "../../lib/axios";
 
-//! Crear transacción (soporta recurrencia)
-export const addTransactionAPI = async ({
-  type,
-  category,
-  date,
-  description,
-  amount,
-  recurrent,
-  recurrenceType,
-  recurrenceCount,
-}) => {
-  const response = await axiosInstance.post("/transactions/create", {
+//! Crear transacción (soporta recurrencia). `clientId` evita duplicados al
+//! reenviar lo registrado sin conexión; `workspaceId` fuerza el espacio (el de
+//! cuando se registró, aunque ahora se esté en otro).
+export const addTransactionAPI = async (
+  {
     type,
     category,
     date,
-    amount,
     description,
+    amount,
     recurrent,
     recurrenceType,
     recurrenceCount,
-  });
+    clientId,
+  },
+  { workspaceId } = {}
+) => {
+  const response = await axiosInstance.post(
+    "/transactions/create",
+    {
+      type,
+      category,
+      date,
+      amount,
+      description,
+      recurrent,
+      recurrenceType,
+      recurrenceCount,
+      clientId,
+    },
+    workspaceId ? { headers: { "X-Workspace-Id": workspaceId } } : undefined
+  );
   return response.data;
 };
 

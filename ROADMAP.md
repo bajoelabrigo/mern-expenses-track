@@ -28,9 +28,9 @@ despliega Netlify y Render) cuando está verificada.
 
 ## Fase 2 — App instalable (PWA) y APK
 
-- [ ] Manifest, íconos y pantalla de inicio (`vite-plugin-pwa`).
-- [ ] Service worker: la app abre sin conexión.
-- [ ] Registrar movimientos sin conexión y sincronizar al volver (IndexedDB).
+- [x] Manifest, íconos y pantalla de inicio (`vite-plugin-pwa`).
+- [x] Service worker: la app abre sin conexión.
+- [x] Registrar movimientos sin conexión y sincronizar al volver, sin duplicados.
 - [ ] Foto del comprobante con la cámara del móvil.
 - [ ] APK como Trusted Web Activity (PWABuilder/Bubblewrap) con
       `/.well-known/assetlinks.json` en Netlify.

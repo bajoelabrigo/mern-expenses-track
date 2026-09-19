@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useFormik } from "formik";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import * as Yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,7 +12,9 @@ import {
 } from "react-icons/fa";
 import { listCategoriesAPI } from "../../services/category/categoryService";
 import { addTransactionAPI } from "../../services/transactions/transactionService";
-import { getErrorMessage } from "../../lib/axios";
+import { getErrorMessage, isNetworkError } from "../../lib/axios";
+import { addToOutbox, newClientId } from "../../lib/outbox";
+import { useWorkspace } from "../../hooks/useWorkspace";
 import AlertMessage from "../Alert/AlertMessage";
 
 const validationSchema = Yup.object({
@@ -50,16 +53,52 @@ const TransactionForm = () => {
   const navigate = useNavigate();
 
   const queryClient = useQueryClient();
+  const userId = useSelector((state) => state.auth.user?.id);
+  const { workspace } = useWorkspace();
 
-  const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
-    mutationFn: addTransactionAPI,
+  //! Intenta enviar; sin conexión (o si el servidor no responde) lo guarda en
+  //! la bandeja de salida con el espacio actual y se envía solo después. El
+  //! mismo clientId en ambos caminos: si el envío llegó pero se perdió la
+  //! respuesta, el reenvío no lo duplica.
+  const saveTransaction = async (values) => {
+    const clientId = newClientId();
+    const queue = () => {
+      addToOutbox({
+        id: clientId,
+        userId,
+        workspaceId: workspace._id,
+        workspaceName: workspace.name,
+        payload: values,
+      });
+      return { queued: true };
+    };
+
+    if (!navigator.onLine) return queue();
+    try {
+      await addTransactionAPI({ ...values, clientId }, { workspaceId: workspace._id });
+      return { queued: false };
+    } catch (err) {
+      if (isNetworkError(err)) return queue();
+      throw err;
+    }
+  };
+
+  const { mutateAsync, isPending, isError, error, isSuccess, data } = useMutation({
+    mutationFn: saveTransaction,
     mutationKey: ["add-transaction"],
-    onSuccess: () => {
+    //! Sin esto React Query PAUSA la mutación al detectar que no hay conexión
+    //! y el botón se queda en "Guardando..." para siempre: saveTransaction ya
+    //! decide ella misma qué hacer sin conexión (guardarlo en la bandeja).
+    networkMode: "always",
+    onSuccess: (result) => {
       //! Refresca listado, gráficos y balances
-      queryClient.invalidateQueries({ queryKey: ["list-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      if (!result.queued) {
+        queryClient.invalidateQueries({ queryKey: ["list-transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      }
     },
   });
+  const queued = Boolean(data?.queued);
 
   //! Categorías para el desplegable
   const {
@@ -101,12 +140,13 @@ const TransactionForm = () => {
 
   useEffect(() => {
     if (isSuccess) {
+      //! Si quedó en la bandeja se deja leer el aviso un poco más
       const timeout = setTimeout(() => {
         navigate("/dashboard");
-      }, 1000);
+      }, queued ? 2500 : 1000);
       return () => clearTimeout(timeout);
     }
-  }, [isSuccess, navigate]);
+  }, [isSuccess, navigate, queued]);
 
   return (
     <form
@@ -128,7 +168,11 @@ const TransactionForm = () => {
       {isSuccess && (
         <AlertMessage
           type="success"
-          message="Transacción agregada exitosamente"
+          message={
+            queued
+              ? "Sin conexión: guardado en este dispositivo. Se enviará solo al volver la conexión."
+              : "Transacción agregada exitosamente"
+          }
         />
       )}
 
@@ -307,7 +351,7 @@ const TransactionForm = () => {
       {/* Submit */}
       <button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || isSuccess}
         className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none transition-colors duration-200 disabled:opacity-60"
       >
         {isPending ? "Guardando..." : "Enviar transacción"}

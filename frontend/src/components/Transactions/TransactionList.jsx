@@ -216,9 +216,12 @@ const TransactionList = () => {
         {isLoading ? (
           <p className="text-gray-500">Cargando...</p>
         ) : transactions.length === 0 ? (
-          <p className="text-gray-500">
-            No hay transacciones para los filtros seleccionados.
-          </p>
+          //! Con error no se sabe si hay datos: decir "no hay" sería falso
+          !isError && (
+            <p className="text-gray-500">
+              No hay transacciones para los filtros seleccionados.
+            </p>
+          )
         ) : (
           <ul className="space-y-2">
             {transactions.map((transaction) => (

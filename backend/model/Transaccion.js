@@ -67,6 +67,10 @@ const transactionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    //! Identificador que genera el cliente al registrar sin conexión: si el
+    //! mismo movimiento llega dos veces (se reintentó sin saber que el primer
+    //! envío sí llegó), no se duplica.
+    clientId: { type: String, trim: true, maxlength: 64 },
     //! Anulación: la fila se sigue viendo (tachada, con su motivo) pero deja de
     //! sumar. Un movimiento que desaparece sin rastro hace imposible explicar
     //! un descuadre después.
@@ -99,6 +103,10 @@ transactionSchema.set("toJSON", {
 });
 
 transactionSchema.index({ workspace: 1, date: -1 });
+transactionSchema.index(
+  { workspace: 1, clientId: 1 },
+  { unique: true, partialFilterExpression: { clientId: { $type: "string" } } }
+);
 transactionSchema.index({ workspace: 1, category: 1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);
