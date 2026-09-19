@@ -1,12 +1,14 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Link, Navigate } from "react-router-dom";
-import { LuChevronLeft, LuChevronRight, LuLock, LuPlus, LuSearch } from "react-icons/lu";
+import { LuChevronLeft, LuChevronRight, LuFileText, LuLock, LuPlus, LuSearch } from "react-icons/lu";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useDonors } from "../../hooks/useDonors";
 import { getErrorMessage } from "../../lib/axios";
 import { formatMoney } from "../../lib/money";
 import AlertMessage from "../Alert/AlertMessage";
-import { ButtonLink, Card, EmptyState, Input, ListGroup, PageHeader } from "../ui";
+import { Button, ButtonLink, Card, EmptyState, Input, ListGroup, PageHeader } from "../ui";
+import { downloadStatementsAPI } from "../../services/donors/donorService";
 import { cx, initials } from "../ui/styles";
 
 //! /aportantes — quién dio y cuánto en el año. Solo para la tesorería.
@@ -17,6 +19,7 @@ const DonorsPage = () => {
   const { donors, canSee, isLoading, isError, error } = useDonors({ year });
   const canWrite = can("donor:write");
   const thisYear = new Date().getFullYear();
+  const statements = useMutation({ mutationFn: downloadStatementsAPI });
 
   if (workspace && !canSee) return <Navigate to="/dashboard" replace />;
 
@@ -73,6 +76,9 @@ const DonorsPage = () => {
 
       <div className="space-y-4">
         {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
+        {statements.isError && (
+          <AlertMessage type="error" message={getErrorMessage(statements.error)} />
+        )}
 
         <Card className="p-4 flex items-center justify-between gap-3">
           <div>
@@ -104,6 +110,18 @@ const DonorsPage = () => {
             </button>
           </div>
         </Card>
+
+        {total > 0 && (
+          <Button
+            variant="secondary"
+            block
+            onClick={() => statements.mutate({ year })}
+            disabled={statements.isPending}
+          >
+            <LuFileText aria-hidden="true" />
+            {statements.isPending ? "Preparando…" : `Constancias de ${year} (PDF)`}
+          </Button>
+        )}
 
         {donors.length > 6 && (
           <div className="relative">

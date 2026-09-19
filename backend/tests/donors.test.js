@@ -155,6 +155,65 @@ describe("Aportantes", () => {
     assert.equal(archivada.body.phone, "999 111 222");
   });
 
+  test("la constancia anual resume el año por tipo y por mes", async () => {
+    const { pastor, ws } = await iglesia();
+    const marta = (await crearAportante(pastor, ws, { name: "Marta Quispe", document: "45678912" }).expect(201)).body;
+    await ingreso(pastor, ws, { amount: 200, donor: marta._id, date: "2026-02-10" }).expect(201);
+    await ingreso(pastor, ws, { amount: 150.5, donor: marta._id, category: "ofrendas", date: "2026-08-03" }).expect(201);
+    //! De otro año y de otra persona: no entran en su constancia
+    await ingreso(pastor, ws, { amount: 900, donor: marta._id, date: "2025-02-10" }).expect(201);
+
+    const { statementSummaries } = require("../controllers/donorController");
+    const resumen = (await statementSummaries(ws, 2026)).get(String(marta._id));
+    assert.equal(resumen.total, 350.5);
+    assert.deepEqual(resumen.byKind, [
+      { kind: "diezmo", amount: 200 },
+      { kind: "ofrenda", amount: 150.5 },
+    ]);
+    assert.deepEqual(resumen.byMonth, [
+      { month: 2, amount: 200 },
+      { month: 8, amount: 150.5 },
+    ]);
+  });
+
+  test("la constancia se descarga en PDF, una página por persona", async () => {
+    const { pastor, ws } = await iglesia();
+    const marta = (await crearAportante(pastor, ws, { name: "Marta Quispe" }).expect(201)).body;
+    const jorge = (await crearAportante(pastor, ws, { name: "Jorge Ríos" }).expect(201)).body;
+    await ingreso(pastor, ws, { amount: 200, donor: marta._id, date: "2026-02-10" }).expect(201);
+    await ingreso(pastor, ws, { amount: 80, donor: jorge._id, date: "2026-03-10" }).expect(201);
+
+    const pdf = (url) =>
+      as("get", url, pastor, ws)
+        .buffer()
+        .parse((res, cb) => {
+          const chunks = [];
+          res.on("data", (c) => chunks.push(Buffer.from(c)));
+          res.on("end", () => cb(null, Buffer.concat(chunks)));
+        });
+    const paginas = (buffer) => buffer.toString("latin1").match(/\/Type\s*\/Page[^s]/g)?.length || 0;
+
+    const una = await pdf(`/api/v1/donors/${marta._id}/constancia?year=2026`).expect(200);
+    assert.match(una.headers["content-type"], /application\/pdf/);
+    assert.match(una.headers["content-disposition"], /constancia-marta-quispe-2026\.pdf/);
+    assert.ok(una.body.toString("latin1").startsWith("%PDF"), "debe ser un PDF");
+    assert.equal(paginas(una.body), 1);
+
+    //! Todas las del año en un solo archivo: una página por aportante
+    const todas = await pdf("/api/v1/donors/constancias?year=2026").expect(200);
+    assert.equal(paginas(todas.body), 2);
+
+    //! Sin aportes en el año no se emite nada
+    const vacio = await as("get", `/api/v1/donors/${marta._id}/constancia?year=2024`, pastor, ws).expect(409);
+    assert.equal(vacio.body.code, "NO_GIFTS");
+    await as("get", "/api/v1/donors/constancias?year=2024", pastor, ws).expect(409);
+
+    //! Y el auditor no puede descargarlas
+    const auditor = await createUser();
+    await invitarYAceptar(pastor, ws, auditor, "auditor");
+    await as("get", "/api/v1/donors/constancias?year=2026", auditor, ws).expect(403);
+  });
+
   test("borrar el espacio borra sus aportantes", async () => {
     const { pastor, ws } = await iglesia();
     await crearAportante(pastor, ws, { name: "Marta" }).expect(201);

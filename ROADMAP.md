@@ -56,7 +56,8 @@ despliega Netlify y Render) cuando está verificada.
       en el Excel).
 - [x] Aportantes con privacidad: quién dio cuánto solo lo ven propietario,
       tesorero y contador (la API lo oculta al auditor y a los lectores).
-- [ ] Constancias de donación anuales en PDF.
+- [x] Constancias de donación anuales en PDF (por persona o todas de un año;
+      total en cifras y en letras, por tipo de aporte y por mes).
 - [ ] Conteo de ofrenda del culto con doble firma.
 - [x] Contabilidad por fondos (general, misiones, construcción, benevolencia):
       saldo por fondo, pases entre fondos (anulables) y fondos archivados.

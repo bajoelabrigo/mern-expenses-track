@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -21,7 +21,9 @@ vi.mock("../services/workspaces/workspaceService", () => ({
   getWorkspaceAPI: vi.fn(),
 }));
 
+const downloadStatementsAPI = vi.fn();
 vi.mock("../services/donors/donorService", () => ({
+  downloadStatementsAPI: (...args) => downloadStatementsAPI(...args),
   listDonorsAPI: vi.fn(async () => ({
     year: 2026,
     donors: [
@@ -64,6 +66,11 @@ describe("Aportantes", () => {
     expect(screen.getAllByText("S/ 350.50")).toHaveLength(2);
     expect(screen.getByText("2 aportes en 2026")).toBeInTheDocument();
     expect(screen.getByText("Archivados · 1")).toBeInTheDocument();
+
+    //! Y puede bajar las constancias del año
+    fireEvent.click(screen.getByRole("button", { name: /Constancias de 2026/ }));
+    await waitFor(() => expect(downloadStatementsAPI).toHaveBeenCalled());
+    expect(downloadStatementsAPI.mock.calls[0][0]).toEqual({ year: new Date().getFullYear() });
   });
 
   it("el auditor no entra a la pantalla ni la ve en el menú", async () => {
