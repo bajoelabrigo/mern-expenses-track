@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -11,7 +11,11 @@ import {
   FaWallet,
 } from "react-icons/fa";
 import { listCategoriesAPI } from "../../services/category/categoryService";
-import { addTransactionAPI } from "../../services/transactions/transactionService";
+import {
+  addTransactionAPI,
+  attachReceiptAPI,
+} from "../../services/transactions/transactionService";
+import ReceiptPicker from "./ReceiptPicker";
 import { getErrorMessage, isNetworkError } from "../../lib/axios";
 import { addToOutbox, newClientId } from "../../lib/outbox";
 import { useWorkspace } from "../../hooks/useWorkspace";
@@ -55,6 +59,7 @@ const TransactionForm = () => {
   const queryClient = useQueryClient();
   const userId = useSelector((state) => state.auth.user?.id);
   const { workspace } = useWorkspace();
+  const [receiptFile, setReceiptFile] = useState(null);
 
   //! Intenta enviar; sin conexión (o si el servidor no responde) lo guarda en
   //! la bandeja de salida con el espacio actual y se envía solo después. El
@@ -74,13 +79,30 @@ const TransactionForm = () => {
     };
 
     if (!navigator.onLine) return queue();
+    let created;
     try {
-      await addTransactionAPI({ ...values, clientId }, { workspaceId: workspace._id });
-      return { queued: false };
+      created = await addTransactionAPI({ ...values, clientId }, { workspaceId: workspace._id });
     } catch (err) {
       if (isNetworkError(err)) return queue();
       throw err;
     }
+
+    //! El comprobante se sube después del movimiento. Si falla, el movimiento
+    //! YA está guardado: se avisa para adjuntarlo desde "Editar", nunca se
+    //! presenta como si no se hubiera guardado nada.
+    let receiptError = "";
+    if (receiptFile && created?.[0]?._id) {
+      try {
+        await attachReceiptAPI({
+          id: created[0]._id,
+          file: receiptFile,
+          workspaceId: workspace._id,
+        });
+      } catch (err) {
+        receiptError = getErrorMessage(err);
+      }
+    }
+    return { queued: false, receiptError };
   };
 
   const { mutateAsync, isPending, isError, error, isSuccess, data } = useMutation({
@@ -99,6 +121,9 @@ const TransactionForm = () => {
     },
   });
   const queued = Boolean(data?.queued);
+  const receiptError = data?.receiptError || "";
+  //! Sin conexión el comprobante no viaja en la bandeja de salida
+  const receiptLost = queued && Boolean(receiptFile);
 
   //! Categorías para el desplegable
   const {
@@ -143,10 +168,10 @@ const TransactionForm = () => {
       //! Si quedó en la bandeja se deja leer el aviso un poco más
       const timeout = setTimeout(() => {
         navigate("/dashboard");
-      }, queued ? 2500 : 1000);
+      }, queued || receiptError ? 4000 : 1000);
       return () => clearTimeout(timeout);
     }
-  }, [isSuccess, navigate, queued]);
+  }, [isSuccess, navigate, queued, receiptError]);
 
   return (
     <form
@@ -173,6 +198,18 @@ const TransactionForm = () => {
               ? "Sin conexión: guardado en este dispositivo. Se enviará solo al volver la conexión."
               : "Transacción agregada exitosamente"
           }
+        />
+      )}
+      {isSuccess && receiptLost && (
+        <AlertMessage
+          type="error"
+          message="El comprobante no se guardó sin conexión: adjúntalo desde Editar cuando vuelvas a tener señal."
+        />
+      )}
+      {isSuccess && receiptError && (
+        <AlertMessage
+          type="error"
+          message={`El movimiento se guardó, pero el comprobante no: ${receiptError} Adjúntalo desde Editar.`}
         />
       )}
 
@@ -349,6 +386,8 @@ const TransactionForm = () => {
       )}
 
       {/* Submit */}
+      <ReceiptPicker value={receiptFile} onChange={setReceiptFile} disabled={isPending || isSuccess} />
+
       <button
         type="submit"
         disabled={isPending || isSuccess}

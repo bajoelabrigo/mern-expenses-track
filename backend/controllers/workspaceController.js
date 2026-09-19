@@ -18,6 +18,7 @@ const { CURRENCIES } = require("../utils/money");
 const { audit } = require("../utils/audit");
 const { sendMail, simpleEmail } = require("../utils/mailer");
 const { APP_URL } = require("../config/env");
+const { receiptStorage } = require("../services/receiptStorage");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -164,6 +165,13 @@ exports.remove = asyncHandler(async (req, res) => {
     Membership.deleteMany({ workspace: workspaceId }),
   ]);
   await req.workspace.deleteOne();
+
+  //! Y sus comprobantes en Cloudinary (carpeta del espacio)
+  if (receiptStorage.isConfigured()) {
+    await receiptStorage.destroyWorkspace(String(workspaceId)).catch((err) =>
+      console.error(`[receipt] No se borraron los de ${workspaceId}:`, err.message)
+    );
+  }
 
   //! Quien lo tenía como predeterminado pasa a otro de sus espacios la próxima
   //! vez (repairDefaultWorkspace); aquí solo se limpia la referencia.

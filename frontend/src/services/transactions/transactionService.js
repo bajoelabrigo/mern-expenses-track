@@ -160,3 +160,24 @@ export const exportTransactionExcelAPI = async ({
 
   return fileName;
 };
+
+//! Adjuntar o reemplazar el comprobante (foto o PDF)
+export const attachReceiptAPI = async ({ id, file, workspaceId }) => {
+  const form = new FormData();
+  form.append("receipt", file);
+  const response = await axiosInstance.put(`/transactions/${id}/receipt`, form, {
+    headers: workspaceId ? { "X-Workspace-Id": workspaceId } : undefined,
+  });
+  return response.data;
+};
+
+//! Enlace temporal (5 minutos) para ver el comprobante
+export const getReceiptUrlAPI = async (id) => {
+  const response = await axiosInstance.get(`/transactions/${id}/receipt`);
+  return response.data;
+};
+
+export const removeReceiptAPI = async (id) => {
+  const response = await axiosInstance.delete(`/transactions/${id}/receipt`);
+  return response.data;
+};

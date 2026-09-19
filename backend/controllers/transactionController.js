@@ -9,6 +9,7 @@ const {
 } = require("../utils/dates");
 const { toCents, fromCents } = require("../utils/money");
 const { audit, transactionSnapshot } = require("../utils/audit");
+const { receiptStorage } = require("../services/receiptStorage");
 
 const TYPES = ["income", "expense"];
 const RECURRENCE_TYPES = ["daily", "weekly", "monthly", "yearly"];
@@ -420,7 +421,16 @@ const transactionController = {
     }
 
     const before = transactionSnapshot(transaction);
+    const receipt = transaction.receipt;
     await transaction.deleteOne();
+
+    //! El comprobante se va con el movimiento. Si Cloudinary falla, el
+    //! movimiento ya no existe: se registra para limpiarlo a mano.
+    if (receipt) {
+      await receiptStorage.destroy(receipt).catch((err) =>
+        console.error(`[receipt] No se borró ${receipt.publicId}:`, err.message)
+      );
+    }
 
     await audit(req, {
       action: "transaction.purge",
@@ -430,6 +440,94 @@ const transactionController = {
     });
 
     res.status(200).json({ message: "Movimiento eliminado definitivamente" });
+  }),
+
+  //! Adjuntar (o reemplazar) el comprobante. El archivo ya viene validado por
+  //! el middleware receiptUpload.
+  attachReceipt: asyncHandler(async (req, res) => {
+    if (!receiptStorage.isConfigured()) {
+      return res
+        .status(503)
+        .json({ message: "Los comprobantes no están disponibles en este servidor" });
+    }
+
+    const transaction = await findInWorkspace(req);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transacción no encontrada" });
+    }
+    if (transaction.voided) {
+      return res
+        .status(409)
+        .json({ message: "No se puede adjuntar a un movimiento anulado" });
+    }
+
+    const previous = transaction.receipt;
+    const stored = await receiptStorage.upload({
+      buffer: req.file.buffer,
+      mimetype: req.file.mimetype,
+      workspaceId: String(req.workspace._id),
+    });
+
+    transaction.receipt = { ...stored, uploadedAt: new Date(), uploadedBy: req.user._id };
+    await transaction.save();
+
+    //! El anterior se borra DESPUÉS de guardar el nuevo: si algo falla antes,
+    //! el movimiento sigue teniendo un comprobante válido
+    if (previous) {
+      await receiptStorage.destroy(previous).catch((err) =>
+        console.error(`[receipt] No se borró ${previous.publicId}:`, err.message)
+      );
+    }
+
+    await audit(req, {
+      action: previous ? "receipt.replace" : "receipt.attach",
+      entity: "transaction",
+      entityId: transaction._id,
+      after: { receipt: stored.format || stored.resourceType },
+    });
+
+    res.status(200).json(transaction);
+  }),
+
+  //! Enlace temporal para ver el comprobante (quien pueda ver el movimiento)
+  getReceipt: asyncHandler(async (req, res) => {
+    const transaction = await findInWorkspace(req);
+    if (!transaction || !transaction.receipt) {
+      return res.status(404).json({ message: "Este movimiento no tiene comprobante" });
+    }
+    if (!receiptStorage.isConfigured()) {
+      return res
+        .status(503)
+        .json({ message: "Los comprobantes no están disponibles en este servidor" });
+    }
+
+    res.status(200).json({
+      url: receiptStorage.viewUrl(transaction.receipt),
+      format: transaction.receipt.format,
+    });
+  }),
+
+  //! Quitar el comprobante
+  removeReceipt: asyncHandler(async (req, res) => {
+    const transaction = await findInWorkspace(req);
+    if (!transaction || !transaction.receipt) {
+      return res.status(404).json({ message: "Este movimiento no tiene comprobante" });
+    }
+
+    const receipt = transaction.receipt;
+    transaction.receipt = null;
+    await transaction.save();
+    await receiptStorage.destroy(receipt).catch((err) =>
+      console.error(`[receipt] No se borró ${receipt.publicId}:`, err.message)
+    );
+
+    await audit(req, {
+      action: "receipt.remove",
+      entity: "transaction",
+      entityId: transaction._id,
+    });
+
+    res.status(200).json({ message: "Comprobante eliminado" });
   }),
 
   //! Transacciones por período (o rango personalizado), con filtro de categoría

@@ -71,6 +71,22 @@ const transactionSchema = new mongoose.Schema(
     //! mismo movimiento llega dos veces (se reintentó sin saber que el primer
     //! envío sí llegó), no se duplica.
     clientId: { type: String, trim: true, maxlength: 64 },
+    //! Comprobante (foto o PDF) en Cloudinary con entrega autenticada. El
+    //! publicId no se expone: se ve con un enlace firmado y temporal.
+    receipt: {
+      type: new mongoose.Schema(
+        {
+          publicId: { type: String, required: true },
+          resourceType: { type: String, enum: ["image", "raw"], required: true },
+          format: { type: String, default: "" },
+          bytes: { type: Number, default: 0 },
+          uploadedAt: { type: Date, default: Date.now },
+          uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        },
+        { _id: false }
+      ),
+      default: null,
+    },
     //! Anulación: la fila se sigue viendo (tachada, con su motivo) pero deja de
     //! sumar. Un movimiento que desaparece sin rastro hace imposible explicar
     //! un descuadre después.
@@ -96,6 +112,10 @@ transactionSchema.set("toJSON", {
   virtuals: true,
   transform: (doc, ret) => {
     delete ret.amountCents;
+    //! Del comprobante solo se dice que existe y qué es
+    ret.receipt = ret.receipt
+      ? { format: ret.receipt.format, bytes: ret.receipt.bytes, uploadedAt: ret.receipt.uploadedAt }
+      : null;
     delete ret.__v;
     delete ret.id;
     return ret;

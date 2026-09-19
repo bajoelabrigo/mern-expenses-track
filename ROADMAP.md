@@ -31,7 +31,7 @@ despliega Netlify y Render) cuando está verificada.
 - [x] Manifest, íconos y pantalla de inicio (`vite-plugin-pwa`).
 - [x] Service worker: la app abre sin conexión.
 - [x] Registrar movimientos sin conexión y sincronizar al volver, sin duplicados.
-- [ ] Foto del comprobante con la cámara del móvil.
+- [x] Foto del comprobante con la cámara del móvil (Cloudinary privado, enlaces de 5 min).
 - [x] APK como Trusted Web Activity (Bubblewrap) con
       `/.well-known/assetlinks.json` en Netlify (verificado por Google y
       probado en un emulador Android 17). Ver `android/README.md`.

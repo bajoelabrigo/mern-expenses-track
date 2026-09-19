@@ -16,6 +16,8 @@ import {
 } from "../../services/transactions/transactionService";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
+import ReceiptManager from "./ReceiptManager";
+import { useWorkspace } from "../../hooks/useWorkspace";
 
 const validationSchema = Yup.object({
   type: Yup.string()
@@ -36,6 +38,7 @@ const TransactionUpdate = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { can } = useWorkspace();
 
   //! Datos de la transacción a editar (con React Query, no con un efecto manual)
   const {
@@ -100,8 +103,11 @@ const TransactionUpdate = () => {
   }, [isSuccess, navigate]);
 
   return (
-    <div className="fixed left-0 top-0 z-50 flex h-full min-h-screen w-full items-center justify-center bg-black/70 px-4 py-5 overflow-y-auto">
-      <div className="md:px-16 w-full max-w-2xl rounded-lg bg-white md:py-8 py-12">
+    //! Sin items-center: con contenido más alto que la pantalla (móvil), el
+    //! centrado dejaba la parte de arriba fuera de alcance del scroll. my-auto
+    //! centra cuando cabe y deja desplazarse cuando no.
+    <div className="fixed left-0 top-0 z-50 flex h-full min-h-screen w-full justify-center bg-black/70 px-4 py-5 overflow-y-auto">
+      <div className="my-auto md:px-16 w-full max-w-2xl rounded-lg bg-white md:py-8 py-6">
         <form
           onSubmit={formik.handleSubmit}
           className="max-w-lg mx-auto my-10 bg-white p-6 rounded-lg shadow-lg space-y-6"
@@ -247,6 +253,12 @@ const TransactionUpdate = () => {
             </Link>
           </div>
         </form>
+        {/* Fuera del formulario: tiene sus propios botones y su propio guardado */}
+        {transaction && (
+          <div className="max-w-lg mx-auto mb-6 bg-white p-6 rounded-lg shadow-lg">
+            <ReceiptManager transaction={transaction} canWrite={can("tx:write")} />
+          </div>
+        )}
       </div>
     </div>
   );
