@@ -143,17 +143,24 @@ describe("Categorías", () => {
     await request(app)
       .get(`/api/v1/categories/${categoria.body._id}`)
       .set("Authorization", `Bearer ${intruso.token}`)
-      .expect(403);
+      .expect(404);
 
     await request(app)
       .put(`/api/v1/categories/update/${categoria.body._id}`)
       .set("Authorization", `Bearer ${intruso.token}`)
       .send({ name: "hackeada" })
-      .expect(403);
+      .expect(404);
 
     await request(app)
       .delete(`/api/v1/categories/delete/${categoria.body._id}`)
       .set("Authorization", `Bearer ${intruso.token}`)
+      .expect(404);
+
+    //! Pedir el espacio del dueño por la cabecera tampoco sirve
+    await request(app)
+      .get("/api/v1/categories/lists")
+      .set("Authorization", `Bearer ${intruso.token}`)
+      .set("X-Workspace-Id", String(dueño.user.defaultWorkspace))
       .expect(403);
   });
 

@@ -2,11 +2,11 @@ const mongoose = require("mongoose");
 
 const CategorySchema = new mongoose.Schema(
   {
-    user: {
+    //! Las categorías son del espacio: todos sus miembros usan la misma lista
+    workspace: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "Workspace",
       required: true,
-      index: true,
     },
     name: {
       type: String,
@@ -34,6 +34,6 @@ const CategorySchema = new mongoose.Schema(
 );
 
 //! Un usuario no puede repetir el nombre de categoría (garantía a nivel de BD)
-CategorySchema.index({ user: 1, name: 1 }, { unique: true });
+CategorySchema.index({ workspace: 1, name: 1 }, { unique: true });
 
 module.exports = mongoose.model("Category", CategorySchema);

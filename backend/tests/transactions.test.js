@@ -149,6 +149,7 @@ describe("Transacciones", () => {
 
     const id = creada.body[0]._id;
 
+    //! Desde su propio espacio el intruso ni siquiera sabe que existe (404)
     await request(app)
       .get(`/api/v1/transactions/${id}`)
       .set("Authorization", `Bearer ${intruso.token}`)
@@ -158,11 +159,18 @@ describe("Transacciones", () => {
       .put(`/api/v1/transactions/update/${id}`)
       .set("Authorization", `Bearer ${intruso.token}`)
       .send({ amount: 99999 })
-      .expect(403);
+      .expect(404);
 
     await request(app)
       .delete(`/api/v1/transactions/delete/${id}`)
       .set("Authorization", `Bearer ${intruso.token}`)
+      .expect(404);
+
+    //! Y pedir el espacio del dueño por la cabecera no le da acceso
+    await request(app)
+      .get("/api/v1/transactions/lists")
+      .set("Authorization", `Bearer ${intruso.token}`)
+      .set("X-Workspace-Id", String(dueño.user.defaultWorkspace))
       .expect(403);
 
     const listado = await request(app)
@@ -171,6 +179,14 @@ describe("Transacciones", () => {
       .expect(200);
 
     assert.equal(listado.body.total, 0);
+
+    //! El movimiento del dueño sigue intacto
+    const intacta = await request(app)
+      .get(`/api/v1/transactions/${id}`)
+      .set("Authorization", `Bearer ${dueño.token}`)
+      .expect(200);
+    assert.equal(intacta.body.amount, 100);
+    assert.equal(intacta.body.voided, false);
   });
 
   test("un id con formato inválido responde 400 y no 500", async () => {

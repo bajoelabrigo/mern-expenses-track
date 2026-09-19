@@ -11,6 +11,8 @@ const userRouter = require("./routes/userRouter");
 const categoryRouter = require("./routes/categoryRouter");
 const transactionRouter = require("./routes/transactionRouter");
 const adminRouter = require("./routes/adminRoutes");
+const workspaceRouter = require("./routes/workspaceRouter");
+const invitationRouter = require("./routes/invitationRouter");
 const { CORS_ORIGINS, SERVE_FRONTEND, isProduction } = require("./config/env");
 
 const app = express();
@@ -39,7 +41,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Workspace-Id"],
 };
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
@@ -63,6 +65,8 @@ app.use("/api/v1/users", userRouter);
 app.use("/api/v1/categories", categoryRouter);
 app.use("/api/v1/transactions", transactionRouter);
 app.use("/api/v1/admin", adminRouter);
+app.use("/api/v1/workspaces", workspaceRouter);
+app.use("/api/v1/invitations", invitationRouter);
 
 //! Servir el frontend compilado solo si se activa explícitamente
 if (SERVE_FRONTEND) {

@@ -29,4 +29,18 @@ const apiLimiter = rateLimit({
   },
 });
 
-module.exports = { authLimiter, apiLimiter };
+//! Acciones que envían un correo (recuperar contraseña, invitaciones). Cuenta
+//! TODAS las peticiones, también las exitosas: "olvidé mi contraseña" responde
+//! siempre 200 y, sin este límite, serviría para inundar un buzón ajeno.
+const emailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip,
+  message: {
+    message: "Demasiados correos solicitados. Vuelve a intentarlo en 15 minutos.",
+  },
+});
+
+module.exports = { authLimiter, apiLimiter, emailLimiter };

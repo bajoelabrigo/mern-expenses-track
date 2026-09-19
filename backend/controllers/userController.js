@@ -1,7 +1,12 @@
+const crypto = require("crypto");
 const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../model/User");
+const Membership = require("../model/Membership");
+const { createWorkspace } = require("../services/workspaceService");
+const { sendMail, simpleEmail } = require("../utils/mailer");
+const { CURRENCIES } = require("../utils/money");
 const {
   JWT_SECRET,
   JWT_EXPIRES_IN,
@@ -9,7 +14,14 @@ const {
   COOKIE_SAMESITE,
   isProduction,
   MIN_PASSWORD_LENGTH,
+  APP_URL,
 } = require("../config/env");
+
+//! Validez del enlace para restablecer la contraseña
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+
+const hashToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -19,11 +31,11 @@ const publicUser = (user) => ({
   username: user.username,
   email: user.email,
   role: user.role,
-  iglesia: user.iglesia,
+  defaultWorkspace: user.defaultWorkspace || null,
 });
 
 const signToken = (user) =>
-  jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+  jwt.sign({ id: user._id, role: user.role, v: user.tokenVersion || 0 }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
 
@@ -37,19 +49,20 @@ const cookieOptions = () => ({
 });
 
 const usersController = {
-  //! Registro
+  //! Registro. Siempre crea el espacio personal; si se indica una iglesia,
+  //! crea también su espacio y lo deja como predeterminado.
   register: asyncHandler(async (req, res) => {
-    let { username, email, password, iglesia } = req.body;
+    let { username, email, password, iglesia, currency } = req.body;
 
-    if (!username || !email || !password || !iglesia) {
+    if (!username || !email || !password) {
       return res
         .status(400)
-        .json({ message: "Todos los campos son obligatorios" });
+        .json({ message: "Nombre de usuario, correo y contraseña son obligatorios" });
     }
 
     email = String(email).toLowerCase().trim();
     username = String(username).trim();
-    iglesia = String(iglesia).trim();
+    iglesia = iglesia ? String(iglesia).trim() : "";
 
     if (!EMAIL_REGEX.test(email)) {
       return res.status(400).json({ message: "Formato de correo inválido" });
@@ -65,6 +78,16 @@ const usersController = {
       return res.status(400).json({
         message: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`,
       });
+    }
+
+    if (iglesia && iglesia.length < 2) {
+      return res.status(400).json({
+        message: "El nombre de la iglesia debe tener al menos 2 caracteres",
+      });
+    }
+
+    if (currency !== undefined && !CURRENCIES.includes(currency)) {
+      return res.status(400).json({ message: "Moneda no admitida" });
     }
 
     const existUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -83,8 +106,27 @@ const usersController = {
       email,
       username,
       password: hashedPassword,
-      iglesia,
     });
+
+    const personal = await createWorkspace({
+      name: "Mis finanzas",
+      kind: "personal",
+      currency,
+      owner: userCreated,
+    });
+
+    let defaultWorkspace = personal;
+    if (iglesia) {
+      defaultWorkspace = await createWorkspace({
+        name: iglesia,
+        kind: "iglesia",
+        currency,
+        owner: userCreated,
+      });
+    }
+
+    userCreated.defaultWorkspace = defaultWorkspace._id;
+    await userCreated.save();
 
     res.status(201).json({
       message: "Usuario registrado exitosamente",
@@ -184,8 +226,9 @@ const usersController = {
     }
 
     user.password = await bcrypt.hash(newPassword, 12);
-    //! Invalida cualquier token emitido antes de este instante
+    //! Invalida cualquier sesión abierta con la contraseña anterior
     user.passwordChangedAt = new Date();
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
     res.clearCookie("token", cookieOptions());
@@ -262,6 +305,106 @@ const usersController = {
     res.status(200).json({
       message: "Perfil actualizado exitosamente",
       user: publicUser(updatedUser),
+    });
+  }),
+
+  //! Elegir el espacio que se abre al iniciar sesión
+  setDefaultWorkspace: asyncHandler(async (req, res) => {
+    const { workspaceId } = req.body;
+
+    const isMember =
+      workspaceId &&
+      (await Membership.exists({ user: req.user._id, workspace: workspaceId }));
+    if (!isMember) {
+      return res.status(403).json({ message: "No perteneces a ese espacio" });
+    }
+
+    req.user.defaultWorkspace = workspaceId;
+    await User.updateOne({ _id: req.user._id }, { defaultWorkspace: workspaceId });
+
+    res.status(200).json({
+      message: "Espacio predeterminado actualizado",
+      user: publicUser(req.user),
+    });
+  }),
+
+  //! Pedir el enlace para restablecer la contraseña. Responde lo mismo exista o
+  //! no la cuenta: si no, serviría para averiguar qué correos están registrados.
+  forgotPassword: asyncHandler(async (req, res) => {
+    const email = String(req.body?.email || "").toLowerCase().trim();
+    const generic = {
+      message:
+        "Si el correo está registrado, te enviamos un enlace para restablecer la contraseña.",
+    };
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(200).json(generic);
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(200).json(generic);
+
+    const token = crypto.randomBytes(32).toString("hex");
+    await User.updateOne(
+      { _id: user._id },
+      {
+        passwordResetTokenHash: hashToken(token),
+        passwordResetExpires: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+      }
+    );
+
+    const url = `${APP_URL}/restablecer-contrasena/${token}`;
+    await sendMail({
+      to: user.email,
+      subject: "Restablecer tu contraseña",
+      ...simpleEmail({
+        title: "Restablecer tu contraseña",
+        intro: `Hola ${user.username}, recibimos una solicitud para cambiar tu contraseña. El enlace vale durante 1 hora.`,
+        buttonText: "Elegir una contraseña nueva",
+        url,
+        footer: "Si no fuiste tú, ignora este correo: tu contraseña no cambia.",
+      }),
+    });
+
+    res.status(200).json(generic);
+  }),
+
+  //! Fijar una contraseña nueva con el enlace del correo
+  resetPassword: asyncHandler(async (req, res) => {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    if (!password || typeof password !== "string") {
+      return res.status(400).json({ message: "La nueva contraseña es obligatoria" });
+    }
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        message: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`,
+      });
+    }
+
+    const user = await User.findOne({
+      passwordResetTokenHash: hashToken(String(token || "")),
+      passwordResetExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "El enlace no es válido o ya caducó. Pide uno nuevo.",
+        code: "INVALID_RESET_TOKEN",
+      });
+    }
+
+    user.password = await bcrypt.hash(password, 12);
+    //! Cierra las sesiones abiertas con la contraseña anterior
+    user.passwordChangedAt = new Date();
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    user.passwordResetTokenHash = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    res.status(200).json({
+      message: "Contraseña actualizada. Ya puedes iniciar sesión.",
     });
   }),
 };

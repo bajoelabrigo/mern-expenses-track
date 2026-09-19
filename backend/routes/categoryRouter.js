@@ -1,22 +1,32 @@
 const express = require("express");
 const isAuthenticated = require("../middlewares/isAuth");
 const validateObjectId = require("../middlewares/validateObjectId");
+const { withWorkspace, requirePermission } = require("../middlewares/workspace");
 const categoryController = require("../controllers/categoryController");
 
 const categoryRouter = express.Router();
 
-//! Todas las rutas de categorías requieren sesión
-categoryRouter.use(isAuthenticated);
+//! Todas las rutas exigen sesión y trabajan sobre el espacio actual
+categoryRouter.use(isAuthenticated, withWorkspace);
 
-categoryRouter.post("/create", categoryController.create);
-categoryRouter.get("/lists", categoryController.lists);
-categoryRouter.put("/update/:id", validateObjectId(), categoryController.update);
+const read = requirePermission("tx:read");
+const write = requirePermission("category:write");
+
+categoryRouter.post("/create", write, categoryController.create);
+categoryRouter.get("/lists", read, categoryController.lists);
+categoryRouter.put(
+  "/update/:id",
+  validateObjectId(),
+  write,
+  categoryController.update
+);
 categoryRouter.delete(
   "/delete/:id",
   validateObjectId(),
+  write,
   categoryController.delete
 );
 //! Ruta con parámetro al final para no capturar /lists ni /create
-categoryRouter.get("/:id", validateObjectId(), categoryController.getOne);
+categoryRouter.get("/:id", validateObjectId(), read, categoryController.getOne);
 
 module.exports = categoryRouter;
