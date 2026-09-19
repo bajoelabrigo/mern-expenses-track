@@ -7,13 +7,16 @@ import {
 } from "../../services/transactions/transactionService";
 import { listCategoriesAPI } from "../../services/category/categoryService";
 import { useWorkspace } from "../../hooks/useWorkspace";
+import { useIsDesktop } from "../../hooks/useMediaQuery";
 import { getErrorMessage } from "../../lib/axios";
-import { formatMoney, fromCents, toCents } from "../../lib/money";
-import { dayLabel, toISODate } from "../../lib/periods";
+import { formatMoney, fromCents } from "../../lib/money";
+import { dayLabel } from "../../lib/periods";
 import { Button, Card, Chip, EmptyState, Input, PageHeader } from "../ui";
 import AlertMessage from "../Alert/AlertMessage";
 import TransactionRow from "./TransactionRow";
 import PendingTransactions from "./PendingTransactions";
+import TransactionsTable from "./TransactionsTable";
+import { groupByDay } from "./groupByDay";
 
 const PAGE_SIZE = 30;
 
@@ -35,25 +38,10 @@ const useDebounced = (value, ms = 350) => {
   return debounced;
 };
 
-//! Agrupa por día, con el neto de cada día
-const groupByDay = (transactions) => {
-  const groups = [];
-  const index = new Map();
-  transactions.forEach((t) => {
-    const key = toISODate(new Date(t.date));
-    if (!index.has(key)) {
-      index.set(key, groups.length);
-      groups.push({ key, date: t.date, items: [], net: 0 });
-    }
-    const group = groups[index.get(key)];
-    group.items.push(t);
-    if (!t.voided) group.net += toCents(t.amount) * (t.type === "income" ? 1 : -1);
-  });
-  return groups;
-};
-
 const MovementsPage = () => {
   const { currency, can } = useWorkspace();
+  //! En pantallas grandes, tabla; en el móvil, lista por días
+  const isDesktop = useIsDesktop();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [showDates, setShowDates] = useState(false);
@@ -96,7 +84,7 @@ const MovementsPage = () => {
   });
 
   return (
-    <div>
+    <div className="max-w-3xl mx-auto lg:max-w-none">
       <PageHeader
         title="Movimientos"
         subtitle={query.isLoading ? "Cargando…" : `${total} ${total === 1 ? "movimiento" : "movimientos"}`}
@@ -116,33 +104,35 @@ const MovementsPage = () => {
 
       <PendingTransactions />
 
-      <div className="relative">
-        <LuSearch aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-        <Input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por concepto o categoría"
-          aria-label="Buscar movimientos"
-          className="pl-11 rounded-full border-transparent shadow-card"
-        />
-      </div>
+      <div className="lg:flex lg:items-center lg:gap-4">
+        <div className="relative lg:w-80 lg:shrink-0">
+          <LuSearch aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+          <Input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por concepto o categoría"
+            aria-label="Buscar movimientos"
+            className="pl-11 rounded-full border-transparent shadow-card"
+          />
+        </div>
 
-      <div className="mt-3 -mx-4 px-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-        {FILTERS.map((f) => (
-          <Chip key={f.value} selected={filter === f.value} onClick={() => setFilter(f.value)}>
-            {f.label}
+        <div className="mt-3 lg:mt-0 -mx-4 px-4 lg:mx-0 lg:px-0 flex gap-2 overflow-x-auto pb-1 lg:pb-0 [scrollbar-width:none]">
+          {FILTERS.map((f) => (
+            <Chip key={f.value} selected={filter === f.value} onClick={() => setFilter(f.value)}>
+              {f.label}
+            </Chip>
+          ))}
+          <Chip
+            selected={showDates || Boolean(dates.startDate || dates.endDate)}
+            onClick={() => setShowDates((v) => !v)}
+            aria-expanded={showDates}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <LuCalendarRange aria-hidden="true" /> Fechas
+            </span>
           </Chip>
-        ))}
-        <Chip
-          selected={showDates || Boolean(dates.startDate || dates.endDate)}
-          onClick={() => setShowDates((v) => !v)}
-          aria-expanded={showDates}
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <LuCalendarRange aria-hidden="true" /> Fechas
-          </span>
-        </Chip>
+        </div>
       </div>
 
       {showDates && (
@@ -184,7 +174,20 @@ const MovementsPage = () => {
           </EmptyState>
         )}
 
-        {groups.map((group) => (
+        {isDesktop && all.length > 0 && (
+          <div className="pt-2">
+            <TransactionsTable
+              transactions={all}
+              grouped
+              iconOf={iconOf}
+              currency={currency}
+              hrefOf={can("tx:read") ? (t) => `/update-transactions/${t._id}` : undefined}
+              caption="Movimientos"
+            />
+          </div>
+        )}
+
+        {!isDesktop && groups.map((group) => (
           <section key={group.key} aria-label={dayLabel(group.date)}>
             <div className="flex items-baseline justify-between px-1 pt-3 pb-1.5">
               <h2 className="text-xs font-bold uppercase tracking-[0.08em] text-muted">

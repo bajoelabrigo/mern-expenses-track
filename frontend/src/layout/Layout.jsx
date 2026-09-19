@@ -35,7 +35,7 @@ const Layout = () => {
       <div className="lg:pl-64">
         <OfflineBanner />
         {/* pb para no quedar debajo de la barra inferior en el móvil */}
-        <main className="max-w-3xl mx-auto px-4 pt-5 pb-28 lg:pb-12 lg:pt-8">
+        <main className="max-w-3xl lg:max-w-6xl mx-auto px-4 lg:px-8 pt-5 pb-28 lg:pb-12 lg:pt-8">
           <Outlet />
         </main>
       </div>

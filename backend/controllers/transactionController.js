@@ -622,6 +622,59 @@ const transactionController = {
     res.status(200).json({ income, expense });
   }),
 
+  //! Ingresos y gastos de cada mes de un año (para el gráfico de barras). Los
+  //! meses se cuentan en la zona horaria de quien pregunta: un movimiento del
+  //! 31 a las 22:00 en Lima no debe caer en el mes siguiente.
+  getYearByMonth: asyncHandler(async (req, res) => {
+    const year = req.query.year === undefined ? new Date().getFullYear() : Number(req.query.year);
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      return res.status(400).json({ message: "Año inválido" });
+    }
+    const timezone = String(req.query.tz || "UTC");
+    try {
+      new Intl.DateTimeFormat("es", { timeZone: timezone });
+    } catch {
+      return res.status(400).json({ message: "Zona horaria inválida" });
+    }
+
+    //! Rango holgado (un día a cada lado) y el año exacto se filtra ya en la zona
+    const rows = await Transaction.aggregate([
+      {
+        $match: {
+          workspace: req.workspace._id,
+          voided: { $ne: true },
+          date: { $gte: new Date(Date.UTC(year - 1, 11, 31)), $lt: new Date(Date.UTC(year + 1, 0, 2)) },
+        },
+      },
+      {
+        $addFields: {
+          y: { $year: { date: "$date", timezone } },
+          m: { $month: { date: "$date", timezone } },
+        },
+      },
+      { $match: { y: year } },
+      {
+        $group: {
+          _id: "$m",
+          income: { $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amountCents", 0] } },
+          expense: { $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amountCents", 0] } },
+        },
+      },
+    ]);
+
+    const byMonth = new Map(rows.map((r) => [r._id, r]));
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const row = byMonth.get(i + 1);
+      return {
+        month: i + 1,
+        income: fromCents(row?.income || 0),
+        expense: fromCents(row?.expense || 0),
+      };
+    });
+
+    res.status(200).json({ year, months });
+  }),
+
   //! Exportar a Excel respetando los filtros activos
   generateExcelReport: asyncHandler(async (req, res) => {
     const { filters, error } = buildFilters(req.workspace._id, req.query);

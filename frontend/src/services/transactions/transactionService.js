@@ -135,6 +135,16 @@ export const getMonthlySummaryAPI = async () => {
   return response.data;
 };
 
+//! Ingresos y gastos de cada mes del año, contados en la zona horaria del
+//! dispositivo
+export const getYearByMonthAPI = async (year) => {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const response = await axiosInstance.get("/transactions/summary/by-month", {
+    params: { year, tz },
+  });
+  return response.data;
+};
+
 //! Exporta a Excel respetando los filtros y dispara la descarga en el navegador.
 //! Devuelve el nombre del archivo generado.
 export const exportTransactionExcelAPI = async ({
