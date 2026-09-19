@@ -6,10 +6,16 @@ import {
   LuArchiveRestore,
   LuChevronLeft,
   LuChevronRight,
+  LuFileText,
   LuPencil,
   LuTrash2,
 } from "react-icons/lu";
-import { deleteDonorAPI, getDonorAPI, updateDonorAPI } from "../../services/donors/donorService";
+import {
+  deleteDonorAPI,
+  downloadStatementAPI,
+  getDonorAPI,
+  updateDonorAPI,
+} from "../../services/donors/donorService";
 import { listTransationsAPI } from "../../services/transactions/transactionService";
 import { listCategoriesAPI } from "../../services/category/categoryService";
 import { DONORS_KEY } from "../../hooks/useDonors";
@@ -54,6 +60,7 @@ const DonorDetail = () => {
     mutationFn: updateDonorAPI,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: DONORS_KEY }),
   });
+  const statement = useMutation({ mutationFn: downloadStatementAPI });
   const remove = useMutation({
     mutationFn: deleteDonorAPI,
     onSuccess: () => {
@@ -69,7 +76,7 @@ const DonorDetail = () => {
   }
 
   const donor = donorQuery.data;
-  const mutationError = [archive, remove].find((m) => m.isError);
+  const mutationError = [archive, remove, statement].find((m) => m.isError);
   const handleDelete = () => {
     if (window.confirm(`¿Borrar a ${donor.name}? Nunca se le registró un aporte.`)) remove.mutate(donor._id);
   };
@@ -105,22 +112,8 @@ const DonorDetail = () => {
         )}
 
         <Card className="p-5">
-          <div className="flex items-center gap-4">
-            <span
-              aria-hidden="true"
-              className="h-14 w-14 shrink-0 rounded-full bg-accent-soft text-ink grid place-items-center font-extrabold"
-            >
-              {initials(donor.name)}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-muted">Dio en {year}</p>
-              <p className="text-[32px] leading-none font-extrabold tracking-tight tabular text-ink">
-                {formatMoney(donor.given, currency)}
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                {donor.gifts} {donor.gifts === 1 ? "aporte" : "aportes"} · {formatMoney(donor.givenAllTime, currency)} en total
-              </p>
-            </div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-muted">Dio en {year}</p>
             <div className="flex items-center gap-1 rounded-full bg-surface-2 p-1 shrink-0">
               <button
                 type="button"
@@ -145,6 +138,23 @@ const DonorDetail = () => {
             </div>
           </div>
 
+          <div className="mt-2 flex items-center gap-4">
+            <span
+              aria-hidden="true"
+              className="h-14 w-14 shrink-0 rounded-full bg-accent-soft text-ink grid place-items-center font-extrabold"
+            >
+              {initials(donor.name)}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[32px] leading-none font-extrabold tracking-tight tabular text-ink">
+                {formatMoney(donor.given, currency)}
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                {donor.gifts} {donor.gifts === 1 ? "aporte" : "aportes"} · {formatMoney(donor.givenAllTime, currency)} en total
+              </p>
+            </div>
+          </div>
+
           {(donor.document || donor.phone || donor.email || donor.notes) && (
             <dl className="mt-4 divide-y divide-line border-t border-line">
               <Dato label="Documento" value={donor.document} />
@@ -155,8 +165,18 @@ const DonorDetail = () => {
           )}
         </Card>
 
-        {canWrite && (
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
+          {donor.gifts > 0 && (
+            <Button
+              variant="accent"
+              onClick={() => statement.mutate({ id: donor._id, year })}
+              disabled={statement.isPending}
+            >
+              <LuFileText aria-hidden="true" />
+              {statement.isPending ? "Preparando…" : `Constancia ${year}`}
+            </Button>
+          )}
+          {canWrite && (
             <Button
               variant="ghost"
               onClick={() => archive.mutate({ id: donor._id, archived: !donor.archived })}
@@ -165,13 +185,13 @@ const DonorDetail = () => {
               {donor.archived ? <LuArchiveRestore aria-hidden="true" /> : <LuArchive aria-hidden="true" />}
               {donor.archived ? "Volver a usarlo" : "Archivar"}
             </Button>
-            {donor.giftsAllTime === 0 && (
-              <Button variant="danger-ghost" onClick={handleDelete} disabled={remove.isPending}>
-                <LuTrash2 aria-hidden="true" /> Borrar
-              </Button>
-            )}
-          </div>
-        )}
+          )}
+          {canWrite && donor.giftsAllTime === 0 && (
+            <Button variant="danger-ghost" onClick={handleDelete} disabled={remove.isPending}>
+              <LuTrash2 aria-hidden="true" /> Borrar
+            </Button>
+          )}
+        </div>
 
         <section aria-labelledby="aportes">
           <div className="flex items-center justify-between mb-2 px-1">

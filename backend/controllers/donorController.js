@@ -4,6 +4,9 @@ const Donor = require("../model/Donor");
 const Transaction = require("../model/Transaccion");
 const { fromCents } = require("../utils/money");
 const { audit } = require("../utils/audit");
+const Category = require("../model/Category");
+const { effectiveIncomeKind, inferIncomeKind } = require("../utils/incomeKinds");
+const { buildStatements, fileSlug } = require("../services/statementPdf");
 
 //! Lo que se guarda en el historial de un aportante (sin montos: el historial
 //! lo leen roles que no ven cuánto dio cada quien; por eso además estas
@@ -81,6 +84,67 @@ const parseYear = (value) => {
 };
 
 const findInWorkspace = (req) => Donor.findOne({ _id: req.params.id, workspace: req.workspace._id });
+
+//! Lo aportado en el año por cada persona, repartido por tipo y por mes: es lo
+//! que lleva la constancia. Clave del mapa: id del aportante.
+const statementSummaries = async (workspaceId, year, donorIds) => {
+  const match = {
+    workspace: new mongoose.Types.ObjectId(String(workspaceId)),
+    type: "income",
+    voided: { $ne: true },
+    donor: donorIds ? { $in: donorIds.map((id) => new mongoose.Types.ObjectId(String(id))) } : { $ne: null },
+    date: { $gte: new Date(Date.UTC(year, 0, 1)), $lt: new Date(Date.UTC(year + 1, 0, 1)) },
+  };
+
+  const [rows, categories] = await Promise.all([
+    Transaction.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { donor: "$donor", category: "$category", month: { $month: "$date" } },
+          cents: { $sum: "$amountCents" },
+        },
+      },
+    ]),
+    Category.find({ workspace: workspaceId }),
+  ]);
+
+  const kindOf = new Map(categories.map((c) => [c.name, effectiveIncomeKind(c)]));
+  const summaries = new Map();
+
+  rows.forEach(({ _id, cents }) => {
+    const key = String(_id.donor);
+    if (!summaries.has(key)) summaries.set(key, { total: 0, kinds: new Map(), months: new Map() });
+    const summary = summaries.get(key);
+    const kind = kindOf.get(_id.category) || inferIncomeKind(_id.category);
+    summary.total += cents;
+    summary.kinds.set(kind, (summary.kinds.get(kind) || 0) + cents);
+    summary.months.set(_id.month, (summary.months.get(_id.month) || 0) + cents);
+  });
+
+  //! A unidades y en orden (los tipos por monto, los meses por calendario)
+  return new Map(
+    [...summaries].map(([key, s]) => [
+      key,
+      {
+        total: fromCents(s.total),
+        byKind: [...s.kinds]
+          .sort((a, b) => b[1] - a[1])
+          .map(([kind, cents]) => ({ kind, amount: fromCents(cents) })),
+        byMonth: [...s.months]
+          .sort((a, b) => a[0] - b[0])
+          .map(([month, cents]) => ({ month, amount: fromCents(cents) })),
+      },
+    ])
+  );
+};
+
+//! Envía el PDF ya armado con el nombre de archivo indicado
+const sendPdf = (res, doc, filename) => {
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+  doc.pipe(res);
+};
 
 const donorController = {
   //! Aportantes con lo que dio cada uno en el año pedido
@@ -178,6 +242,64 @@ const donorController = {
     res.status(200).json(withTotals(donor, totals.get(String(donor._id))));
   }),
 
+  //! Constancia anual de una persona (PDF)
+  statement: asyncHandler(async (req, res) => {
+    const donor = await findInWorkspace(req);
+    if (!donor) return res.status(404).json({ message: "Aportante no encontrado" });
+
+    const year = parseYear(req.query.year);
+    if (year === null) return res.status(400).json({ message: "Año inválido" });
+
+    const summaries = await statementSummaries(req.workspace._id, year, [donor._id]);
+    const summary = summaries.get(String(donor._id));
+    if (!summary) {
+      return res.status(409).json({
+        message: `${donor.name} no tiene aportes registrados en ${year}`,
+        code: "NO_GIFTS",
+      });
+    }
+
+    const doc = buildStatements({
+      workspace: req.workspace,
+      year,
+      issuedBy: req.user.username,
+      statements: [{ donor, summary }],
+    });
+    sendPdf(res, doc, `constancia-${fileSlug(donor.name)}-${year}.pdf`);
+  }),
+
+  //! Todas las constancias del año en un solo PDF, una por página
+  statements: asyncHandler(async (req, res) => {
+    const year = parseYear(req.query.year);
+    if (year === null) return res.status(400).json({ message: "Año inválido" });
+
+    const [donors, summaries] = await Promise.all([
+      Donor.find({ workspace: req.workspace._id }).sort({ key: 1 }),
+      statementSummaries(req.workspace._id, year),
+    ]);
+
+    //! Solo quienes aportaron ese año (incluidos los archivados: también les
+    //! toca su constancia)
+    const statements = donors
+      .filter((donor) => summaries.has(String(donor._id)))
+      .map((donor) => ({ donor, summary: summaries.get(String(donor._id)) }));
+
+    if (statements.length === 0) {
+      return res.status(409).json({
+        message: `No hay aportes registrados en ${year}`,
+        code: "NO_GIFTS",
+      });
+    }
+
+    const doc = buildStatements({
+      workspace: req.workspace,
+      year,
+      issuedBy: req.user.username,
+      statements,
+    });
+    sendPdf(res, doc, `constancias-${fileSlug(req.workspace.name)}-${year}.pdf`);
+  }),
+
   //! Solo se borra a quien no tiene ningún aporte; si ya dio, se archiva (sus
   //! datos hacen falta para las constancias)
   delete: asyncHandler(async (req, res) => {
@@ -208,3 +330,5 @@ const donorController = {
 
 module.exports = donorController;
 module.exports.donorTotals = donorTotals;
+//! Se exporta para poder comprobar en las pruebas lo que dirá la constancia
+module.exports.statementSummaries = statementSummaries;
