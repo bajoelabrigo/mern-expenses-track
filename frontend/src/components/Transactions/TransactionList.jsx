@@ -6,15 +6,19 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { FaTrash, FaEdit } from "react-icons/fa";
+import { FaBan, FaEdit, FaTrash, FaUndo } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import {
-  deleteTransactionAPI,
   listTransationsAPI,
+  purgeTransactionAPI,
+  restoreTransactionAPI,
+  voidTransactionAPI,
 } from "../../services/transactions/transactionService";
 import { listCategoriesAPI } from "../../services/category/categoryService";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
+import { useWorkspace } from "../../hooks/useWorkspace";
+import { formatMoney } from "../../lib/money";
 
 const FILTROS_INICIALES = {
   startDate: "",
@@ -25,7 +29,11 @@ const FILTROS_INICIALES = {
 
 const TransactionList = () => {
   const queryClient = useQueryClient();
+  const { can, currency } = useWorkspace();
+  const canWrite = can("tx:write");
+  const canPurge = can("tx:purge");
   const [page, setPage] = useState(1);
+  const [showVoided, setShowVoided] = useState(false);
   const [limit] = useState(5);
   const [filters, setFilters] = useState(FILTROS_INICIALES);
 
@@ -46,8 +54,9 @@ const TransactionList = () => {
   });
 
   const { data, isLoading, isError, error } = useQuery({
-    queryFn: () => listTransationsAPI({ ...filters, page, limit }),
-    queryKey: ["list-transactions", filters, page, limit],
+    queryFn: () =>
+      listTransationsAPI({ ...filters, page, limit, includeVoided: showVoided }),
+    queryKey: ["list-transactions", filters, page, limit, showVoided],
     //! API de React Query v5 (antes se usaba keepPreviousData: true, que se ignora)
     placeholderData: keepPreviousData,
   });
@@ -57,25 +66,36 @@ const TransactionList = () => {
   const totalPages = data?.totalPages || 1;
   const total = data?.total || 0;
 
-  const {
-    mutateAsync: deleteTransaction,
-    isError: isDeleteError,
-    error: deleteError,
-  } = useMutation({
-    mutationFn: deleteTransactionAPI,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["list-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-    },
-  });
+  //! Anular / restaurar / borrar cambian listas, gráficos y balances
+  const invalidar = () => {
+    queryClient.invalidateQueries({ queryKey: ["list-transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["transactions"] });
+  };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Eliminar esta transacción?")) return;
-    try {
-      await deleteTransaction(id);
-    } catch {
-      // el mensaje se muestra con AlertMessage
-    }
+  const voidMutation = useMutation({ mutationFn: voidTransactionAPI, onSuccess: invalidar });
+  const restoreMutation = useMutation({
+    mutationFn: restoreTransactionAPI,
+    onSuccess: invalidar,
+  });
+  const purgeMutation = useMutation({ mutationFn: purgeTransactionAPI, onSuccess: invalidar });
+  const actionError = [voidMutation, restoreMutation, purgeMutation].find((m) => m.isError);
+
+  //! Anular es lo normal: la fila queda tachada con su motivo y deja de sumar
+  const handleVoid = (id) => {
+    const reason = window.prompt(
+      "¿Por qué anulas este movimiento? (queda en el historial)",
+      ""
+    );
+    if (reason === null) return; // canceló
+    voidMutation.mutate({ id, reason });
+  };
+
+  //! Borrar del todo es para lo que nunca fue dinero (una prueba, un duplicado)
+  const handlePurge = (id) => {
+    const ok = window.confirm(
+      "¿Borrar definitivamente? Úsalo solo para pruebas o duplicados: no se puede deshacer. Lo normal es anular."
+    );
+    if (ok) purgeMutation.mutate(id);
   };
 
   const getCategoryIcon = (categoryName) =>
@@ -164,20 +184,33 @@ const TransactionList = () => {
               ({total} en total)
             </span>
           </h3>
-          <button
-            type="button"
-            onClick={limpiarFiltros}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Limpiar filtros
-          </button>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={showVoided}
+                onChange={(e) => {
+                  setShowVoided(e.target.checked);
+                  setPage(1);
+                }}
+              />
+              Mostrar anulados
+            </label>
+            <button
+              type="button"
+              onClick={limpiarFiltros}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Limpiar filtros
+            </button>
+          </div>
         </div>
 
         {isError && (
           <AlertMessage type="error" message={getErrorMessage(error)} />
         )}
-        {isDeleteError && (
-          <AlertMessage type="error" message={getErrorMessage(deleteError)} />
+        {actionError && (
+          <AlertMessage type="error" message={getErrorMessage(actionError.error)} />
         )}
 
         {isLoading ? (
@@ -191,9 +224,11 @@ const TransactionList = () => {
             {transactions.map((transaction) => (
               <li
                 key={transaction._id}
-                className="bg-white p-3 rounded-md shadow border flex flex-wrap gap-2 justify-between items-center"
+                className={`p-3 rounded-md shadow border flex flex-wrap gap-2 justify-between items-center ${
+                  transaction.voided ? "bg-gray-100 opacity-75" : "bg-white"
+                }`}
               >
-                <div>
+                <div className={transaction.voided ? "line-through decoration-gray-400" : ""}>
                   <span className="font-medium text-gray-600">
                     {new Date(transaction.date).toLocaleDateString("es-PE")}
                   </span>
@@ -210,8 +245,10 @@ const TransactionList = () => {
                     {getCategoryIcon(transaction.category)}
                   </span>
                   <span className="ml-2 font-semibold text-gray-800 capitalize">
-                    {transaction.category} - S/.
-                    {Number(transaction.amount).toFixed(2)}
+                    {transaction.category}
+                  </span>
+                  <span className="ml-2 font-semibold text-gray-800">
+                    {formatMoney(transaction.amount, currency)}
                   </span>
                   {transaction.description && (
                     <span className="text-sm text-gray-600 italic ml-2">
@@ -219,22 +256,64 @@ const TransactionList = () => {
                     </span>
                   )}
                 </div>
-                <div className="flex space-x-3">
-                  <Link
-                    to={`/update-transactions/${transaction._id}`}
-                    className="text-blue-500 hover:text-blue-700"
-                    aria-label="Editar transacción"
-                  >
-                    <FaEdit />
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(transaction._id)}
-                    className="text-red-500 hover:text-red-700"
-                    aria-label="Eliminar transacción"
-                  >
-                    <FaTrash />
-                  </button>
+                <div className="flex items-center gap-3">
+                  {transaction.createdBy?.username && (
+                    <span className="text-xs text-gray-400">
+                      por {transaction.createdBy.username}
+                    </span>
+                  )}
+                  {transaction.voided ? (
+                    <>
+                      <span className="text-xs text-gray-600">
+                        Anulado
+                        {transaction.voidReason ? `: ${transaction.voidReason}` : ""}
+                      </span>
+                      {canWrite && (
+                        <button
+                          type="button"
+                          onClick={() => restoreMutation.mutate(transaction._id)}
+                          className="text-blue-500 hover:text-blue-700"
+                          aria-label="Restaurar movimiento"
+                          title="Restaurar"
+                        >
+                          <FaUndo />
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    canWrite && (
+                      <>
+                        <Link
+                          to={`/update-transactions/${transaction._id}`}
+                          className="text-blue-500 hover:text-blue-700"
+                          aria-label="Editar transacción"
+                          title="Editar"
+                        >
+                          <FaEdit />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleVoid(transaction._id)}
+                          className="text-amber-600 hover:text-amber-800"
+                          aria-label="Anular movimiento"
+                          title="Anular"
+                        >
+                          <FaBan />
+                        </button>
+                      </>
+                    )
+                  )}
+                  {canPurge && (
+                    <button
+                      type="button"
+                      onClick={() => handlePurge(transaction._id)}
+                      className="text-red-500 hover:text-red-700"
+                      aria-label="Borrar definitivamente"
+                      title="Borrar definitivamente"
+                    >
+                      <FaTrash />
+                    </button>
+                  )}
                 </div>
               </li>
             ))}

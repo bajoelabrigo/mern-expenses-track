@@ -1,15 +1,13 @@
 import { axiosInstance } from "../../lib/axios";
 
-//! Listado de usuarios (solo admin)
+//! Usuarios con sus espacios (solo admin de la plataforma)
 export const getAllUsersAPI = async () => {
   const response = await axiosInstance.get("/admin/users");
   return response.data;
 };
 
-//! Dashboard de un usuario concreto (solo admin)
-export const getUserDashboardAPI = async (userId, params = {}) => {
-  const response = await axiosInstance.get(`/admin/dashboard/${userId}`, {
-    params,
-  });
+//! Espacios con miembros y movimientos (solo admin de la plataforma)
+export const getAllWorkspacesAPI = async () => {
+  const response = await axiosInstance.get("/admin/workspaces");
   return response.data;
 };

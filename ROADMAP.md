@@ -1,0 +1,74 @@
+# Hoja de ruta
+
+Una app de control de gastos para uso **personal** y como **servicio a iglesias**,
+instalable en el móvil (PWA) y con versión `.apk`.
+
+Cada fase se entrega en su propia rama, con pruebas, y solo pasa a `main` (que
+despliega Netlify y Render) cuando está verificada.
+
+## Fase 1 — Base: espacios, roles y confianza
+
+- [x] **Espacios de trabajo**: cada usuario tiene un espacio personal y puede
+      crear o unirse a espacios de iglesia. Todo (movimientos, categorías) vive
+      dentro de un espacio, no de un usuario.
+- [x] **Roles por espacio**: propietario, tesorero, contador, auditor (solo
+      lectura) y lector.
+- [x] **Invitaciones** por enlace (se puede mandar por WhatsApp) y por correo.
+- [x] **Montos en centavos** (enteros) y **moneda por espacio**. La API sigue
+      hablando en unidades (`150.50`); la conversión vive en un solo sitio.
+- [x] **Anular en vez de borrar**: un movimiento anulado se sigue viendo,
+      tachado y con su motivo, y deja de sumar. Borrar del todo queda solo para
+      el propietario.
+- [x] **Historial de auditoría**: quién creó, editó o anuló qué y cuándo.
+- [x] **Recuperación de contraseña** por correo.
+- [x] **Migración** de los datos existentes: cada usuario actual pasa a ser
+      propietario de un espacio de iglesia con sus movimientos
+      (`scripts/migrar-espacios.js`, probado con datos de la forma actual).
+- [ ] **Desplegar**: fusionar en `main` y ejecutar la migración en producción.
+
+## Fase 2 — App instalable (PWA) y APK
+
+- [ ] Manifest, íconos y pantalla de inicio (`vite-plugin-pwa`).
+- [ ] Service worker: la app abre sin conexión.
+- [ ] Registrar movimientos sin conexión y sincronizar al volver (IndexedDB).
+- [ ] Foto del comprobante con la cámara del móvil.
+- [ ] APK como Trusted Web Activity (PWABuilder/Bubblewrap) con
+      `/.well-known/assetlinks.json` en Netlify.
+- [ ] Notificaciones push (recordatorios, resumen semanal).
+
+## Fase 3 — Núcleo de iglesia
+
+- [ ] Tipos de ingreso de iglesia: diezmo, ofrenda, primicia, ofrenda especial.
+- [ ] Miembros/donantes con privacidad (solo tesorería ve quién dio cuánto).
+- [ ] Constancias de donación anuales en PDF.
+- [ ] Conteo de ofrenda del culto con doble firma.
+- [ ] Contabilidad por fondos (general, misiones, construcción, benevolencia).
+- [ ] Presupuesto anual por ministerio, con alertas al 80 % y 100 %.
+- [ ] Rol de líder de ministerio (solo ve y solicita sobre su presupuesto).
+- [ ] Campañas con meta y barra de avance.
+- [ ] Informes mensual y anual en PDF con el logo de la iglesia.
+- [ ] Enlace de solo lectura para compartir un informe con la congregación.
+
+## Fase 4 — Núcleo personal
+
+- [ ] Cuentas y tarjetas con saldo real (y fecha de corte).
+- [ ] Transferencias entre cuentas.
+- [ ] Presupuestos mensuales por categoría y metas de ahorro.
+- [ ] Recurrentes que avisan cuando toca y se confirman con el importe real.
+- [ ] Deudas y préstamos.
+- [ ] Importar el extracto del banco (CSV/Excel).
+- [ ] Etiquetas, búsqueda y filtros guardados.
+
+## Fase 5 — Servicio para iglesias
+
+- [ ] Donaciones en línea con PayPal (se reutiliza el sistema probado de
+      `holy_app`: órdenes, suscripciones, webhooks, reembolsos y comisiones).
+- [ ] Planes de suscripción para iglesias (PayPal Subscriptions).
+- [ ] Flujo de aprobación de gastos (solicitar, aprobar, pagar).
+- [ ] Conciliación bancaria y cierre mensual (bloquea editar meses cerrados).
+- [ ] Varias sedes con informe consolidado.
+- [ ] Landing page, alta guiada y datos de ejemplo.
+- [ ] Verificación de correo y 2FA para tesoreros.
+- [ ] Exportación completa de datos, términos y privacidad.
+- [ ] Infraestructura: plan de pago en Render (sin arranque en frío) y copias
+      de seguridad de Atlas.

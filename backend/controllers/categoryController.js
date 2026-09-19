@@ -1,16 +1,17 @@
 const asyncHandler = require("express-async-handler");
 const Category = require("../model/Category");
 const Transaction = require("../model/Transaccion");
+const { audit, categorySnapshot } = require("../utils/audit");
 
 const TYPES = ["income", "expense"];
 const DEFAULT_CATEGORY = "uncategorized";
 
-//! El dueño siempre puede; el admin también (panel de administración)
-const canManage = (category, user) =>
-  category.user.toString() === user._id.toString() || user.role === "admin";
+//! Busca una categoría del espacio actual (nunca de otro)
+const findInWorkspace = (req) =>
+  Category.findOne({ _id: req.params.id, workspace: req.workspace._id });
 
 const categoryController = {
-  //! Crear categoría para el usuario autenticado
+  //! Crear categoría en el espacio actual
   create: asyncHandler(async (req, res) => {
     const { name, type, icon } = req.body;
 
@@ -37,51 +38,53 @@ const categoryController = {
 
     const categoryExists = await Category.findOne({
       name: normalizedName,
-      user: req.user._id,
+      workspace: req.workspace._id,
     });
 
     if (categoryExists) {
       return res.status(409).json({
-        message: `La categoría '${categoryExists.name}' ya existe en tu lista`,
+        message: `La categoría '${categoryExists.name}' ya existe en este espacio`,
       });
     }
 
     const category = await Category.create({
       name: normalizedName,
-      user: req.user._id,
+      workspace: req.workspace._id,
       type: normalizedType,
       icon: icon || "📁",
+    });
+
+    await audit(req, {
+      action: "category.create",
+      entity: "category",
+      entityId: category._id,
+      after: categorySnapshot(category),
     });
 
     res.status(201).json(category);
   }),
 
-  //! Listar las categorías del usuario autenticado
+  //! Listar las categorías del espacio actual
   lists: asyncHandler(async (req, res) => {
-    const categories = await Category.find({ user: req.user._id }).sort({
+    const categories = await Category.find({ workspace: req.workspace._id }).sort({
       name: 1,
     });
 
     res.status(200).json(categories);
   }),
 
-  //! Actualizar (dueño o admin). Si cambia el nombre, arrastra las transacciones.
+  //! Actualizar. Si cambia el nombre, arrastra los movimientos del espacio.
   update: asyncHandler(async (req, res) => {
     const { type, name, icon } = req.body;
 
-    const category = await Category.findById(req.params.id);
+    const category = await findInWorkspace(req);
     if (!category) {
       return res.status(404).json({ message: "Categoría no encontrada" });
     }
 
-    if (!canManage(category, req.user)) {
-      return res
-        .status(403)
-        .json({ message: "No autorizado para actualizar esta categoría" });
-    }
-
     //! Se guarda ANTES de mutar el documento
     const oldName = category.name;
+    const before = categorySnapshot(category);
 
     if (name) {
       const normalizedName = String(name).trim().toLowerCase();
@@ -94,7 +97,7 @@ const categoryController = {
 
       const duplicate = await Category.findOne({
         name: normalizedName,
-        user: category.user,
+        workspace: req.workspace._id,
         _id: { $ne: category._id },
       });
 
@@ -121,51 +124,54 @@ const categoryController = {
 
     if (oldName !== updatedCategory.name) {
       await Transaction.updateMany(
-        { user: category.user, category: oldName },
+        { workspace: req.workspace._id, category: oldName },
         { $set: { category: updatedCategory.name } }
       );
     }
 
+    await audit(req, {
+      action: "category.update",
+      entity: "category",
+      entityId: category._id,
+      before,
+      after: categorySnapshot(updatedCategory),
+    });
+
     res.status(200).json(updatedCategory);
   }),
 
-  //! Eliminar (dueño o admin). Las transacciones pasan a "uncategorized".
+  //! Eliminar. Los movimientos pasan a "uncategorized".
   delete: asyncHandler(async (req, res) => {
-    const category = await Category.findById(req.params.id);
+    const category = await findInWorkspace(req);
     if (!category) {
       return res.status(404).json({ message: "Categoría no encontrada" });
     }
 
-    if (!canManage(category, req.user)) {
-      return res
-        .status(403)
-        .json({ message: "No autorizado para eliminar esta categoría" });
-    }
-
     await Transaction.updateMany(
-      { user: category.user, category: category.name },
+      { workspace: req.workspace._id, category: category.name },
       { $set: { category: DEFAULT_CATEGORY } }
     );
 
     await category.deleteOne();
+
+    await audit(req, {
+      action: "category.delete",
+      entity: "category",
+      entityId: category._id,
+      before: categorySnapshot(category),
+    });
 
     res.status(200).json({
       message: `Categoría '${category.name}' eliminada y transacciones actualizadas`,
     });
   }),
 
-  //! Obtener una categoría (dueño o admin)
+  //! Obtener una categoría del espacio actual
   getOne: asyncHandler(async (req, res) => {
-    const category = await Category.findById(req.params.id);
+    const category = await findInWorkspace(req);
 
     if (!category) {
       return res.status(404).json({ message: "Categoría no encontrada" });
-    }
-
-    if (!canManage(category, req.user)) {
-      return res
-        .status(403)
-        .json({ message: "No autorizado para ver esta categoría" });
     }
 
     res.status(200).json(category);

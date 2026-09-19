@@ -1,10 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import authReducer from "../redux/slice/authSlice";
+import workspaceReducer from "../redux/slice/workspaceSlice";
 import AdminRoute from "../components/Auth/AdminRoute";
 import AuthRoute from "../components/Auth/AuthRoute";
 import AlertMessage from "../components/Alert/AlertMessage";
@@ -16,17 +17,35 @@ vi.mock("../services/admin/adminService", () => ({
       _id: "1",
       username: "pastor",
       email: "pastor@iglesia.com",
-      iglesia: "Central",
       role: "admin",
+      workspaces: [{ _id: "w1", name: "Iglesia Central", kind: "iglesia", role: "propietario" }],
     },
   ]),
-  getUserDashboardAPI: vi.fn(),
+  getAllWorkspacesAPI: vi.fn(async () => [
+    {
+      _id: "w1",
+      name: "Iglesia Central",
+      kind: "iglesia",
+      currency: "PEN",
+      members: 3,
+      transactions: 42,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+  ]),
+}));
+
+vi.mock("../services/workspaces/workspaceService", () => ({
+  listWorkspacesAPI: vi.fn(async () => []),
+  getWorkspaceAPI: vi.fn(),
 }));
 
 const renderConEstado = (ui, { user = null, ruta = "/" } = {}) => {
   const store = configureStore({
-    reducer: { auth: authReducer },
-    preloadedState: { auth: { user, token: user ? "token" : null } },
+    reducer: { auth: authReducer, workspace: workspaceReducer },
+    preloadedState: {
+      auth: { user, token: user ? "token" : null },
+      workspace: { currentId: null },
+    },
   });
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -103,12 +122,25 @@ describe("rutas protegidas", () => {
 });
 
 describe("AdminUsersList", () => {
-  it("muestra el nombre de usuario (campo username, no name)", async () => {
+  it("lista los espacios con sus números y permite entrar como soporte", async () => {
     renderConEstado(<AdminUsersList />, {
       user: { id: "1", role: "admin" },
     });
 
+    expect(await screen.findByText(/Iglesia Central/)).toBeInTheDocument();
+    expect(screen.getByText("42")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Entrar como soporte" })).toBeInTheDocument();
+  });
+
+  it("en la pestaña de usuarios muestra username, correo y sus espacios", async () => {
+    renderConEstado(<AdminUsersList />, {
+      user: { id: "1", role: "admin" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Usuarios" }));
+
     expect(await screen.findByText("pastor")).toBeInTheDocument();
     expect(screen.getByText("pastor@iglesia.com")).toBeInTheDocument();
+    expect(screen.getByText("(Propietario)")).toBeInTheDocument();
   });
 });

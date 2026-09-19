@@ -1,8 +1,13 @@
 # Sistema Contable para Iglesias (MERN)
 
-Aplicación para registrar ingresos y gastos de una iglesia: categorías propias por
-usuario, transacciones (con recurrencia), filtros por fecha/tipo/categoría,
-gráficos, exportación a Excel y un panel de administración.
+Aplicación para llevar ingresos y gastos personales y de iglesias. Cada cuenta
+trabaja en **espacios** (uno personal y uno por iglesia o ministerio) que se
+comparten con otras personas con un **rol**: propietario, tesorero, contador,
+auditor o lector. Incluye categorías por espacio, movimientos con recurrencia,
+anulación con motivo, historial de cambios, filtros, gráficos, exportación a
+Excel, invitaciones por enlace y un panel de administración de la plataforma.
+
+La hoja de ruta está en [ROADMAP.md](ROADMAP.md).
 
 - **Backend:** Node + Express 4 + MongoDB (Mongoose), JWT.
 - **Frontend:** React 19 + Vite + Redux Toolkit + React Query + Tailwind 4.
@@ -50,6 +55,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `CORS_ORIGINS`    | no          | Orígenes permitidos, separados por coma.                           |
 | `SERVE_FRONTEND`  | no          | `true` si este servicio también sirve `frontend/dist`.             |
 | `COOKIE_SAMESITE` | no          | `none` (por defecto en producción), `lax` o `strict`.              |
+| `APP_URL`         | no          | URL pública del frontend, para los enlaces de los correos. Por defecto, el primer origen de `CORS_ORIGINS`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | no | Correo saliente (invitaciones y recuperar contraseña). Sin `SMTP_HOST` no se envía nada: el enlace sale en el log y las invitaciones se comparten copiando el enlace. |
 
 La app **no arranca** si falta `MONGO_URL` o `JWT_SECRET`, o si el secreto es
 demasiado corto: es intencional, evita desplegar con una configuración insegura.
@@ -71,12 +78,14 @@ demasiado corto: es intencional, evita desplegar con una configuración insegura
 | `npm run lint --prefix frontend`| ESLint.                                        |
 | `npm run build`                 | Instala dependencias y compila el frontend.    |
 | `npm start`                     | Arranca la API en modo producción.             |
+| `node backend/scripts/dev-memoria.js` | API contra un MongoDB en memoria, para probar en local sin tocar la base real. |
+| `node backend/scripts/migrar-espacios.js` | Migración a espacios (simulación; con `--aplicar` escribe). |
 
 ## Pruebas
 
 ```bash
-npm test --prefix backend    # 44 pruebas de integración sobre la API real
-npm test --prefix frontend   # 23 pruebas de componentes, servicios y estado
+npm test --prefix backend    # 76 pruebas de integración sobre la API real
+npm test --prefix frontend   # 36 pruebas de componentes, servicios y estado
 ```
 
 El backend levanta un MongoDB en memoria: no toca la base de datos real y no
@@ -89,71 +98,117 @@ backend/
   app.js            # aplicación Express (exportable, sin listen: se usa en tests)
   server.js         # arranque: conexión a Mongo, listen y apagado ordenado
   config/env.js     # validación y lectura de variables de entorno
-  controllers/      # lógica de usuarios, categorías, transacciones y admin
-  middlewares/      # auth, rol admin, rate limit, validación de ids, errores
+  controllers/      # usuarios, espacios, categorías, transacciones y admin
+  middlewares/      # auth, espacio actual y permisos, rate limit, ids, errores
   model/            # esquemas de Mongoose con índices
   routes/           # routers montados bajo /api/v1
-  utils/dates.js    # manejo de rangos de fechas en hora local
+  services/         # alta de espacios y espacio predeterminado
+  scripts/          # migraciones y API en memoria para desarrollo
+  utils/            # fechas, dinero (centavos), permisos, auditoría, correo
   tests/            # pruebas de integración (node:test + supertest)
 frontend/
   src/components/   # UI por dominio
   src/services/     # llamadas a la API
-  src/lib/axios.js  # instancia con token, manejo de 401 y mensajes de error
-  src/redux/        # sesión (token + usuario)
+  src/lib/axios.js  # instancia con token y espacio, manejo de 401 y errores
+  src/lib/money.js  # sumas en centavos y formato por moneda
+  src/hooks/useWorkspace.js  # espacio actual, permisos y cambio de espacio
+  src/redux/        # sesión (token + usuario) y espacio elegido
   src/utils/        # almacenamiento de sesión y URL base
   src/test/         # pruebas (Vitest + Testing Library)
 ```
 
 ## API
 
-Todas las rutas cuelgan de `/api/v1`. Salvo registro y login, requieren el
+Todas las rutas cuelgan de `/api/v1`. Salvo las públicas, requieren el
 encabezado `Authorization: Bearer <token>` o la cookie de sesión.
+
+**Espacio actual.** Movimientos y categorías son de un espacio. El cliente lo
+indica con la cabecera `X-Workspace-Id`; sin ella se usa el espacio
+predeterminado del usuario. Pedir un espacio del que no se es miembro responde
+`403` con `code: "NOT_A_MEMBER"`.
+
+**Dinero.** La API habla en unidades (`150.5`); la base guarda centavos enteros.
 
 ### Usuarios
 
-| Método | Ruta                      | Descripción                                   |
-| ------ | ------------------------- | --------------------------------------------- |
-| POST   | `/users/register`         | Crear cuenta.                                 |
-| POST   | `/users/login`            | Iniciar sesión (devuelve token y cookie).     |
-| POST   | `/users/logout`           | Cerrar sesión (limpia la cookie).             |
-| GET    | `/users/profile`          | Perfil del usuario autenticado.               |
-| PUT    | `/users/change-password`  | Cambiar contraseña (exige la actual).         |
-| PUT    | `/users/update-profile`   | Actualizar correo o nombre de usuario.        |
+| Método | Ruta                             | Descripción                                        |
+| ------ | -------------------------------- | -------------------------------------------------- |
+| POST   | `/users/register`                | Crear cuenta (con `iglesia` opcional y `currency`). |
+| POST   | `/users/login`                   | Iniciar sesión (devuelve token y cookie).          |
+| POST   | `/users/logout`                  | Cerrar sesión (limpia la cookie).                  |
+| POST   | `/users/forgot-password`         | Enviar el enlace para restablecer la contraseña.   |
+| POST   | `/users/reset-password/:token`   | Fijar una contraseña nueva con el enlace.          |
+| GET    | `/users/profile`                 | Perfil del usuario autenticado.                    |
+| PUT    | `/users/change-password`         | Cambiar contraseña (exige la actual).              |
+| PUT    | `/users/update-profile`          | Actualizar correo o nombre de usuario.             |
+| PUT    | `/users/default-workspace`       | Elegir el espacio que se abre al entrar.           |
 
-### Categorías
+### Espacios
+
+| Método | Ruta                                          | Permiso             |
+| ------ | --------------------------------------------- | ------------------- |
+| GET    | `/workspaces`                                 | mis espacios, con rol y permisos |
+| POST   | `/workspaces`                                 | cualquiera (queda de propietario) |
+| GET    | `/workspaces/:id`                             | miembro             |
+| PUT    | `/workspaces/:id`                             | `workspace:manage`  |
+| DELETE | `/workspaces/:id` (con `confirmName`)         | `workspace:delete`  |
+| GET    | `/workspaces/:id/members`                     | miembro             |
+| PUT    | `/workspaces/:id/members/:userId`             | `members:manage`    |
+| DELETE | `/workspaces/:id/members/:userId`             | `members:manage`, o uno mismo para salir |
+| GET    | `/workspaces/:id/invitations`                 | `members:manage`    |
+| POST   | `/workspaces/:id/invitations`                 | `members:manage` (devuelve el enlace) |
+| DELETE | `/workspaces/:id/invitations/:invitationId`   | `members:manage`    |
+| GET    | `/workspaces/:id/audit`                       | `audit:read`        |
+| GET    | `/invitations/:token`                         | pública (vista previa) |
+| POST   | `/invitations/:token/accept`                  | sesión con el correo invitado |
+
+| Rol          | Puede                                                               |
+| ------------ | ------------------------------------------------------------------- |
+| propietario  | todo, incluidos ajustes, borrar el espacio y borrar movimientos del todo |
+| tesorero     | movimientos, categorías, historial e invitar contadores, auditores y lectores |
+| contador     | movimientos y categorías                                            |
+| auditor      | solo lectura, incluido el historial                                 |
+| lector       | solo lectura                                                        |
+
+Las reglas viven en `backend/utils/permissions.js`.
+
+### Categorías (del espacio actual)
 
 | Método | Ruta                       | Descripción                       |
 | ------ | -------------------------- | --------------------------------- |
 | POST   | `/categories/create`       | Crear categoría.                  |
-| GET    | `/categories/lists`        | Listar categorías propias.        |
+| GET    | `/categories/lists`        | Listar las del espacio.           |
 | GET    | `/categories/:id`          | Ver una categoría.                |
 | PUT    | `/categories/update/:id`   | Editar (arrastra transacciones).  |
 | DELETE | `/categories/delete/:id`   | Eliminar (reasigna transacciones).|
 
-### Transacciones
+### Transacciones (del espacio actual)
 
 | Método | Ruta                               | Descripción                                  |
 | ------ | ---------------------------------- | -------------------------------------------- |
 | POST   | `/transactions/create`             | Crear (soporta recurrencia).                 |
-| GET    | `/transactions/lists`              | Listado paginado con filtros.                |
+| GET    | `/transactions/lists`              | Listado paginado (`includeVoided=true` para ver anulados). |
 | GET    | `/transactions/period`             | Por período o rango personalizado.           |
-| GET    | `/transactions/balance`            | Ingresos, gastos y saldo.                    |
+| GET    | `/transactions/balance`            | Ingresos, gastos y saldo (sin anulados).     |
 | GET    | `/transactions/summary/monthly`    | Totales del mes en curso.                    |
 | GET    | `/transactions/export/excel`       | Exportar a Excel respetando los filtros.     |
 | GET    | `/transactions/:id`                | Ver una transacción.                         |
 | PUT    | `/transactions/update/:id`         | Editar.                                      |
-| DELETE | `/transactions/delete/:id`         | Eliminar.                                    |
+| POST   | `/transactions/:id/void`           | Anular con `reason` (lo normal en vez de borrar). |
+| POST   | `/transactions/:id/restore`        | Deshacer la anulación.                       |
+| DELETE | `/transactions/delete/:id`         | Compatibilidad: ahora **anula**.             |
+| DELETE | `/transactions/:id/purge`          | Borrar del todo (solo propietario).          |
 
-### Administración (`role: admin`)
+### Administración de la plataforma (`role: admin`)
 
-| Método | Ruta                              | Descripción                            |
-| ------ | --------------------------------- | -------------------------------------- |
-| GET    | `/admin/users`                    | Listar usuarios.                       |
-| GET    | `/admin/dashboard/:id`            | Datos y totales de un usuario.         |
-| PUT    | `/admin/categories/:categoryId`   | Editar categoría de otro usuario.      |
-| DELETE | `/admin/categories/:categoryId`   | Eliminar categoría de otro usuario.    |
-| PUT    | `/admin/transactions/:id`         | Editar transacción de otro usuario.    |
-| DELETE | `/admin/transactions/:id`         | Eliminar transacción de otro usuario.  |
+| Método | Ruta                | Descripción                                  |
+| ------ | ------------------- | -------------------------------------------- |
+| GET    | `/admin/users`      | Usuarios con sus espacios y rol en cada uno. |
+| GET    | `/admin/workspaces` | Espacios con miembros y movimientos.         |
+
+Para revisar o corregir un espacio, el admin entra a él como soporte (misma
+cabecera `X-Workspace-Id`) con permisos de propietario; cada cambio queda en el
+historial de ese espacio con su nombre.
 
 Para convertir a un usuario en administrador hay que cambiar su campo `role` a
 `admin` directamente en la base de datos (no existe endpoint para hacerlo).
@@ -161,7 +216,11 @@ Para convertir a un usuario en administrador hay que cambiar su campo `role` a
 ## Seguridad
 
 - Contraseñas con bcrypt (coste 12) y nunca incluidas en las respuestas.
-- JWT con expiración; al cambiar la contraseña se invalidan los tokens previos.
+- JWT con expiración; al cambiar o restablecer la contraseña se invalidan las
+  sesiones previas (versión de token, no fecha: no depende del reloj).
+- Aislamiento por espacio: toda consulta filtra por el espacio actual y exige
+  ser miembro; un recurso de otro espacio responde 404, sin revelar que existe.
+- Los tokens de invitación y de recuperación se guardan solo como hash.
 - El rol se lee de la base de datos en cada petición, no del token.
 - `helmet`, límite de peticiones (`express-rate-limit`), saneado de operadores de
   Mongo y límite de tamaño del cuerpo de las peticiones.

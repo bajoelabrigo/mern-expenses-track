@@ -60,169 +60,86 @@ describe("Panel de administración", () => {
     });
   });
 
-  test("el dashboard de un usuario trae transacciones, categorías y totales", async () => {
+  test("el admin ve los espacios de cada usuario con su rol", async () => {
     const admin = await createAdmin();
-    const usuario = await createUser();
-
-    await request(app)
-      .post("/api/v1/transactions/create")
-      .set("Authorization", `Bearer ${usuario.token}`)
-      .send({
-        type: "income",
-        category: "diezmos",
-        amount: 400,
-        date: "2025-06-10T12:00:00.000Z",
-      })
-      .expect(201);
-
-    await request(app)
-      .post("/api/v1/categories/create")
-      .set("Authorization", `Bearer ${usuario.token}`)
-      .send({ name: "diezmos", type: "income" })
-      .expect(201);
+    const usuario = await createUser({ iglesia: "Iglesia Betel" });
 
     const res = await request(app)
-      .get(`/api/v1/admin/dashboard/${usuario.user.id}`)
+      .get("/api/v1/admin/users")
       .set("Authorization", `Bearer ${admin.token}`)
       .expect(200);
 
-    assert.equal(res.body.transactions.length, 1);
-    assert.equal(res.body.categories.length, 1);
-    assert.equal(res.body.totals.income, 400);
-    assert.equal(res.body.totals.balance, 400);
-    assert.equal(res.body.user.email, usuario.user.email);
-    assert.equal(res.body.user.password, undefined);
+    const fila = res.body.find((u) => u.username === usuario.user.username);
+    const nombres = fila.workspaces.map((w) => w.name).sort();
+    assert.deepEqual(nombres, ["Iglesia Betel", "Mis finanzas"]);
+    fila.workspaces.forEach((w) => assert.equal(w.role, "propietario"));
   });
 
-  test("renombrar una categoría desde el admin actualiza las transacciones del usuario", async () => {
+  test("el admin lista espacios con miembros y movimientos (sin anulados)", async () => {
     const admin = await createAdmin();
-    const usuario = await createUser();
+    const usuario = await createUser({ iglesia: "Iglesia Betel" });
 
-    const categoria = await request(app)
-      .post("/api/v1/categories/create")
-      .set("Authorization", `Bearer ${usuario.token}`)
-      .send({ name: "ofrendas", type: "income" })
-      .expect(201);
+    const crear = () =>
+      request(app)
+        .post("/api/v1/transactions/create")
+        .set("Authorization", `Bearer ${usuario.token}`)
+        .send({ type: "income", amount: 400, date: "2025-06-10T12:00:00.000Z" })
+        .expect(201);
 
+    await crear();
+    const segunda = await crear();
     await request(app)
-      .post("/api/v1/transactions/create")
-      .set("Authorization", `Bearer ${usuario.token}`)
-      .send({
-        type: "income",
-        category: "ofrendas",
-        amount: 80,
-        date: "2025-06-10T12:00:00.000Z",
-      })
-      .expect(201);
-
-    await request(app)
-      .put(`/api/v1/admin/categories/${categoria.body._id}`)
-      .set("Authorization", `Bearer ${admin.token}`)
-      .send({ name: "Ofrendas especiales" })
-      .expect(200);
-
-    const lista = await request(app)
-      .get("/api/v1/transactions/lists")
+      .post(`/api/v1/transactions/${segunda.body[0]._id}/void`)
       .set("Authorization", `Bearer ${usuario.token}`)
       .expect(200);
 
-    assert.equal(
-      lista.body.transactions[0].category,
-      "ofrendas especiales",
-      "la transacción debe quedar con el nombre nuevo"
-    );
-  });
-
-  test("eliminar una categoría desde el admin reasigna las transacciones", async () => {
-    const admin = await createAdmin();
-    const usuario = await createUser();
-
-    const categoria = await request(app)
-      .post("/api/v1/categories/create")
-      .set("Authorization", `Bearer ${usuario.token}`)
-      .send({ name: "mantenimiento", type: "expense" })
-      .expect(201);
-
-    await request(app)
-      .post("/api/v1/transactions/create")
-      .set("Authorization", `Bearer ${usuario.token}`)
-      .send({
-        type: "expense",
-        category: "mantenimiento",
-        amount: 45,
-        date: "2025-06-10T12:00:00.000Z",
-      })
-      .expect(201);
-
-    await request(app)
-      .delete(`/api/v1/admin/categories/${categoria.body._id}`)
+    const res = await request(app)
+      .get("/api/v1/admin/workspaces")
       .set("Authorization", `Bearer ${admin.token}`)
       .expect(200);
 
-    const lista = await request(app)
-      .get("/api/v1/transactions/lists")
-      .set("Authorization", `Bearer ${usuario.token}`)
-      .expect(200);
-
-    assert.equal(lista.body.transactions[0].category, "uncategorized");
+    const betel = res.body.find((w) => w.name === "Iglesia Betel");
+    assert.equal(betel.kind, "iglesia");
+    assert.equal(betel.members, 1);
+    assert.equal(betel.transactions, 1);
   });
 
-  test("el admin edita y elimina transacciones de otros usuarios", async () => {
+  test("el admin entra como soporte a un espacio ajeno y queda en el historial", async () => {
     const admin = await createAdmin();
-    const usuario = await createUser();
+    const usuario = await createUser({ iglesia: "Iglesia Betel" });
+    const espacio = String(usuario.user.defaultWorkspace);
 
     const creada = await request(app)
       .post("/api/v1/transactions/create")
       .set("Authorization", `Bearer ${usuario.token}`)
-      .send({
-        type: "expense",
-        category: "servicios",
-        amount: 30,
-        date: "2025-06-10T12:00:00.000Z",
-      })
+      .send({ type: "expense", amount: 50, date: "2025-06-10T12:00:00.000Z" })
       .expect(201);
 
-    const id = creada.body[0]._id;
-
-    const editada = await request(app)
-      .put(`/api/v1/admin/transactions/${id}`)
+    await request(app)
+      .put(`/api/v1/transactions/update/${creada.body[0]._id}`)
       .set("Authorization", `Bearer ${admin.token}`)
+      .set("X-Workspace-Id", espacio)
       .send({ amount: 55 })
       .expect(200);
 
-    assert.equal(editada.body.amount, 55);
-
-    await request(app)
-      .delete(`/api/v1/admin/transactions/${id}`)
-      .set("Authorization", `Bearer ${admin.token}`)
-      .expect(200);
-
-    const lista = await request(app)
-      .get("/api/v1/transactions/lists")
+    const historial = await request(app)
+      .get(`/api/v1/workspaces/${espacio}/audit`)
       .set("Authorization", `Bearer ${usuario.token}`)
       .expect(200);
 
-    assert.equal(lista.body.total, 0);
+    const edicion = historial.body.entries.find((e) => e.action === "transaction.update");
+    assert.equal(edicion.actorName, admin.user.username);
+    assert.equal(edicion.before.amount, 50);
+    assert.equal(edicion.after.amount, 55);
   });
 
-  test("el admin recibe 400 ante un id con formato inválido", async () => {
-    const admin = await createAdmin();
+  test("un usuario normal no entra a espacios ajenos aunque conozca el id", async () => {
+    const dueño = await createUser();
+    const otro = await createUser();
 
     await request(app)
-      .get("/api/v1/admin/dashboard/no-valido")
-      .set("Authorization", `Bearer ${admin.token}`)
-      .expect(400);
-  });
-
-  test("si el rol cambia en la base de datos, el token viejo pierde el acceso", async () => {
-    const admin = await createAdmin();
-    const User = require("../model/User");
-
-    await User.findByIdAndUpdate(admin.user.id, { role: "user" });
-
-    await request(app)
-      .get("/api/v1/admin/users")
-      .set("Authorization", `Bearer ${admin.token}`)
+      .get(`/api/v1/workspaces/${dueño.user.defaultWorkspace}`)
+      .set("Authorization", `Bearer ${otro.token}`)
       .expect(403);
   });
 });

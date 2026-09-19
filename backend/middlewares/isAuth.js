@@ -42,15 +42,14 @@ const isAuthenticated = asyncHandler(async (req, res, next) => {
       .json({ message: "Sesión inválida o expirada", code: "INVALID_TOKEN" });
   }
 
-  //! Los tokens emitidos antes del último cambio de contraseña quedan invalidados.
-  //! iat viene en segundos, así que se compara en milisegundos.
-  if (user.passwordChangedAt && decoded.iat) {
-    if (decoded.iat * 1000 < user.passwordChangedAt.getTime()) {
-      return res.status(401).json({
-        message: "La contraseña cambió, inicia sesión de nuevo",
-        code: "PASSWORD_CHANGED",
-      });
-    }
+  //! Los tokens emitidos antes del último cambio de contraseña quedan
+  //! invalidados. Los tokens anteriores a este campo no traen "v" y valen como
+  //! versión 0, igual que los usuarios que nunca cambiaron la contraseña.
+  if ((decoded.v || 0) !== (user.tokenVersion || 0)) {
+    return res.status(401).json({
+      message: "La contraseña cambió, inicia sesión de nuevo",
+      code: "PASSWORD_CHANGED",
+    });
   }
 
   req.user = user;

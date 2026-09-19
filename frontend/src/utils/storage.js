@@ -1,5 +1,5 @@
 //! Única fuente de verdad para la sesión guardada en el navegador.
-//! Estructura almacenada: { token, user: { id, username, email, role, iglesia } }
+//! Estructura almacenada: { token, user: { id, username, email, role, defaultWorkspace } }
 
 const STORAGE_KEY = "userInfo";
 
@@ -63,3 +63,30 @@ export const setStoredAuth = (auth) => {
 export const getStoredToken = () => getStoredAuth()?.token || null;
 
 export const getStoredUser = () => getStoredAuth()?.user || null;
+
+//! Espacio de trabajo elegido (se recuerda entre visitas en este dispositivo)
+const WORKSPACE_KEY = "workspaceId";
+
+export const getStoredWorkspaceId = () => {
+  try {
+    return localStorage.getItem(WORKSPACE_KEY) || null;
+  } catch {
+    return null;
+  }
+};
+
+export const setStoredWorkspaceId = (id) => {
+  try {
+    localStorage.setItem(WORKSPACE_KEY, id);
+  } catch {
+    //! Sin almacenamiento el espacio se elige de nuevo en cada visita
+  }
+};
+
+export const clearStoredWorkspaceId = () => {
+  try {
+    localStorage.removeItem(WORKSPACE_KEY);
+  } catch {
+    //! Nada que limpiar
+  }
+};

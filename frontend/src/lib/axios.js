@@ -1,6 +1,11 @@
 import axios from "axios";
 import { BASE_URL } from "../utils/url";
-import { clearStoredAuth, getStoredToken } from "../utils/storage";
+import {
+  clearStoredAuth,
+  clearStoredWorkspaceId,
+  getStoredToken,
+  getStoredWorkspaceId,
+} from "../utils/storage";
 
 export const axiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -13,6 +18,11 @@ axiosInstance.interceptors.request.use((config) => {
   const token = getStoredToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  //! Espacio en el que se trabaja; sin él la API usa el predeterminado
+  const workspaceId = getStoredWorkspaceId();
+  if (workspaceId && !config.headers["X-Workspace-Id"]) {
+    config.headers["X-Workspace-Id"] = workspaceId;
   }
   return config;
 });
@@ -30,7 +40,21 @@ axiosInstance.interceptors.response.use(
     if (status === 401 && !enLogin && !redirigiendo) {
       redirigiendo = true;
       clearStoredAuth();
+      clearStoredWorkspaceId();
       window.location.assign("/login");
+    }
+
+    //! El espacio recordado ya no existe o ya no se pertenece a él (lo sacaron,
+    //! se borró): se olvida y se recarga con el predeterminado.
+    const code = error.response?.data?.code;
+    if (
+      (code === "NOT_A_MEMBER" || code === "WORKSPACE_NOT_FOUND") &&
+      getStoredWorkspaceId() &&
+      !redirigiendo
+    ) {
+      redirigiendo = true;
+      clearStoredWorkspaceId();
+      window.location.assign("/dashboard");
     }
 
     return Promise.reject(error);

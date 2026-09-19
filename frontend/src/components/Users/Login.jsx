@@ -3,7 +3,7 @@ import { FaEnvelope, FaLock } from "react-icons/fa";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginAPI } from "../../services/users/userService";
 import { loginAction } from "../../redux/slice/authSlice";
@@ -22,7 +22,10 @@ const validationSchema = Yup.object({
 
 const LoginForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
+  //! Página a la que volver tras entrar (una ruta privada o una invitación)
+  const destino = location.state?.from || "/dashboard";
   const user = useSelector((state) => state.auth.user);
 
   const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
@@ -35,7 +38,7 @@ const LoginForm = () => {
 
   const formik = useFormik({
     initialValues: {
-      email: "",
+      email: location.state?.email || "",
       password: "",
     },
     validationSchema,
@@ -53,9 +56,9 @@ const LoginForm = () => {
   //! Redirige cuando la sesión queda en Redux
   useEffect(() => {
     if (user) {
-      navigate("/dashboard", { replace: true });
+      navigate(destino, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, destino]);
 
   return (
     <form
@@ -122,6 +125,15 @@ const LoginForm = () => {
       >
         {isPending ? "Ingresando..." : "Ingresar"}
       </button>
+
+      <div className="flex flex-wrap justify-between gap-2 text-sm">
+        <Link to="/olvide-contrasena" className="text-blue-600 hover:underline">
+          ¿Olvidaste tu contraseña?
+        </Link>
+        <Link to="/register" state={location.state} className="text-blue-600 hover:underline">
+          Crear una cuenta
+        </Link>
+      </div>
     </form>
   );
 };

@@ -16,10 +16,17 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    //! Nombre de la iglesia con el que se registró (dato histórico). Desde la
+    //! fase 1 la iglesia es un Workspace; este campo solo lo lee la migración.
     iglesia: {
       type: String,
-      required: [true, "La iglesia es obligatoria"],
       trim: true,
+    },
+    //! Espacio que se abre al iniciar sesión si el cliente no pide otro
+    defaultWorkspace: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Workspace",
+      default: null,
     },
     password: {
       type: String,
@@ -36,6 +43,22 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: {
       type: Date,
     },
+    //! Versión de las sesiones: cada cambio de contraseña la incrementa y los
+    //! tokens con una versión anterior dejan de valer. Compararlo por fecha
+    //! falla dentro del mismo segundo (el "iat" del JWT va en segundos).
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
+    //! Recuperación de contraseña: solo el hash del token, con caducidad
+    passwordResetTokenHash: {
+      type: String,
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -46,6 +69,8 @@ const userSchema = new mongoose.Schema(
 userSchema.set("toJSON", {
   transform: (doc, ret) => {
     delete ret.password;
+    delete ret.passwordResetTokenHash;
+    delete ret.passwordResetExpires;
     delete ret.__v;
     return ret;
   },

@@ -1,19 +1,41 @@
 const ExcelJS = require("exceljs");
-const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const Transaction = require("../model/Transaccion");
-const { parseStartDate, parseEndDate, getPeriodRange } = require("../utils/dates");
+const {
+  parseStartDate,
+  parseEndDate,
+  getPeriodRange,
+  parseTransactionDate,
+} = require("../utils/dates");
+const { toCents, fromCents } = require("../utils/money");
+const { audit, transactionSnapshot } = require("../utils/audit");
 
 const TYPES = ["income", "expense"];
 const RECURRENCE_TYPES = ["daily", "weekly", "monthly", "yearly"];
 const MAX_RECURRENCES = 365;
 const MAX_LIMIT = 100;
+//! Tope por movimiento: evita que un error de tipeo (un cero de más) o un
+//! valor absurdo desborde las sumas.
+const MAX_AMOUNT_CENTS = 100_000_000_000; // mil millones
 
-//! Construye el filtro común (usuario + fechas + tipo + categoría).
+//! Valida un monto de la API (en unidades) y lo devuelve en centavos.
+//! Devuelve { error } si no es válido.
+const parseAmount = (amount) => {
+  const cents = toCents(amount);
+  if (cents === null || cents <= 0) {
+    return { error: "El monto debe ser un número positivo" };
+  }
+  if (cents > MAX_AMOUNT_CENTS) {
+    return { error: "El monto es demasiado grande" };
+  }
+  return { cents };
+};
+
+//! Construye el filtro común (espacio + fechas + tipo + categoría + anulados).
 //! Devuelve { error } si alguno de los parámetros es inválido.
-const buildFilters = (userId, query) => {
-  const { startDate, endDate, type, category } = query;
-  const filters = { user: userId };
+const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {}) => {
+  const { startDate, endDate, type, category, includeVoided } = query;
+  const filters = { workspace: workspaceId };
 
   const parsedStart = parseStartDate(startDate);
   if (parsedStart === undefined) {
@@ -38,8 +60,43 @@ const buildFilters = (userId, query) => {
     filters.category = String(category).trim().toLowerCase();
   }
 
+  const showVoided =
+    includeVoided === undefined
+      ? includeVoidedByDefault
+      : String(includeVoided) === "true";
+  if (!showVoided) filters.voided = { $ne: true };
+
   return { filters };
 };
+
+//! Suma ingresos y gastos (en centavos) de los movimientos que cumplen el
+//! filtro. Los anulados nunca suman, aunque el filtro los incluya.
+const sumTotals = async (filters) => {
+  const summary = await Transaction.aggregate([
+    { $match: { ...filters, voided: { $ne: true } } },
+    {
+      $group: {
+        _id: null,
+        income: {
+          $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amountCents", 0] },
+        },
+        expense: {
+          $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amountCents", 0] },
+        },
+      },
+    },
+  ]);
+  const { income = 0, expense = 0 } = summary[0] || {};
+  return {
+    income: fromCents(income),
+    expense: fromCents(expense),
+    balance: fromCents(income - expense),
+  };
+};
+
+//! Busca un movimiento del espacio actual (nunca de otro)
+const findInWorkspace = (req) =>
+  Transaction.findOne({ _id: req.params.id, workspace: req.workspace._id });
 
 const transactionController = {
   //! Crear una o varias transacciones (si es recurrente)
@@ -68,15 +125,11 @@ const transactionController = {
         .json({ message: "El tipo debe ser 'income' o 'expense'" });
     }
 
-    const parsedAmount = parseFloat(amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-      return res
-        .status(400)
-        .json({ message: "El monto debe ser un número positivo" });
-    }
+    const { cents, error } = parseAmount(amount);
+    if (error) return res.status(400).json({ message: error });
 
-    const baseDate = new Date(date);
-    if (Number.isNaN(baseDate.getTime())) {
+    const baseDate = parseTransactionDate(date);
+    if (!baseDate) {
       return res.status(400).json({ message: "Fecha inválida" });
     }
 
@@ -132,10 +185,11 @@ const transactionController = {
       }
 
       transactions.push({
-        user: req.user._id,
+        workspace: req.workspace._id,
+        createdBy: req.user._id,
         type,
         category: normalizedCategory,
-        amount: parsedAmount,
+        amountCents: cents,
         description,
         icon,
         date: txDate,
@@ -147,6 +201,16 @@ const transactionController = {
 
     const created = await Transaction.insertMany(transactions);
 
+    //! Una entrada por alta: una serie recurrente se registra una vez, con
+    //! cuántos movimientos generó.
+    await audit(req, {
+      action: "transaction.create",
+      entity: "transaction",
+      entityId: created[0]._id,
+      after: transactionSnapshot(created[0]),
+      note: created.length > 1 ? `Serie de ${created.length} movimientos` : "",
+    });
+
     res.status(201).json(created);
   }),
 
@@ -154,7 +218,7 @@ const transactionController = {
   getFilteredTransactions: asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
-    const { filters, error } = buildFilters(req.user._id, req.query);
+    const { filters, error } = buildFilters(req.workspace._id, req.query);
     if (error) return res.status(400).json({ message: error });
 
     const parsedPage = Math.max(1, parseInt(page, 10) || 1);
@@ -166,7 +230,12 @@ const transactionController = {
 
     const [total, transactions] = await Promise.all([
       Transaction.countDocuments(filters),
-      Transaction.find(filters).sort({ date: -1 }).skip(skip).limit(parsedLimit),
+      Transaction.find(filters)
+        .sort({ date: -1 })
+        .skip(skip)
+        .limit(parsedLimit)
+        .populate("createdBy", "username")
+        .populate("voidedBy", "username"),
     ]);
 
     res.status(200).json({
@@ -178,12 +247,9 @@ const transactionController = {
     });
   }),
 
-  //! Una transacción concreta del usuario autenticado
+  //! Una transacción concreta del espacio actual
   getOne: asyncHandler(async (req, res) => {
-    const transaction = await Transaction.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
+    const transaction = await findInWorkspace(req);
 
     if (!transaction) {
       return res.status(404).json({ message: "Transacción no encontrada" });
@@ -192,20 +258,21 @@ const transactionController = {
     res.status(200).json(transaction);
   }),
 
-  //! Actualizar (solo el dueño)
+  //! Actualizar
   update: asyncHandler(async (req, res) => {
-    const transaction = await Transaction.findById(req.params.id);
+    const transaction = await findInWorkspace(req);
 
     if (!transaction) {
       return res.status(404).json({ message: "Transacción no encontrada" });
     }
 
-    if (transaction.user.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({ message: "No autorizado para modificar esta transacción" });
+    if (transaction.voided) {
+      return res.status(409).json({
+        message: "No se puede editar un movimiento anulado. Restáuralo primero.",
+      });
     }
 
+    const before = transactionSnapshot(transaction);
     const { type, category, amount, date, description, icon } = req.body;
 
     if (type !== undefined && !TYPES.includes(type)) {
@@ -213,18 +280,14 @@ const transactionController = {
     }
 
     if (amount !== undefined) {
-      const parsedAmount = parseFloat(amount);
-      if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-        return res
-          .status(400)
-          .json({ message: "El monto debe ser un número positivo" });
-      }
-      transaction.amount = parsedAmount;
+      const { cents, error } = parseAmount(amount);
+      if (error) return res.status(400).json({ message: error });
+      transaction.amountCents = cents;
     }
 
     if (date !== undefined) {
-      const parsedDate = new Date(date);
-      if (Number.isNaN(parsedDate.getTime())) {
+      const parsedDate = parseTransactionDate(date);
+      if (!parsedDate) {
         return res.status(400).json({ message: "Fecha inválida" });
       }
       transaction.date = parsedDate;
@@ -239,26 +302,102 @@ const transactionController = {
 
     const updatedTransaction = await transaction.save();
 
+    await audit(req, {
+      action: "transaction.update",
+      entity: "transaction",
+      entityId: transaction._id,
+      before,
+      after: transactionSnapshot(updatedTransaction),
+    });
+
     res.status(200).json(updatedTransaction);
   }),
 
-  //! Eliminar (solo el dueño)
-  delete: asyncHandler(async (req, res) => {
-    const transaction = await Transaction.findById(req.params.id);
+  //! Anular (lo normal en vez de borrar). Se mantiene la ruta DELETE /delete/:id
+  //! por compatibilidad con los clientes ya desplegados: ahora ANULA.
+  void: asyncHandler(async (req, res) => {
+    const transaction = await findInWorkspace(req);
 
     if (!transaction) {
       return res.status(404).json({ message: "Transacción no encontrada" });
     }
 
-    if (transaction.user.toString() !== req.user._id.toString()) {
-      return res
-        .status(403)
-        .json({ message: "No autorizado para eliminar esta transacción" });
+    if (transaction.voided) {
+      return res.status(409).json({ message: "El movimiento ya está anulado" });
     }
 
+    const reason = String(req.body?.reason || "").trim().slice(0, 300);
+    const before = transactionSnapshot(transaction);
+
+    transaction.voided = true;
+    transaction.voidReason = reason;
+    transaction.voidedAt = new Date();
+    transaction.voidedBy = req.user._id;
+    await transaction.save();
+
+    await audit(req, {
+      action: "transaction.void",
+      entity: "transaction",
+      entityId: transaction._id,
+      before,
+      after: transactionSnapshot(transaction),
+      note: reason,
+    });
+
+    res.status(200).json({ message: "Movimiento anulado", transaction });
+  }),
+
+  //! Deshacer una anulación
+  restore: asyncHandler(async (req, res) => {
+    const transaction = await findInWorkspace(req);
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transacción no encontrada" });
+    }
+
+    if (!transaction.voided) {
+      return res.status(409).json({ message: "El movimiento no está anulado" });
+    }
+
+    const before = transactionSnapshot(transaction);
+
+    transaction.voided = false;
+    transaction.voidReason = "";
+    transaction.voidedAt = null;
+    transaction.voidedBy = null;
+    await transaction.save();
+
+    await audit(req, {
+      action: "transaction.restore",
+      entity: "transaction",
+      entityId: transaction._id,
+      before,
+      after: transactionSnapshot(transaction),
+    });
+
+    res.status(200).json({ message: "Movimiento restaurado", transaction });
+  }),
+
+  //! Borrado definitivo. Es para lo que NUNCA fue dinero (una prueba, un
+  //! duplicado); queda en el historial con los datos que tenía.
+  purge: asyncHandler(async (req, res) => {
+    const transaction = await findInWorkspace(req);
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transacción no encontrada" });
+    }
+
+    const before = transactionSnapshot(transaction);
     await transaction.deleteOne();
 
-    res.status(200).json({ message: "Transacción eliminada exitosamente" });
+    await audit(req, {
+      action: "transaction.purge",
+      entity: "transaction",
+      entityId: transaction._id,
+      before,
+    });
+
+    res.status(200).json({ message: "Movimiento eliminado definitivamente" });
   }),
 
   //! Transacciones por período (o rango personalizado), con filtro de categoría
@@ -291,8 +430,9 @@ const transactionController = {
     }
 
     const filters = {
-      user: req.user._id,
+      workspace: req.workspace._id,
       date: { $gte: finalStartDate, $lte: finalEndDate },
+      voided: { $ne: true },
     };
 
     if (type) {
@@ -315,37 +455,10 @@ const transactionController = {
 
   //! Balance general (con filtros opcionales)
   getBalance: asyncHandler(async (req, res) => {
-    const { filters, error } = buildFilters(req.user._id, req.query);
+    const { filters, error } = buildFilters(req.workspace._id, req.query);
     if (error) return res.status(400).json({ message: error });
 
-    //! Las agregaciones NO castean tipos: el id debe ser un ObjectId real
-    const match = {
-      ...filters,
-      user: new mongoose.Types.ObjectId(req.user._id),
-    };
-
-    const summary = await Transaction.aggregate([
-      { $match: match },
-      {
-        $group: {
-          _id: null,
-          totalIncome: {
-            $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] },
-          },
-          totalExpense: {
-            $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] },
-          },
-        },
-      },
-    ]);
-
-    const { totalIncome = 0, totalExpense = 0 } = summary[0] || {};
-
-    res.status(200).json({
-      income: totalIncome,
-      expense: totalExpense,
-      balance: totalIncome - totalExpense,
-    });
+    res.status(200).json(await sumTotals(filters));
   }),
 
   //! Resumen del mes en curso
@@ -356,30 +469,17 @@ const transactionController = {
     const endOfToday = new Date(today);
     endOfToday.setHours(23, 59, 59, 999);
 
-    const summary = await Transaction.aggregate([
-      {
-        $match: {
-          user: new mongoose.Types.ObjectId(req.user._id),
-          date: { $gte: startOfMonth, $lte: endOfToday },
-        },
-      },
-      {
-        $group: {
-          _id: "$type",
-          total: { $sum: "$amount" },
-        },
-      },
-    ]);
-
-    res.status(200).json({
-      income: summary.find((s) => s._id === "income")?.total || 0,
-      expense: summary.find((s) => s._id === "expense")?.total || 0,
+    const { income, expense } = await sumTotals({
+      workspace: req.workspace._id,
+      date: { $gte: startOfMonth, $lte: endOfToday },
     });
+
+    res.status(200).json({ income, expense });
   }),
 
   //! Exportar a Excel respetando los filtros activos
   generateExcelReport: asyncHandler(async (req, res) => {
-    const { filters, error } = buildFilters(req.user._id, req.query);
+    const { filters, error } = buildFilters(req.workspace._id, req.query);
     if (error) return res.status(400).json({ message: error });
 
     const transactions = await Transaction.find(filters).sort({ date: -1 });
@@ -392,16 +492,20 @@ const transactionController = {
       { header: "Tipo", key: "type", width: 10 },
       { header: "Categoría", key: "category", width: 20 },
       { header: "Descripción", key: "description", width: 30 },
-      { header: "Monto", key: "amount", width: 12 },
+      { header: `Monto (${req.workspace.currency})`, key: "amount", width: 14 },
+      { header: "Estado", key: "status", width: 12 },
     ];
     sheet.getRow(1).font = { bold: true };
 
-    let totalIncome = 0;
-    let totalExpense = 0;
+    //! Los totales se suman en centavos y se convierten al final
+    let incomeCents = 0;
+    let expenseCents = 0;
 
     transactions.forEach((tx) => {
-      if (tx.type === "income") totalIncome += tx.amount;
-      else totalExpense += tx.amount;
+      if (!tx.voided) {
+        if (tx.type === "income") incomeCents += tx.amountCents;
+        else expenseCents += tx.amountCents;
+      }
 
       sheet.addRow({
         date: new Date(tx.date).toLocaleDateString("es-PE"),
@@ -409,20 +513,21 @@ const transactionController = {
         category: tx.category || "Sin categoría",
         description: tx.description || "",
         amount: tx.amount,
+        status: tx.voided ? "Anulado" : "",
       });
     });
 
     //! Totales al pie del reporte
     sheet.addRow({});
-    sheet.addRow({ category: "Total ingresos", amount: totalIncome }).font = {
+    sheet.addRow({ category: "Total ingresos", amount: fromCents(incomeCents) }).font = {
       bold: true,
     };
-    sheet.addRow({ category: "Total gastos", amount: totalExpense }).font = {
+    sheet.addRow({ category: "Total gastos", amount: fromCents(expenseCents) }).font = {
       bold: true,
     };
     sheet.addRow({
       category: "Balance",
-      amount: totalIncome - totalExpense,
+      amount: fromCents(incomeCents - expenseCents),
     }).font = { bold: true };
 
     sheet.getColumn("amount").numFmt = "#,##0.00";

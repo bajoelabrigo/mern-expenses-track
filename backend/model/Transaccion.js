@@ -1,8 +1,15 @@
 const mongoose = require("mongoose");
+const { fromCents } = require("../utils/money");
 
 const transactionSchema = new mongoose.Schema(
   {
-    user: {
+    //! Los libros son del espacio, no de la persona que anotó el movimiento
+    workspace: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Workspace",
+      required: true,
+    },
+    createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -22,10 +29,15 @@ const transactionSchema = new mongoose.Schema(
       lowercase: true,
       default: "uncategorized",
     },
-    amount: {
+    //! Centavos enteros. La API expone `amount` (virtual) en unidades.
+    amountCents: {
       type: Number,
       required: [true, "El monto es obligatorio"],
-      min: [0, "El monto no puede ser negativo"],
+      min: [1, "El monto debe ser mayor que cero"],
+      validate: {
+        validator: Number.isInteger,
+        message: "El monto en centavos debe ser un entero",
+      },
     },
     date: {
       type: Date,
@@ -55,14 +67,38 @@ const transactionSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    //! Anulación: la fila se sigue viendo (tachada, con su motivo) pero deja de
+    //! sumar. Un movimiento que desaparece sin rastro hace imposible explicar
+    //! un descuadre después.
+    voided: { type: Boolean, default: false },
+    voidReason: { type: String, trim: true, maxlength: 300, default: "" },
+    voidedAt: { type: Date, default: null },
+    voidedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-//! Todas las consultas filtran por usuario y ordenan por fecha
-transactionSchema.index({ user: 1, date: -1 });
-transactionSchema.index({ user: 1, category: 1 });
+transactionSchema.virtual("amount").get(function amount() {
+  return fromCents(this.amountCents);
+});
+
+transactionSchema.set("toJSON", {
+  virtuals: true,
+  transform: (doc, ret) => {
+    delete ret.amountCents;
+    delete ret.__v;
+    delete ret.id;
+    return ret;
+  },
+});
+
+transactionSchema.index({ workspace: 1, date: -1 });
+transactionSchema.index({ workspace: 1, category: 1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);

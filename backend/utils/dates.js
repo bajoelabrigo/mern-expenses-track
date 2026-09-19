@@ -57,4 +57,20 @@ const getPeriodRange = (period, today = new Date()) => {
   return { start, end: endOfToday };
 };
 
-module.exports = { parseStartDate, parseEndDate, getPeriodRange };
+//! Fecha de un movimiento. Un "YYYY-MM-DD" sin hora se guarda a las 12:00 UTC:
+//! a medianoche UTC, en América ya es el día anterior y el movimiento aparecía
+//! un día antes (pasaba al mandar "2026-09-15" por la API; el formulario web se
+//! salvaba porque envía la hora local). El mediodía UTC es el mismo día de
+//! calendario desde UTC-11 hasta UTC+11. Devuelve null si no es una fecha.
+const parseTransactionDate = (value) => {
+  if (typeof value === "string" && DATE_ONLY.test(value.trim())) {
+    const [year, month, day] = value.trim().split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0));
+    //! Descarta días imposibles (2026-02-31 se convertiría en marzo)
+    return date.getUTCDate() === day ? date : null;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+module.exports = { parseStartDate, parseEndDate, getPeriodRange, parseTransactionDate };

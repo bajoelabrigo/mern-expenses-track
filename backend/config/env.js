@@ -95,4 +95,17 @@ module.exports = {
   COOKIE_SAMESITE: leer("COOKIE_SAMESITE") || (isProduction ? "none" : "lax"),
   SERVE_FRONTEND: leer("SERVE_FRONTEND") === "true",
   MIN_PASSWORD_LENGTH: 8,
+  //! URL pública del frontend: los enlaces de los correos (invitaciones,
+  //! recuperar contraseña) apuntan aquí. Sin barra final.
+  APP_URL: (leer("APP_URL") || corsOrigins[0] || "http://localhost:5173").replace(
+    /\/+$/,
+    ""
+  ),
+  //! Correo saliente (SMTP). Si falta SMTP_HOST los correos no se envían y el
+  //! enlace se escribe en el log del servidor.
+  SMTP_HOST: leer("SMTP_HOST") || "",
+  SMTP_PORT: Number(leer("SMTP_PORT")) || 587,
+  SMTP_USER: leer("SMTP_USER") || "",
+  SMTP_PASS: leer("SMTP_PASS") || "",
+  MAIL_FROM: leer("MAIL_FROM") || leer("SMTP_USER") || "",
 };

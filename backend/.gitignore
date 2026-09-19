@@ -135,3 +135,6 @@ dist
 .env
 .env.*
 !.env.example
+
+# Copias de seguridad de las migraciones (contienen datos reales)
+backups/

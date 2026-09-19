@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { useSelector } from "react-redux";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -23,6 +22,8 @@ import {
 import { listCategoriesAPI } from "../../services/category/categoryService";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
+import { useWorkspace } from "../../hooks/useWorkspace";
+import { formatMoney, fromCents, toCents } from "../../lib/money";
 
 ChartJS.register(
   ArcElement,
@@ -45,7 +46,7 @@ const periods = [
 ];
 
 const TransactionChart = () => {
-  const user = useSelector((state) => state.auth.user);
+  const { workspace, currency } = useWorkspace();
 
   const [selectedPeriod, setSelectedPeriod] = useState("monthly");
   const [selectedType, setSelectedType] = useState("");
@@ -101,18 +102,18 @@ const TransactionChart = () => {
     mutationKey: ["export-excel"],
   });
 
-  const totals = useMemo(
-    () =>
-      transactions.reduce(
-        (acc, t) => {
-          if (t.type === "income") acc.income += Number(t.amount);
-          else acc.expense += Number(t.amount);
-          return acc;
-        },
-        { income: 0, expense: 0 }
-      ),
-    [transactions]
-  );
+  //! Se suma en centavos: sumar decimales acumula error de redondeo
+  const totals = useMemo(() => {
+    const cents = transactions.reduce(
+      (acc, t) => {
+        if (t.type === "income") acc.income += toCents(t.amount);
+        else acc.expense += toCents(t.amount);
+        return acc;
+      },
+      { income: 0, expense: 0 }
+    );
+    return { income: fromCents(cents.income), expense: fromCents(cents.expense) };
+  }, [transactions]);
 
   const chartData = useMemo(() => {
     const map = {};
@@ -122,8 +123,8 @@ const TransactionChart = () => {
         .toString()
         .padStart(2, "0")}`;
       if (!map[key]) map[key] = { income: 0, expense: 0 };
-      if (t.type === "income") map[key].income += Number(t.amount);
-      else map[key].expense += Number(t.amount);
+      if (t.type === "income") map[key].income += toCents(t.amount);
+      else map[key].expense += toCents(t.amount);
     });
 
     const labels = Object.keys(map).sort();
@@ -132,13 +133,13 @@ const TransactionChart = () => {
       datasets: [
         {
           label: "Ingresos",
-          data: labels.map((l) => map[l].income),
+          data: labels.map((l) => fromCents(map[l].income)),
           backgroundColor: "#36A2EB",
           borderColor: "#36A2EB",
         },
         {
           label: "Gastos",
-          data: labels.map((l) => map[l].expense),
+          data: labels.map((l) => fromCents(map[l].expense)),
           backgroundColor: "#FF6384",
           borderColor: "#FF6384",
         },
@@ -153,7 +154,7 @@ const TransactionChart = () => {
       <h2 className="text-2xl font-bold text-center">
         Resumen de Transacciones
       </h2>
-      <h3 className="text-xl font-semibold text-center">{user?.iglesia}</h3>
+      <h3 className="text-xl font-semibold text-center">{workspace?.name}</h3>
 
       {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
       {isExportError && (
@@ -292,7 +293,7 @@ const TransactionChart = () => {
                     Balance
                   </span>
                   <span className="text-xl font-bold text-gray-900">
-                    S/. {(totals.income - totals.expense).toFixed(2)}
+                    {formatMoney(totals.income - totals.expense, currency)}
                   </span>
                 </div>
               </div>
@@ -305,7 +306,7 @@ const TransactionChart = () => {
               <div className="flex gap-2 items-center">
                 <BsCashCoin className="text-3xl text-green-500" />
                 <span className="text-2xl font-bold">
-                  S/. {totals.income.toFixed(2)}
+                  {formatMoney(totals.income, currency)}
                 </span>
               </div>
             </div>
@@ -315,7 +316,7 @@ const TransactionChart = () => {
               <div className="flex gap-2 items-center">
                 <BsHouseDash className="text-3xl text-red-500" />
                 <span className="text-2xl font-bold">
-                  S/. {totals.expense.toFixed(2)}
+                  {formatMoney(totals.expense, currency)}
                 </span>
               </div>
             </div>
