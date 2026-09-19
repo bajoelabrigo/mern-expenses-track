@@ -3,6 +3,7 @@ const isAuthenticated = require("../middlewares/isAuth");
 const validateObjectId = require("../middlewares/validateObjectId");
 const { withWorkspace, requirePermission } = require("../middlewares/workspace");
 const transactionController = require("../controllers/transactionController");
+const { receiptUpload } = require("../middlewares/receiptUpload");
 
 const transactionRouter = express.Router();
 
@@ -57,6 +58,26 @@ transactionRouter.delete(
   validateObjectId(),
   requirePermission("tx:purge"),
   transactionController.purge
+);
+//! Comprobante: subir/reemplazar, ver (enlace temporal) y quitar
+transactionRouter.put(
+  "/:id/receipt",
+  validateObjectId(),
+  write,
+  receiptUpload,
+  transactionController.attachReceipt
+);
+transactionRouter.get(
+  "/:id/receipt",
+  validateObjectId(),
+  read,
+  transactionController.getReceipt
+);
+transactionRouter.delete(
+  "/:id/receipt",
+  validateObjectId(),
+  write,
+  transactionController.removeReceipt
 );
 //! Ruta con parámetro al final
 transactionRouter.get("/:id", validateObjectId(), read, transactionController.getOne);

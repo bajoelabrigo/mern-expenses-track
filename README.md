@@ -57,6 +57,7 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `COOKIE_SAMESITE` | no          | `none` (por defecto en producción), `lax` o `strict`.              |
 | `APP_URL`         | no          | URL pública del frontend, para los enlaces de los correos. Por defecto, el primer origen de `CORS_ORIGINS`. |
 | `BREVO_API_KEY`, `MAIL_FROM` | no | Correo saliente por la API de Brevo (invitaciones y recuperar contraseña). Es la opción para Render: su plan gratuito bloquea los puertos SMTP. `MAIL_FROM` debe ser un remitente verificado en Brevo. |
+| `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | no | Comprobantes de los movimientos. Se guardan como *authenticated* (nunca públicos) en `control-gastos/<espacio>/` y se ven con un enlace firmado de 5 minutos. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | no | Correo por SMTP, para un hosting que lo permita (solo si no hay `BREVO_API_KEY`). Sin ninguno de los dos no se envía nada: el enlace sale en el log y las invitaciones se comparten copiando el enlace. |
 
 La app **no arranca** si falta `MONGO_URL` o `JWT_SECRET`, o si el secreto es
@@ -199,6 +200,9 @@ Las reglas viven en `backend/utils/permissions.js`.
 | POST   | `/transactions/:id/restore`        | Deshacer la anulación.                       |
 | DELETE | `/transactions/delete/:id`         | Compatibilidad: ahora **anula**.             |
 | DELETE | `/transactions/:id/purge`          | Borrar del todo (solo propietario).          |
+| PUT    | `/transactions/:id/receipt`        | Adjuntar o reemplazar el comprobante (`multipart`, campo `receipt`; JPG/PNG/WEBP/HEIC/PDF, 8 MB). |
+| GET    | `/transactions/:id/receipt`        | Enlace temporal (5 min) para verlo.          |
+| DELETE | `/transactions/:id/receipt`        | Quitar el comprobante.                       |
 
 ### Administración de la plataforma (`role: admin`)
 
@@ -253,6 +257,7 @@ SPA; solo hay que definir las variables de entorno en cada panel.
 | `SERVE_FRONTEND` | `false`                                |
 | `BREVO_API_KEY`  | clave de API de Brevo (correo)         |
 | `MAIL_FROM`      | `Control de Gastos <remitente-verificado@…>` |
+| `CLOUDINARY_*`   | credenciales de Cloudinary (comprobantes) |
 
 **Render** (Settings): *Build Command* `npm install --prefix backend` y *Start
 Command* `npm run start`. No uses `npm run build` en Render: con

@@ -6,7 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { FaBan, FaEdit, FaTrash, FaUndo } from "react-icons/fa";
+import { FaBan, FaEdit, FaPaperclip, FaTrash, FaUndo } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import {
   listTransationsAPI,
@@ -19,6 +19,7 @@ import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { formatMoney } from "../../lib/money";
+import { openReceipt } from "./receipt";
 
 const FILTROS_INICIALES = {
   startDate: "",
@@ -260,6 +261,17 @@ const TransactionList = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
+                  {transaction.receipt && (
+                    <button
+                      type="button"
+                      onClick={() => openReceipt(transaction._id)}
+                      className="text-gray-600 hover:text-blue-700"
+                      aria-label="Ver comprobante"
+                      title="Ver comprobante"
+                    >
+                      <FaPaperclip />
+                    </button>
+                  )}
                   {transaction.createdBy?.username && (
                     <span className="text-xs text-gray-400">
                       por {transaction.createdBy.username}

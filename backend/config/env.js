@@ -105,6 +105,11 @@ module.exports = {
   //! plan gratuito de Render bloquea los puertos SMTP. Sin ninguno, los correos
   //! no se envían y el enlace se escribe en el log del servidor.
   BREVO_API_KEY: leer("BREVO_API_KEY") || "",
+  //! Comprobantes: Cloudinary con entrega AUTENTICADA (nunca públicos). Sin
+  //! estas variables la subida de comprobantes responde 503.
+  CLOUDINARY_CLOUD_NAME: leer("CLOUDINARY_CLOUD_NAME") || "",
+  CLOUDINARY_API_KEY: leer("CLOUDINARY_API_KEY") || "",
+  CLOUDINARY_API_SECRET: leer("CLOUDINARY_API_SECRET") || "",
   SMTP_HOST: leer("SMTP_HOST") || "",
   SMTP_PORT: Number(leer("SMTP_PORT")) || 587,
   SMTP_USER: leer("SMTP_USER") || "",
