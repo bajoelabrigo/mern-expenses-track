@@ -35,7 +35,19 @@ despliega Netlify y Render) cuando está verificada.
 - [x] APK como Trusted Web Activity (Bubblewrap) con
       `/.well-known/assetlinks.json` en Netlify (verificado por Google y
       probado en un emulador Android 17). Ver `android/README.md`.
-- [ ] Notificaciones push (recordatorios, resumen semanal).
+- [ ] Notificaciones push (recordatorios, resumen semanal). Pasan a la fase 4.
+
+## Rediseño visual (entre las fases 2 y 3)
+
+- [x] Paleta nueva (fondo greige, tarjetas blancas, ámbar para registrar) con
+      modo claro, oscuro y según el sistema; fuente Manrope.
+- [x] Móvil: barra inferior con "+" central, Inicio simplificado, registrar con
+      teclado propio, movimientos con búsqueda y filtros.
+- [x] Computadora: barra lateral, Inicio con cifras, barras por mes, dona y
+      tabla; Movimientos en tabla.
+- [x] Portada, acceso, íconos de la app y el resto de pantallas.
+- [x] **Desplegar**: fusionado en `main` (2026-09-19).
+- [ ] Reconstruir el APK (versionCode 2) con los colores y el ícono nuevos.
 
 ## Fase 3 — Núcleo de iglesia
 
