@@ -9,15 +9,30 @@ export const loginAPI = async ({ email, password }) => {
   return { token: response.data.token, user: response.data.user };
 };
 
-//! Registro
-export const registerAPI = async ({ email, password, username, iglesia }) => {
+//! Registro. `iglesia` es opcional: si llega, se crea también su espacio.
+export const registerAPI = async ({ email, password, username, iglesia, currency }) => {
   const response = await axiosInstance.post("/users/register", {
     email,
     password,
     username,
-    iglesia,
+    iglesia: iglesia || undefined,
+    currency: currency || undefined,
   });
   return response.data.user;
+};
+
+//! Pedir el enlace para restablecer la contraseña
+export const forgotPasswordAPI = async ({ email }) => {
+  const response = await axiosInstance.post("/users/forgot-password", { email });
+  return response.data;
+};
+
+//! Fijar la contraseña nueva con el token del enlace
+export const resetPasswordAPI = async ({ token, password }) => {
+  const response = await axiosInstance.post(`/users/reset-password/${token}`, {
+    password,
+  });
+  return response.data;
 };
 
 //! Logout: limpia la cookie httpOnly en el servidor

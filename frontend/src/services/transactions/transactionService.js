@@ -43,9 +43,21 @@ export const updateTransactionAPI = async ({
   return response.data;
 };
 
-//! Eliminar transacción
-export const deleteTransactionAPI = async (id) => {
-  const response = await axiosInstance.delete(`/transactions/delete/${id}`);
+//! Anular: la fila se sigue viendo (tachada, con su motivo) y deja de sumar
+export const voidTransactionAPI = async ({ id, reason }) => {
+  const response = await axiosInstance.post(`/transactions/${id}/void`, { reason });
+  return response.data;
+};
+
+//! Deshacer una anulación
+export const restoreTransactionAPI = async (id) => {
+  const response = await axiosInstance.post(`/transactions/${id}/restore`);
+  return response.data;
+};
+
+//! Borrado definitivo (solo propietario): para pruebas o duplicados
+export const purgeTransactionAPI = async (id) => {
+  const response = await axiosInstance.delete(`/transactions/${id}/purge`);
   return response.data;
 };
 
@@ -57,9 +69,18 @@ export const listTransationsAPI = async ({
   endDate,
   page,
   limit,
+  includeVoided,
 }) => {
   const response = await axiosInstance.get("/transactions/lists", {
-    params: { category, type, startDate, endDate, page, limit },
+    params: {
+      category,
+      type,
+      startDate,
+      endDate,
+      page,
+      limit,
+      includeVoided: includeVoided ? "true" : undefined,
+    },
   });
   return response.data;
 };

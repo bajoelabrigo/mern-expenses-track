@@ -3,10 +3,11 @@ import { FaUser, FaEnvelope, FaLock, FaChurch } from "react-icons/fa";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { registerAPI } from "../../services/users/userService";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
+import { CURRENCIES } from "../../lib/money";
 
 const validationSchema = Yup.object({
   username: Yup.string()
@@ -15,7 +16,16 @@ const validationSchema = Yup.object({
   email: Yup.string()
     .email("Correo inválido")
     .required("El correo es obligatorio"),
-  iglesia: Yup.string().required("La iglesia es obligatoria"),
+  //! La iglesia solo se pide si se marcó que se llevarán sus cuentas
+  iglesia: Yup.string().when("llevaIglesia", {
+    is: true,
+    then: (schema) =>
+      schema
+        .trim()
+        .min(2, "El nombre debe tener al menos 2 caracteres")
+        .required("Escribe el nombre de la iglesia o ministerio"),
+    otherwise: (schema) => schema.notRequired(),
+  }),
   //! Mismo mínimo que exige el backend (8 caracteres)
   password: Yup.string()
     .min(8, "La contraseña debe tener al menos 8 caracteres")
@@ -27,6 +37,9 @@ const validationSchema = Yup.object({
 
 const RegistrationForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  //! Quien llega desde una invitación ya tiene espacio al que unirse
+  const invitado = Boolean(location.state?.invited);
 
   const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
     mutationFn: registerAPI,
@@ -36,15 +49,23 @@ const RegistrationForm = () => {
   const formik = useFormik({
     initialValues: {
       username: "",
-      email: "",
+      email: location.state?.email || "",
+      llevaIglesia: !invitado,
       iglesia: "",
+      currency: "USD",
       password: "",
       confirmPassword: "",
     },
     validationSchema,
-    onSubmit: async ({ username, email, iglesia, password }) => {
+    onSubmit: async ({ username, email, llevaIglesia, iglesia, currency, password }) => {
       try {
-        await mutateAsync({ username, email, iglesia, password });
+        await mutateAsync({
+          username,
+          email,
+          iglesia: llevaIglesia ? iglesia.trim() : "",
+          currency,
+          password,
+        });
       } catch {
         // el mensaje se muestra con AlertMessage
       }
@@ -55,8 +76,16 @@ const RegistrationForm = () => {
   useEffect(() => {
     if (!isSuccess) return undefined;
 
-    const timeout = setTimeout(() => navigate("/login"), 1200);
+    //! Se conserva a dónde volver (p. ej. la invitación) y el correo
+    const timeout = setTimeout(
+      () =>
+        navigate("/login", {
+          state: { from: location.state?.from, email: formik.values.email },
+        }),
+      1200
+    );
     return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuccess, navigate]);
 
   return (
@@ -111,18 +140,52 @@ const RegistrationForm = () => {
         )}
       </div>
 
-      <div className="relative">
-        <FaChurch size={20} className="absolute top-3 left-3 text-gray-400" />
+      <label className="flex items-start gap-2 text-sm text-gray-700">
         <input
-          id="iglesia"
-          type="text"
-          {...formik.getFieldProps("iglesia")}
-          placeholder="Iglesia o Ministerio"
-          className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
+          type="checkbox"
+          checked={formik.values.llevaIglesia}
+          onChange={(e) => formik.setFieldValue("llevaIglesia", e.target.checked)}
+          className="mt-1"
         />
-        {formik.touched.iglesia && formik.errors.iglesia && (
-          <span className="text-xs text-red-500">{formik.errors.iglesia}</span>
-        )}
+        <span>
+          Voy a llevar las cuentas de una iglesia o ministerio
+          <span className="block text-xs text-gray-500">
+            Siempre tendrás además un espacio personal para tus finanzas.
+          </span>
+        </span>
+      </label>
+
+      {formik.values.llevaIglesia && (
+        <div className="relative">
+          <FaChurch size={20} className="absolute top-3 left-3 text-gray-400" />
+          <input
+            id="iglesia"
+            type="text"
+            {...formik.getFieldProps("iglesia")}
+            placeholder="Nombre de la iglesia o ministerio"
+            className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
+          />
+          {formik.touched.iglesia && formik.errors.iglesia && (
+            <span className="text-xs text-red-500">{formik.errors.iglesia}</span>
+          )}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="currency" className="text-sm text-gray-700">
+          Moneda en la que llevarás las cuentas
+        </label>
+        <select
+          id="currency"
+          {...formik.getFieldProps("currency")}
+          className="py-2 px-3 w-full rounded-md border border-gray-300 focus:border-blue-500"
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code} — {c.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="relative">

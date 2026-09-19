@@ -7,9 +7,12 @@ import {
 } from "../../services/category/categoryService";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
+import { useWorkspace } from "../../hooks/useWorkspace";
 
 const CategoriesList = () => {
   const queryClient = useQueryClient();
+  const { can } = useWorkspace();
+  const canWrite = can("category:write");
 
   const {
     data: categories = [],
@@ -50,7 +53,17 @@ const CategoriesList = () => {
 
   return (
     <div className="max-w-md mx-auto my-10 bg-white p-6 rounded-lg shadow-lg">
-      <h2 className="text-2xl font-semibold text-gray-800 mb-4">Categorías</h2>
+      <div className="flex items-center justify-between mb-4 gap-3">
+        <h2 className="text-2xl font-semibold text-gray-800">Categorías</h2>
+        {canWrite && (
+          <Link
+            to="/add-category"
+            className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md"
+          >
+            Nueva categoría
+          </Link>
+        )}
+      </div>
 
       {isLoading && <AlertMessage type="loading" message="Cargando..." />}
       {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
@@ -60,11 +73,16 @@ const CategoriesList = () => {
 
       {!isLoading && categories.length === 0 && (
         <p className="text-gray-500 text-sm">
-          Todavía no tienes categorías.{" "}
-          <Link to="/add-category" className="text-blue-600 hover:underline">
-            Crea la primera
-          </Link>
-          .
+          Este espacio todavía no tiene categorías.
+          {canWrite && (
+            <>
+              {" "}
+              <Link to="/add-category" className="text-blue-600 hover:underline">
+                Crea la primera
+              </Link>
+              .
+            </>
+          )}
         </p>
       )}
 
@@ -92,6 +110,7 @@ const CategoriesList = () => {
               </div>
             </div>
 
+            {canWrite && (
             <div className="flex space-x-3">
               <Link
                 to={`/update-category/${category._id}`}
@@ -109,6 +128,7 @@ const CategoriesList = () => {
                 <FaTrash />
               </button>
             </div>
+            )}
           </li>
         ))}
       </ul>

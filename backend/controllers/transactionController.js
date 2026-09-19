@@ -1,7 +1,12 @@
 const ExcelJS = require("exceljs");
 const asyncHandler = require("express-async-handler");
 const Transaction = require("../model/Transaccion");
-const { parseStartDate, parseEndDate, getPeriodRange } = require("../utils/dates");
+const {
+  parseStartDate,
+  parseEndDate,
+  getPeriodRange,
+  parseTransactionDate,
+} = require("../utils/dates");
 const { toCents, fromCents } = require("../utils/money");
 const { audit, transactionSnapshot } = require("../utils/audit");
 
@@ -123,8 +128,8 @@ const transactionController = {
     const { cents, error } = parseAmount(amount);
     if (error) return res.status(400).json({ message: error });
 
-    const baseDate = new Date(date);
-    if (Number.isNaN(baseDate.getTime())) {
+    const baseDate = parseTransactionDate(date);
+    if (!baseDate) {
       return res.status(400).json({ message: "Fecha inválida" });
     }
 
@@ -281,8 +286,8 @@ const transactionController = {
     }
 
     if (date !== undefined) {
-      const parsedDate = new Date(date);
-      if (Number.isNaN(parsedDate.getTime())) {
+      const parsedDate = parseTransactionDate(date);
+      if (!parsedDate) {
         return res.status(400).json({ message: "Fecha inválida" });
       }
       transaction.date = parsedDate;

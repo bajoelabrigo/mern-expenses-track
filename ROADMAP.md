@@ -8,21 +8,23 @@ despliega Netlify y Render) cuando está verificada.
 
 ## Fase 1 — Base: espacios, roles y confianza
 
-- [ ] **Espacios de trabajo**: cada usuario tiene un espacio personal y puede
+- [x] **Espacios de trabajo**: cada usuario tiene un espacio personal y puede
       crear o unirse a espacios de iglesia. Todo (movimientos, categorías) vive
       dentro de un espacio, no de un usuario.
-- [ ] **Roles por espacio**: propietario, tesorero, contador, auditor (solo
+- [x] **Roles por espacio**: propietario, tesorero, contador, auditor (solo
       lectura) y lector.
-- [ ] **Invitaciones** por enlace (se puede mandar por WhatsApp) y por correo.
-- [ ] **Montos en centavos** (enteros) y **moneda por espacio**. La API sigue
+- [x] **Invitaciones** por enlace (se puede mandar por WhatsApp) y por correo.
+- [x] **Montos en centavos** (enteros) y **moneda por espacio**. La API sigue
       hablando en unidades (`150.50`); la conversión vive en un solo sitio.
-- [ ] **Anular en vez de borrar**: un movimiento anulado se sigue viendo,
+- [x] **Anular en vez de borrar**: un movimiento anulado se sigue viendo,
       tachado y con su motivo, y deja de sumar. Borrar del todo queda solo para
       el propietario.
-- [ ] **Historial de auditoría**: quién creó, editó o anuló qué y cuándo.
-- [ ] **Recuperación de contraseña** por correo.
-- [ ] **Migración** de los datos existentes: cada usuario actual pasa a ser
-      propietario de un espacio de iglesia con sus movimientos.
+- [x] **Historial de auditoría**: quién creó, editó o anuló qué y cuándo.
+- [x] **Recuperación de contraseña** por correo.
+- [x] **Migración** de los datos existentes: cada usuario actual pasa a ser
+      propietario de un espacio de iglesia con sus movimientos
+      (`scripts/migrar-espacios.js`, probado con datos de la forma actual).
+- [ ] **Desplegar**: fusionar en `main` y ejecutar la migración en producción.
 
 ## Fase 2 — App instalable (PWA) y APK
 

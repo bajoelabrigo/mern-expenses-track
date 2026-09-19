@@ -189,6 +189,20 @@ describe("Transacciones", () => {
     assert.equal(intacta.body.voided, false);
   });
 
+  test("una fecha sin hora se guarda al mediodía UTC (no se corre al día anterior)", async () => {
+    const { token } = await createUser();
+
+    const res = await crear(token, {
+      type: "expense",
+      amount: 10,
+      date: "2026-09-15",
+    }).expect(201);
+    assert.equal(res.body[0].date, "2026-09-15T12:00:00.000Z");
+
+    //! Un día imposible se rechaza en vez de saltar al mes siguiente
+    await crear(token, { type: "expense", amount: 10, date: "2026-02-31" }).expect(400);
+  });
+
   test("un id con formato inválido responde 400 y no 500", async () => {
     const { token } = await createUser();
 
