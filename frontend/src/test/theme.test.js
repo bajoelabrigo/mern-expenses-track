@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { applyTheme, getThemeMode, watchSystemTheme } from "../lib/theme";
 
 //! matchMedia no existe en jsdom: se simula uno que se puede cambiar
