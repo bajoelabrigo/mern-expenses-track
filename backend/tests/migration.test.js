@@ -127,6 +127,8 @@ describe("Migración a espacios", () => {
     const iglesia = await col("workspaces").findOne({ _id: pastor.defaultWorkspace });
     assert.equal(iglesia.name, "Iglesia Betel");
     assert.equal(iglesia.kind, "iglesia");
+    //! La app anterior mostraba "S/." fijo
+    assert.equal(iglesia.currency, "PEN");
 
     const txPastor = await col("transactions").find({ workspace: iglesia._id }).toArray();
     assert.equal(txPastor.length, 3);

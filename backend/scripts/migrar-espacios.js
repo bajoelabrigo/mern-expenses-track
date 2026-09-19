@@ -107,7 +107,8 @@ const migrate = async ({ apply = false, backupDir = null, log = console.log } = 
     const ensure = async (kind, name) => {
       const found = ownedWs.find((w) => w.kind === kind && (kind === "personal" || w.name === name));
       if (found) return found;
-      const ws = await Workspace.create({ name, kind, createdBy: user._id });
+      //! La app anterior mostraba "S/." fijo: los libros existentes son en soles
+      const ws = await Workspace.create({ name, kind, currency: "PEN", createdBy: user._id });
       await Membership.create({ workspace: ws._id, user: user._id, role: "propietario" });
       summary.workspacesCreated += 1;
       return ws;
