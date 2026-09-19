@@ -42,6 +42,9 @@ const FundsPage = lazy(() => import("./components/Funds/FundsPage"));
 const FundDetail = lazy(() => import("./components/Funds/FundDetail"));
 const FundEditor = lazy(() => import("./components/Funds/FundEditor"));
 const TransferPage = lazy(() => import("./components/Funds/TransferPage"));
+const DonorsPage = lazy(() => import("./components/Donors/DonorsPage"));
+const DonorDetail = lazy(() => import("./components/Donors/DonorDetail"));
+const DonorEditor = lazy(() => import("./components/Donors/DonorEditor"));
 const AdminUsersList = lazy(() => import("./components/Admin/AdminUsersList"));
 
 const Cargando = () => (
@@ -165,6 +168,38 @@ const App = () => (
             element={
               <Privada>
                 <FundEditor />
+              </Privada>
+            }
+          />
+          <Route
+            path="aportantes"
+            element={
+              <Privada>
+                <DonorsPage />
+              </Privada>
+            }
+          />
+          <Route
+            path="aportantes/nuevo"
+            element={
+              <Privada>
+                <DonorEditor />
+              </Privada>
+            }
+          />
+          <Route
+            path="aportantes/:id"
+            element={
+              <Privada>
+                <DonorDetail />
+              </Privada>
+            }
+          />
+          <Route
+            path="aportantes/:id/editar"
+            element={
+              <Privada>
+                <DonorEditor />
               </Privada>
             }
           />

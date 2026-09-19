@@ -13,6 +13,8 @@ const TransactionRow = ({ transaction, icon, currency, href, actions }) => {
   const detail = [
     capitalize(transaction.category),
     fundLabel,
+    //! El nombre solo llega a quien puede verlo (lo filtra la API)
+    transaction.donor?.name,
     transaction.createdBy?.username ? `por ${transaction.createdBy.username}` : null,
   ]
     .filter(Boolean)

@@ -7,6 +7,7 @@ const Invitation = require("../model/Invitation");
 const Transaction = require("../model/Transaccion");
 const Category = require("../model/Category");
 const Fund = require("../model/Fund");
+const Donor = require("../model/Donor");
 const FundTransfer = require("../model/FundTransfer");
 const AuditLog = require("../model/AuditLog");
 const User = require("../model/User");
@@ -163,6 +164,7 @@ exports.remove = asyncHandler(async (req, res) => {
     Transaction.deleteMany({ workspace: workspaceId }),
     Category.deleteMany({ workspace: workspaceId }),
     Fund.deleteMany({ workspace: workspaceId }),
+    Donor.deleteMany({ workspace: workspaceId }),
     FundTransfer.deleteMany({ workspace: workspaceId }),
     Invitation.deleteMany({ workspace: workspaceId }),
     AuditLog.deleteMany({ workspace: workspaceId }),
@@ -432,6 +434,9 @@ exports.listAudit = asyncHandler(async (req, res) => {
     }
     filters.entityId = req.query.entityId;
   }
+
+  //! Lo de los aportantes (quién dio cuánto) solo lo ve la tesorería
+  if (!can(req.role, "donor:read")) filters.entity = { $ne: "donor" };
 
   const [total, entries] = await Promise.all([
     AuditLog.countDocuments(filters),

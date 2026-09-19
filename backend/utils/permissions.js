@@ -14,6 +14,10 @@ const PERMISSIONS = {
   "category:write": ["propietario", "tesorero", "contador"],
   //! Crear, editar y archivar fondos, y pasar dinero entre ellos
   "fund:manage": ["propietario", "tesorero"],
+  //! Ver quién dio cuánto (dato sensible: solo la tesorería). El auditor ve
+  //! todos los movimientos, pero sin el nombre del aportante.
+  "donor:read": ["propietario", "tesorero", "contador"],
+  "donor:write": ["propietario", "tesorero", "contador"],
   //! Invitar, cambiar roles y quitar miembros
   "members:manage": ["propietario", "tesorero"],
   "audit:read": ["propietario", "tesorero", "auditor"],

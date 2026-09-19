@@ -10,6 +10,7 @@ import { listCategoriesAPI } from "../../services/category/categoryService";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useIsDesktop } from "../../hooks/useMediaQuery";
 import { useFunds } from "../../hooks/useFunds";
+import { useDonors } from "../../hooks/useDonors";
 import { getErrorMessage } from "../../lib/axios";
 import { formatMoney, fromCents } from "../../lib/money";
 import { dayLabel } from "../../lib/periods";
@@ -54,15 +55,19 @@ const MovementsPage = () => {
   const fund = searchParams.get("fondo") || undefined;
   const { findFund } = useFunds();
   const fundInfo = fund ? findFund(fund) : null;
-  const clearFund = () => {
+  const donorId = searchParams.get("aportante") || undefined;
+  const { donors } = useDonors();
+  const donorInfo = donorId ? donors.find((d) => d._id === donorId) : null;
+  const clearParam = (name) => () => {
     const next = new URLSearchParams(searchParams);
-    next.delete("fondo");
+    next.delete(name);
     setSearchParams(next, { replace: true });
   };
 
   const params = {
     q,
     fund,
+    donor: donorId,
     type: filter === "income" || filter === "expense" ? filter : undefined,
     recurrent: filter === "recurrent",
     includeVoided: filter === "voided",
@@ -93,6 +98,7 @@ const MovementsPage = () => {
         ...dates,
         q,
         fund,
+        donor: donorId,
         type: params.type,
         recurrent: params.recurrent,
         includeVoided: filter === "voided",
@@ -139,8 +145,19 @@ const MovementsPage = () => {
               {f.label}
             </Chip>
           ))}
+          {donorId && (
+            <Chip
+              selected
+              onClick={clearParam("aportante")}
+              aria-label={`Quitar el filtro del aportante ${donorInfo?.name || ""}`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                {donorInfo?.name || "Aportante"} <LuX aria-hidden="true" />
+              </span>
+            </Chip>
+          )}
           {fund && (
-            <Chip selected onClick={clearFund} aria-label={`Quitar el filtro del fondo ${fundInfo?.name || ""}`}>
+            <Chip selected onClick={clearParam("fondo")} aria-label={`Quitar el filtro del fondo ${fundInfo?.name || ""}`}>
               <span className="inline-flex items-center gap-1.5">
                 {fundInfo ? `${fundInfo.icon} ${fundInfo.name}` : "Fondo"} <LuX aria-hidden="true" />
               </span>
