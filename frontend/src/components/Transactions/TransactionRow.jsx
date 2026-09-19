@@ -8,8 +8,11 @@ import { capitalize } from "../ui/styles";
 //! Toda la fila lleva a editar (si se puede) o al detalle.
 const TransactionRow = ({ transaction, icon, currency, href, actions }) => {
   const title = transaction.description || capitalize(transaction.category);
+  //! En el listado el fondo llega con su nombre; el General no se menciona
+  const fundLabel = transaction.fund?.name ? `${transaction.fund.icon || ""} ${transaction.fund.name}`.trim() : null;
   const detail = [
     capitalize(transaction.category),
+    fundLabel,
     transaction.createdBy?.username ? `por ${transaction.createdBy.username}` : null,
   ]
     .filter(Boolean)

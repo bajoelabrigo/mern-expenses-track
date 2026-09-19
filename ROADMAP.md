@@ -55,10 +55,11 @@ despliega Netlify y Render) cuando está verificada.
 - [ ] Miembros/donantes con privacidad (solo tesorería ve quién dio cuánto).
 - [ ] Constancias de donación anuales en PDF.
 - [ ] Conteo de ofrenda del culto con doble firma.
-- [ ] Contabilidad por fondos (general, misiones, construcción, benevolencia).
+- [x] Contabilidad por fondos (general, misiones, construcción, benevolencia):
+      saldo por fondo, pases entre fondos (anulables) y fondos archivados.
 - [ ] Presupuesto anual por ministerio, con alertas al 80 % y 100 %.
 - [ ] Rol de líder de ministerio (solo ve y solicita sobre su presupuesto).
-- [ ] Campañas con meta y barra de avance.
+- [x] Campañas con meta y barra de avance (un fondo con meta).
 - [ ] Informes mensual y anual en PDF con el logo de la iglesia.
 - [ ] Enlace de solo lectura para compartir un informe con la congregación.
 

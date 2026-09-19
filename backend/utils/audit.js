@@ -2,10 +2,13 @@ const AuditLog = require("../model/AuditLog");
 
 //! Campos de un movimiento que se guardan en el historial (antes/después).
 //! Se guardan en unidades, igual que los ve el usuario.
-const transactionSnapshot = (tx) =>
+//! `fundName`: el nombre del fondo en ese momento (el historial debe decir
+//! "Misiones" aunque el fondo se renombre o archive después).
+const transactionSnapshot = (tx, fundName) =>
   tx && {
     type: tx.type,
     category: tx.category,
+    ...(fundName !== undefined ? { fund: fundName } : {}),
     amount: tx.amount,
     date: tx.date,
     description: tx.description,
@@ -18,6 +21,15 @@ const categorySnapshot = (category) =>
     name: category.name,
     type: category.type,
     icon: category.icon,
+  };
+
+const fundSnapshot = (fund) =>
+  fund && {
+    name: fund.name,
+    icon: fund.icon,
+    description: fund.description,
+    goal: fund.goal,
+    archived: fund.archived,
   };
 
 //! Registra un cambio. Un fallo al escribir el historial NO debe deshacer ni
@@ -40,4 +52,4 @@ const audit = async (req, { action, entity, entityId, before, after, note }) => 
   }
 };
 
-module.exports = { audit, transactionSnapshot, categorySnapshot };
+module.exports = { audit, transactionSnapshot, categorySnapshot, fundSnapshot };

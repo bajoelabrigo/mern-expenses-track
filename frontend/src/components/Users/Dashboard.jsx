@@ -35,6 +35,7 @@ import WorkspacePicker from "../layout/WorkspacePicker";
 import PendingTransactions from "../Transactions/PendingTransactions";
 import TransactionRow from "../Transactions/TransactionRow";
 import TransactionsTable from "../Transactions/TransactionsTable";
+import FundsSummaryCard from "../Funds/FundsSummaryCard";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, LinearScale, LineElement, PointElement, Tooltip);
 
@@ -520,6 +521,8 @@ const Dashboard = () => {
           />
         </div>
 
+        <FundsSummaryCard currency={currency} />
+
         <section>
           {recentHeader}
           {recentItems.length > 0 ? (
@@ -594,6 +597,8 @@ const Dashboard = () => {
 
       {/* En qué se fue */}
       {spending.total > 0 && <SpendingDonut spending={spending} colors={colors} currency={currency} />}
+
+      <FundsSummaryCard currency={currency} />
 
       {/* Últimos movimientos */}
       <section>

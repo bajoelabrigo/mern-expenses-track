@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LuDelete, LuPlus, LuRepeat, LuX } from "react-icons/lu";
+import { LuChevronDown, LuDelete, LuPlus, LuRepeat, LuX } from "react-icons/lu";
 import { listCategoriesAPI } from "../../services/category/categoryService";
 import {
   addTransactionAPI,
@@ -15,6 +15,7 @@ import { formatMoney, formatTypedAmount } from "../../lib/money";
 import { toISODate } from "../../lib/periods";
 import { pressKey } from "../../lib/keypad";
 import { useWorkspace } from "../../hooks/useWorkspace";
+import { useFunds } from "../../hooks/useFunds";
 import { Button, Chip, ListGroup, Segmented } from "../ui";
 import AlertMessage from "../Alert/AlertMessage";
 import ReceiptPicker from "./ReceiptPicker";
@@ -57,6 +58,14 @@ const TransactionForm = ({ transaction, children }) => {
   const [recurrenceType, setRecurrenceType] = useState("monthly");
   const [recurrenceCount, setRecurrenceCount] = useState(12);
   const [receiptFile, setReceiptFile] = useState(null);
+  //! Fondo: "general" o el id. Desde la página de un fondo llega ya elegido.
+  const [fund, setFund] = useState(
+    () => (transaction ? transaction.fund || "general" : location.state?.fund || "general")
+  );
+  const { funds, hasFunds } = useFunds();
+  //! Al registrar solo los activos; al editar, también el archivado que ya tenía
+  const fundOptions = funds.filter((f) => !f.archived || (f._id && f._id === transaction?.fund));
+  const showFund = funds.length > 0 && (hasFunds || fund !== "general");
 
   const {
     data: categories = [],
@@ -166,6 +175,7 @@ const TransactionForm = ({ transaction, children }) => {
     mutate({
       type,
       category: selectedCategory,
+      fund: fund === "general" ? null : fund,
       amount: numeric,
       //! Mediodía local: la fecha no se corre de día por la zona horaria
       date: new Date(`${date}T12:00:00`).toISOString(),
@@ -287,6 +297,26 @@ const TransactionForm = ({ transaction, children }) => {
             className="text-sm text-right font-semibold focus:outline-none"
           />
         </label>
+        {showFund && (
+          <label className="flex items-center justify-between gap-3 px-4 h-13">
+            <span className="text-sm font-semibold text-ink-2">Fondo</span>
+            <span className="relative min-w-0 flex items-center">
+              <select
+                value={fund}
+                onChange={(e) => setFund(e.target.value)}
+                className="appearance-none bg-transparent text-sm text-right font-semibold pr-6 min-w-0 truncate focus:outline-none"
+              >
+                {fundOptions.map((f) => (
+                  <option key={f._id || "general"} value={f._id || "general"}>
+                    {f.icon} {f.name}
+                    {f.archived ? " (archivado)" : ""}
+                  </option>
+                ))}
+              </select>
+              <LuChevronDown aria-hidden="true" className="pointer-events-none absolute right-0 text-muted" />
+            </span>
+          </label>
+        )}
         <label className="flex items-center justify-between gap-3 px-4 h-13">
           <span className="text-sm font-semibold text-ink-2">Nota</span>
           <input

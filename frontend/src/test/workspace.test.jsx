@@ -43,6 +43,10 @@ vi.mock("../services/category/categoryService", () => ({
   listCategoriesAPI: vi.fn(async () => []),
 }));
 
+vi.mock("../services/funds/fundService", () => ({
+  listFundsAPI: vi.fn(async () => [{ _id: null, name: "General", icon: "🏛️", general: true, balance: 0 }]),
+}));
+
 const TX_ACTIVO = {
   _id: "t1",
   type: "income",

@@ -13,6 +13,7 @@ const transactionRouter = require("./routes/transactionRouter");
 const adminRouter = require("./routes/adminRoutes");
 const workspaceRouter = require("./routes/workspaceRouter");
 const invitationRouter = require("./routes/invitationRouter");
+const fundRouter = require("./routes/fundRouter");
 const { CORS_ORIGINS, SERVE_FRONTEND, isProduction } = require("./config/env");
 
 const app = express();
@@ -67,6 +68,7 @@ app.use("/api/v1/transactions", transactionRouter);
 app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/workspaces", workspaceRouter);
 app.use("/api/v1/invitations", invitationRouter);
+app.use("/api/v1/funds", fundRouter);
 
 //! Servir el frontend compilado solo si se activa explícitamente
 if (SERVE_FRONTEND) {
