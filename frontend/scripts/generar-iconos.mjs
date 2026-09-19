@@ -37,6 +37,17 @@ const ico = async (input, size, output) => {
   await writeFile(src(output), Buffer.concat([header, data]));
 };
 
+//! Los del APK (android/): mismos tamaños que generó Bubblewrap por densidad.
+//! Después hay que compilar y firmar una versión nueva (android/README.md).
+const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
+const res = (folder, file) => path.join("..", "..", "android", "app", "src", "main", "res", folder, file);
+const android = Object.entries(DENSITIES).flatMap(([name, x]) => [
+  png("icon.svg", 48 * x, res(`mipmap-${name}`, "ic_launcher.png")),
+  png("icon-maskable.svg", Math.round(82 * x), res(`mipmap-${name}`, "ic_maskable.png")),
+  png("icon.svg", 48 * x, res(`drawable-${name}`, "shortcut_0.png")),
+  png("icon.svg", 300 * x, res(`drawable-${name}`, "splash.png")),
+]);
+
 await Promise.all([
   png("icon.svg", 64, "pwa-64x64.png"),
   png("icon.svg", 192, "pwa-192x192.png"),
@@ -44,6 +55,8 @@ await Promise.all([
   png("icon-maskable.svg", 512, "maskable-icon-512x512.png"),
   png("icon-maskable.svg", 180, "apple-touch-icon-180x180.png"),
   ico("icon.svg", 48, "favicon.ico"),
+  ...android,
+  png("icon.svg", 512, path.join("..", "..", "android", "store_icon.png")),
 ]);
 
-console.log("Iconos generados en public/");
+console.log("Iconos generados en public/ y en android/");

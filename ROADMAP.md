@@ -47,7 +47,7 @@ despliega Netlify y Render) cuando está verificada.
       tabla; Movimientos en tabla.
 - [x] Portada, acceso, íconos de la app y el resto de pantallas.
 - [x] **Desplegar**: fusionado en `main` (2026-09-19).
-- [ ] Reconstruir el APK (versionCode 2) con los colores y el ícono nuevos.
+- [x] APK 1.1.0 (versionCode 2) con los colores y el ícono nuevos; se instala encima de la 1.0.0.
 
 ## Fase 3 — Núcleo de iglesia
 

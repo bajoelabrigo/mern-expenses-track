@@ -15,4 +15,6 @@
 -->
 <resources>
     <color name="shortcut_background">#F5F5F5</color>
+    <!-- Fondo del icono adaptable: el ámbar del icono, para que no asome un borde blanco -->
+    <color name="icon_background">#E5A33B</color>
 </resources>

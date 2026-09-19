@@ -4,13 +4,13 @@
   "name": "Control de Gastos",
   "launcherName": "Gastos",
   "display": "standalone",
-  "themeColor": "#2563EB",
-  "themeColorDark": "#000000",
-  "navigationColor": "#2563EB",
-  "navigationColorDark": "#000000",
-  "navigationDividerColor": "#000000",
-  "navigationDividerColorDark": "#000000",
-  "backgroundColor": "#FFFFFF",
+  "themeColor": "#ECEBE6",
+  "themeColorDark": "#0E0E0E",
+  "navigationColor": "#FFFFFF",
+  "navigationColorDark": "#1A1A1A",
+  "navigationDividerColor": "#FFFFFF",
+  "navigationDividerColorDark": "#1A1A1A",
+  "backgroundColor": "#ECEBE6",
   "enableNotifications": false,
   "startUrl": "/dashboard",
   "iconUrl": "https://controldegastosiglesia.netlify.app/pwa-512x512.png",
@@ -20,8 +20,8 @@
     "path": "C:/Users/bajoe/android-keys/control-gastos.keystore",
     "alias": "controldegastos"
   },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
+  "appVersionName": "1.1.0",
+  "appVersionCode": 2,
   "shortcuts": [
     {
       "name": "Agregar movimiento",
@@ -50,5 +50,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.0.0"
+  "appVersion": "1.1.0"
 }
