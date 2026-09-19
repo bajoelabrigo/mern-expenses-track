@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.controldegastos.app",
+      "sha256_cert_fingerprints": [
+        "F4:F5:EC:B4:76:EB:78:0F:39:4D:5F:66:EA:F4:95:11:46:BD:DA:2B:41:7D:FA:48:38:AE:E9:C8:7D:DE:51:40"
+      ]
+    }
+  }
+]

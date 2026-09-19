@@ -1,0 +1,54 @@
+{
+  "packageId": "com.controldegastos.app",
+  "host": "controldegastosiglesia.netlify.app",
+  "name": "Control de Gastos",
+  "launcherName": "Gastos",
+  "display": "standalone",
+  "themeColor": "#2563EB",
+  "themeColorDark": "#000000",
+  "navigationColor": "#2563EB",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#FFFFFF",
+  "enableNotifications": false,
+  "startUrl": "/dashboard",
+  "iconUrl": "https://controldegastosiglesia.netlify.app/pwa-512x512.png",
+  "maskableIconUrl": "https://controldegastosiglesia.netlify.app/maskable-icon-512x512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "C:/Users/bajoe/android-keys/control-gastos.keystore",
+    "alias": "controldegastos"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Agregar movimiento",
+      "shortName": "Agregar",
+      "url": "https://controldegastosiglesia.netlify.app/add-transaction",
+      "chosenIconUrl": "https://controldegastosiglesia.netlify.app/pwa-192x192.png"
+    }
+  ],
+  "generatorApp": "unknown",
+  "webManifestUrl": "https://controldegastosiglesia.netlify.app/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": false,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://controldegastosiglesia.netlify.app/",
+  "minSdkVersion": 21,
+  "orientation": "any",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}

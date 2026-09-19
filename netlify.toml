@@ -43,3 +43,12 @@
   [headers.values]
     Cache-Control = "no-cache"
     Content-Type = "application/manifest+json"
+
+# Verificación de la app Android (Trusted Web Activity): Android descarga este
+# archivo para confirmar que el APK es de este sitio y abrirlo sin barra de
+# dirección. Debe servirse como JSON.
+[[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"
+    Access-Control-Allow-Origin = "*"
