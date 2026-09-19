@@ -98,8 +98,12 @@ const spendingByCategory = (transactions) => {
   return { rows, total };
 };
 
-//! "+12% vs agosto". `higherIsBetter`: en los gastos, subir no es buena noticia
-const DeltaChip = ({ value, previousLabel, higherIsBetter = true, className = "" }) => {
+const percent = (v) => `${Math.round(v * 100)}%`;
+
+//! "+12% vs agosto". `higherIsBetter`: en los gastos, subir no es buena noticia.
+//! `format` muestra la magnitud (por defecto en porcentaje); `plain`: sin verde
+//! ni ámbar, para ir sobre la tarjeta ámbar.
+const DeltaChip = ({ value, previousLabel, higherIsBetter = true, format = percent, plain, className = "" }) => {
   if (value === null || !Number.isFinite(value)) return null;
   const up = value >= 0;
   const good = up === higherIsBetter;
@@ -107,13 +111,13 @@ const DeltaChip = ({ value, previousLabel, higherIsBetter = true, className = ""
     <span
       className={cx(
         "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold",
-        good ? "bg-income-soft text-income" : "bg-accent-soft text-ink",
+        plain ? "bg-accent-ink/10" : good ? "bg-income-soft text-income" : "bg-accent-soft text-ink",
         className
       )}
     >
       {up ? <LuTrendingUp aria-hidden="true" /> : <LuTrendingDown aria-hidden="true" />}
       {up ? "+" : "−"}
-      {Math.abs(Math.round(value * 100))}% vs {previousLabel}
+      {format(Math.abs(value))} vs {previousLabel}
     </span>
   );
 };
@@ -412,7 +416,11 @@ const Dashboard = () => {
   const iconOf = (name) => categories.find((c) => c.name === name)?.icon;
   const money = (cents) => formatMoney(fromCents(cents), currency);
 
-  const netDelta = change(totals.net, prevTotals.net);
+  //! El flujo neto se compara en dinero, no en porcentaje: si el mes anterior
+  //! cerró cerca de cero o con el signo contrario, el porcentaje no dice nada
+  //! ("−1317%"). Sin movimientos en el período anterior no hay comparación.
+  const hadPrevious = prevTotals.income !== 0 || prevTotals.expense !== 0;
+  const netDiff = hadPrevious ? totals.net - prevTotals.net : null;
   const maxInOut = Math.max(totals.income, totals.expense, 1);
   const recentItems = recent.data?.transactions || [];
 
@@ -476,16 +484,7 @@ const Dashboard = () => {
             featured
             label={`Flujo neto · ${range.label}`}
             value={money(totals.net)}
-            footer={
-              netDelta !== null &&
-              Number.isFinite(netDelta) && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-accent-ink/10 px-2 py-0.5 text-xs font-bold">
-                  {netDelta >= 0 ? <LuTrendingUp aria-hidden="true" /> : <LuTrendingDown aria-hidden="true" />}
-                  {netDelta >= 0 ? "+" : "−"}
-                  {Math.abs(Math.round(netDelta * 100))}% vs {range.previousLabel}
-                </span>
-              )
-            }
+            footer={<DeltaChip plain value={netDiff} format={money} previousLabel={range.previousLabel} />}
           />
           <StatCard
             label={`Entró · ${range.label}`}
@@ -559,7 +558,7 @@ const Dashboard = () => {
         </Eyebrow>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
           <p className="text-[40px] leading-none font-extrabold tracking-tight tabular">{money(totals.net)}</p>
-          <DeltaChip value={netDelta} previousLabel={range.previousLabel} />
+          <DeltaChip value={netDiff} format={money} previousLabel={range.previousLabel} />
         </div>
 
         <div className="mt-4 h-44 -mx-1">
