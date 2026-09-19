@@ -1,0 +1,12 @@
+# Compilación y configuración local
+.gradle/
+build/
+app/build/
+local.properties
+# Paquetes generados: se publican aparte, no en el repositorio
+*.apk
+*.aab
+*.idsig
+# La clave de firma NUNCA va al repositorio (es público)
+*.keystore
+*.jks
