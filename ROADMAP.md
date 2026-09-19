@@ -32,8 +32,9 @@ despliega Netlify y Render) cuando está verificada.
 - [x] Service worker: la app abre sin conexión.
 - [x] Registrar movimientos sin conexión y sincronizar al volver, sin duplicados.
 - [ ] Foto del comprobante con la cámara del móvil.
-- [ ] APK como Trusted Web Activity (PWABuilder/Bubblewrap) con
-      `/.well-known/assetlinks.json` en Netlify.
+- [x] APK como Trusted Web Activity (Bubblewrap) con
+      `/.well-known/assetlinks.json` en Netlify (verificado por Google y
+      probado en un emulador Android 17). Ver `android/README.md`.
 - [ ] Notificaciones push (recordatorios, resumen semanal).
 
 ## Fase 3 — Núcleo de iglesia
