@@ -203,6 +203,40 @@ describe("Transacciones", () => {
     await crear(token, { type: "expense", amount: 10, date: "2026-02-31" }).expect(400);
   });
 
+  test("busca en descripción y categoría, de forma literal", async () => {
+    const { token } = await createUser();
+    await crear(token, { type: "income", category: "diezmos", amount: 10, date: "2026-09-01", description: "Culto del domingo" });
+    await crear(token, { type: "expense", category: "luz", amount: 5, date: "2026-09-02", description: "Recibo (septiembre) 50% pagado" });
+    await crear(token, { type: "expense", category: "agua", amount: 3, date: "2026-09-03", description: "Sedapal" });
+
+    const buscar = (q) =>
+      request(app)
+        .get("/api/v1/transactions/lists")
+        .query({ q })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200);
+
+    assert.equal((await buscar("DOMINGO")).body.total, 1);
+    assert.equal((await buscar("luz")).body.total, 1);
+    //! Caracteres especiales de expresión regular se buscan tal cual
+    assert.equal((await buscar("(septiembre) 50%")).body.total, 1);
+    assert.equal((await buscar(".*")).body.total, 0);
+  });
+
+  test("filtra los recurrentes", async () => {
+    const { token } = await createUser();
+    await crear(token, { type: "expense", category: "internet", amount: 99, date: "2026-09-01", recurrent: true, recurrenceType: "monthly", recurrenceCount: 2 });
+    await crear(token, { type: "expense", category: "luz", amount: 5, date: "2026-09-02" });
+
+    const res = await request(app)
+      .get("/api/v1/transactions/lists")
+      .query({ recurrent: "true" })
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    assert.equal(res.body.total, 2);
+    res.body.transactions.forEach((t) => assert.equal(t.recurrent, true));
+  });
+
   test("un JSON mal formado responde 400 y no 500", async () => {
     const res = await request(app)
       .post("/api/v1/users/login")

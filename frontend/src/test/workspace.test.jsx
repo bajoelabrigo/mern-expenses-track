@@ -7,7 +7,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import authReducer, { loginAction, logoutAction } from "../redux/slice/authSlice";
 import workspaceReducer, { setWorkspaceAction } from "../redux/slice/workspaceSlice";
 import PermissionRoute from "../components/Auth/PermissionRoute";
-import TransactionList from "../components/Transactions/TransactionList";
+import MovementsPage from "../components/Transactions/MovementsPage";
+import TransactionUpdate from "../components/Transactions/TransactionUpdate";
 
 const IGLESIA = {
   _id: "w-iglesia",
@@ -42,42 +43,47 @@ vi.mock("../services/category/categoryService", () => ({
   listCategoriesAPI: vi.fn(async () => []),
 }));
 
+const TX_ACTIVO = {
+  _id: "t1",
+  type: "income",
+  category: "diezmos",
+  amount: 150.5,
+  date: "2026-09-01T12:00:00.000Z",
+  voided: false,
+  receipt: null,
+  createdBy: { username: "tesorera" },
+};
+const TX_ANULADO = {
+  ...TX_ACTIVO,
+  _id: "t2",
+  type: "expense",
+  category: "luz",
+  amount: 40,
+  voided: true,
+  voidReason: "Duplicado",
+};
+const fetchTransactionByIdAPI = vi.fn();
+
 vi.mock("../services/transactions/transactionService", () => ({
-  listTransationsAPI: vi.fn(async ({ includeVoided }) => ({
-    total: includeVoided ? 2 : 1,
+  listTransationsAPI: vi.fn(async () => ({
+    total: 1,
     currentPage: 1,
     totalPages: 1,
-    transactions: [
-      {
-        _id: "t1",
-        type: "income",
-        category: "diezmos",
-        amount: 150.5,
-        date: "2026-09-01T12:00:00.000Z",
-        voided: false,
-        createdBy: { username: "tesorera" },
-      },
-      ...(includeVoided
-        ? [
-            {
-              _id: "t2",
-              type: "expense",
-              category: "luz",
-              amount: 40,
-              date: "2026-09-02T12:00:00.000Z",
-              voided: true,
-              voidReason: "Duplicado",
-            },
-          ]
-        : []),
-    ],
+    transactions: [TX_ACTIVO],
   })),
+  fetchTransactionByIdAPI: (...args) => fetchTransactionByIdAPI(...args),
+  exportTransactionExcelAPI: vi.fn(),
+  addTransactionAPI: vi.fn(),
+  updateTransactionAPI: vi.fn(),
+  attachReceiptAPI: vi.fn(),
+  removeReceiptAPI: vi.fn(),
+  getReceiptUrlAPI: vi.fn(),
   voidTransactionAPI: vi.fn(),
   restoreTransactionAPI: vi.fn(),
   purgeTransactionAPI: vi.fn(),
 }));
 
-const renderConEspacio = (ui) => {
+const renderConEspacio = (ui, ruta = "/") => {
   const store = configureStore({
     reducer: { auth: authReducer, workspace: workspaceReducer },
     preloadedState: {
@@ -90,9 +96,10 @@ const renderConEspacio = (ui) => {
   return render(
     <Provider store={store}>
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={["/"]}>
+        <MemoryRouter initialEntries={[ruta]}>
           <Routes>
             <Route path="/" element={ui} />
+            <Route path="/tx/:id" element={ui} />
             <Route path="/dashboard" element={<p>panel de usuario</p>} />
           </Routes>
         </MemoryRouter>
@@ -152,39 +159,51 @@ describe("PermissionRoute", () => {
   });
 });
 
-describe("TransactionList según el rol", () => {
-  beforeEach(() => listWorkspacesAPI.mockReset());
+describe("Movimientos y acciones según el rol", () => {
+  beforeEach(() => {
+    listWorkspacesAPI.mockReset();
+    fetchTransactionByIdAPI.mockReset();
+  });
 
-  it("un lector ve los movimientos con la moneda del espacio, sin botones de edición", async () => {
+  it("la lista muestra el importe con la moneda del espacio y quién lo registró", async () => {
     listWorkspacesAPI.mockResolvedValue(LECTOR);
-    renderConEspacio(<TransactionList />);
+    renderConEspacio(<MovementsPage />);
 
-    expect(await screen.findByText("S/ 150.50")).toBeInTheDocument();
-    expect(screen.getByText("por tesorera")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Editar transacción")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Anular movimiento")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Borrar definitivamente")).not.toBeInTheDocument();
+    //! Lo que entra lleva "+" delante
+    //! Aparece en la fila y en el total del día (ese día solo tiene este)
+    expect(await screen.findAllByText(/^\+S\/\s150\.50$/)).toHaveLength(2);
+    expect(screen.getByText(/por tesorera/)).toBeInTheDocument();
   });
 
-  it("un contador puede editar y anular, pero no borrar definitivamente", async () => {
+  it("un lector ve el movimiento pero no puede anularlo ni borrarlo", async () => {
+    listWorkspacesAPI.mockResolvedValue(LECTOR);
+    fetchTransactionByIdAPI.mockResolvedValue(TX_ACTIVO);
+    renderConEspacio(<TransactionUpdate />, "/tx/t1");
+
+    expect(await screen.findByText("Comprobante")).toBeInTheDocument();
+    expect(screen.queryByText("Anular movimiento")).not.toBeInTheDocument();
+    expect(screen.queryByText("Borrar definitivamente")).not.toBeInTheDocument();
+  });
+
+  it("un contador puede anular, pero no borrar definitivamente", async () => {
     listWorkspacesAPI.mockResolvedValue(CONTADOR);
-    renderConEspacio(<TransactionList />);
+    fetchTransactionByIdAPI.mockResolvedValue(TX_ACTIVO);
+    renderConEspacio(<TransactionUpdate />, "/tx/t1");
 
-    expect(await screen.findByLabelText("Editar transacción")).toBeInTheDocument();
-    expect(screen.getByLabelText("Anular movimiento")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Borrar definitivamente")).not.toBeInTheDocument();
+    expect(await screen.findByText("Anular movimiento")).toBeInTheDocument();
+    expect(screen.queryByText("Borrar definitivamente")).not.toBeInTheDocument();
   });
 
-  it("el propietario ve los anulados tachados, con su motivo y para restaurar", async () => {
+  it("el propietario ve el anulado con su motivo, puede restaurarlo y borrarlo", async () => {
     listWorkspacesAPI.mockResolvedValue(PROPIETARIO);
-    renderConEspacio(<TransactionList />);
+    fetchTransactionByIdAPI.mockResolvedValue(TX_ANULADO);
+    renderConEspacio(<TransactionUpdate />, "/tx/t2");
 
-    const toggle = await screen.findByLabelText("Mostrar anulados");
-    await waitFor(() => expect(screen.getByLabelText("Anular movimiento")).toBeInTheDocument());
-    toggle.click();
-
-    expect(await screen.findByText("Anulado: Duplicado")).toBeInTheDocument();
-    expect(screen.getByLabelText("Restaurar movimiento")).toBeInTheDocument();
-    expect(screen.getAllByLabelText("Borrar definitivamente")).toHaveLength(2);
+    expect(await screen.findByText(/anulado: Duplicado/)).toBeInTheDocument();
+    //! Las acciones aparecen cuando se conoce el rol
+    expect(await screen.findByText("Restaurar movimiento")).toBeInTheDocument();
+    expect(screen.getByText("Borrar definitivamente")).toBeInTheDocument();
+    //! Un anulado no se edita: el botón de guardar lo explica
+    expect(screen.getByRole("button", { name: /restáuralo para editarlo/ })).toBeDisabled();
   });
 });

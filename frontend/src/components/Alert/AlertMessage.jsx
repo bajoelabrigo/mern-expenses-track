@@ -1,24 +1,18 @@
-import {
-  AiOutlineCheckCircle,
-  AiOutlineCloseCircle,
-  AiOutlineLoading3Quarters,
-} from "react-icons/ai";
+import { LuCircleAlert, LuCircleCheck, LuLoaderCircle } from "react-icons/lu";
 
-//! Estilos por tipo de mensaje (el error usa rojo, antes heredaba el verde del success)
+//! Aviso de estado (error, éxito, cargando) con los colores del tema
 const estilos = {
   error: {
-    icon: <AiOutlineCloseCircle className="text-red-600 text-2xl" />,
-    classes: "bg-red-100 text-red-800 border-l-4 border-red-600",
+    icon: <LuCircleAlert className="text-danger text-xl shrink-0" />,
+    classes: "bg-danger-soft text-danger",
   },
   success: {
-    icon: <AiOutlineCheckCircle className="text-green-600 text-2xl" />,
-    classes: "bg-green-100 text-green-800 border-l-4 border-green-600",
+    icon: <LuCircleCheck className="text-income text-xl shrink-0" />,
+    classes: "bg-income-soft text-income",
   },
   loading: {
-    icon: (
-      <AiOutlineLoading3Quarters className="animate-spin text-blue-600 text-2xl" />
-    ),
-    classes: "bg-blue-100 text-blue-800 border-l-4 border-blue-600",
+    icon: <LuLoaderCircle className="animate-spin text-muted text-xl shrink-0" />,
+    classes: "bg-surface-2 text-ink-2",
   },
 };
 
@@ -28,10 +22,10 @@ const AlertMessage = ({ type, message }) => {
   return (
     <div
       role={type === "error" ? "alert" : "status"}
-      className={`flex items-center p-4 rounded-lg shadow-md space-x-3 ${classes}`}
+      className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${classes}`}
     >
       {icon}
-      <span className="text-sm font-medium">{message}</span>
+      <span className="text-sm font-semibold">{message}</span>
     </div>
   );
 };

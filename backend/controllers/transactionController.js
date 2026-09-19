@@ -35,8 +35,23 @@ const parseAmount = (amount) => {
 //! Construye el filtro común (espacio + fechas + tipo + categoría + anulados).
 //! Devuelve { error } si alguno de los parámetros es inválido.
 const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {}) => {
-  const { startDate, endDate, type, category, includeVoided } = query;
+  const { startDate, endDate, type, category, includeVoided, q, recurrent } = query;
   const filters = { workspace: workspaceId };
+
+  //! Búsqueda en descripción y categoría. El texto se escapa: es una búsqueda
+  //! literal, no una expresión regular que alguien pueda usar para colgar Mongo.
+  if (q !== undefined && q !== "") {
+    const text = String(q).trim().slice(0, 60);
+    if (text) {
+      const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "i");
+      filters.$or = [{ description: regex }, { category: regex }];
+    }
+  }
+
+  if (recurrent !== undefined && recurrent !== "") {
+    filters.recurrent = String(recurrent) === "true";
+  }
 
   const parsedStart = parseStartDate(startDate);
   if (parsedStart === undefined) {

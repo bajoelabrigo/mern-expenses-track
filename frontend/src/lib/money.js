@@ -55,3 +55,31 @@ export const formatMoney = (amount, currency = "USD") => {
     return `${currency} ${Number(amount || 0).toFixed(2)}`;
   }
 };
+
+//! Monto mientras se teclea ("12", "12.", "12.5"): se muestra con el símbolo y
+//! los separadores del país, respetando los decimales escritos hasta ahora
+//! (sin inventar ",00" ni comerse la coma recién pulsada).
+export const formatTypedAmount = (typed, currency = "USD") => {
+  const locale = BY_CODE[currency]?.locale || "es";
+  const [, dec = ""] = typed.split(".");
+  const decimals = typed.includes(".") ? Math.min(dec.length, 2) : 0;
+  try {
+    const formatter = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    let text = formatter.format(Number(typed || 0));
+    if (typed.endsWith(".")) {
+      const separator =
+        new Intl.NumberFormat(locale).formatToParts(1.1).find((p) => p.type === "decimal")?.value || ".";
+      //! La coma recién pulsada va justo después de la última cifra
+      text = text.replace(/(\d)(?!.*\d)/, `$1${separator}`);
+    }
+    return text;
+  } catch {
+    return `${currency} ${typed || "0"}`;
+  }
+};

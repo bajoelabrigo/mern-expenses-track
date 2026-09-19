@@ -81,9 +81,13 @@ export const listTransationsAPI = async ({
   page,
   limit,
   includeVoided,
+  q,
+  recurrent,
 }) => {
   const response = await axiosInstance.get("/transactions/lists", {
     params: {
+      q: q || undefined,
+      recurrent: recurrent ? "true" : undefined,
       category,
       type,
       startDate,

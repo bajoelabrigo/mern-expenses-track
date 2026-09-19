@@ -8,7 +8,26 @@
       name="description"
       content="Ingresos y gastos personales y de tu iglesia, con roles, invitaciones e historial."
     />
-    <meta name="theme-color" content="#2563eb" />
+    <meta name="theme-color" content="#ecebe6" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+    />
+
+    <!-- Tema antes de pintar (sin destello): preferencia guardada o la del
+         sistema. La lógica completa vive en src/lib/theme.js. -->
+    <script>
+      (function () {
+        var mode = "system";
+        try { mode = localStorage.getItem("cg-theme") || "system"; } catch (e) {}
+        var dark = mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", dark ? "#0e0e0e" : "#ecebe6");
+      })();
+    </script>
 
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />

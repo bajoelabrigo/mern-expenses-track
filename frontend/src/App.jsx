@@ -37,6 +37,7 @@ const AuditPage = lazy(() => import("./components/Workspaces/AuditPage"));
 const AcceptInvitation = lazy(() =>
   import("./components/Workspaces/AcceptInvitation")
 );
+const MovementsPage = lazy(() => import("./components/Transactions/MovementsPage"));
 const AdminUsersList = lazy(() => import("./components/Admin/AdminUsersList"));
 
 const Cargando = () => (
@@ -112,6 +113,14 @@ const App = () => (
             element={
               <Privada>
                 <Dashboard />
+              </Privada>
+            }
+          />
+          <Route
+            path="movimientos"
+            element={
+              <Privada>
+                <MovementsPage />
               </Privada>
             }
           />
