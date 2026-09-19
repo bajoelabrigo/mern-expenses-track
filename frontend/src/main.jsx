@@ -8,10 +8,14 @@ import "./index.css";
 import { store } from "./redux/store/store.js";
 import ErrorBoundary from "./components/common/ErrorBoundary.jsx";
 import { wakeApi } from "./lib/wakeApi.js";
+import { watchSystemTheme } from "./lib/theme.js";
 import QueryProvider from "./components/common/QueryProvider.jsx";
 
 //! El hosting gratuito duerme la API: se la despierta al abrir la web
 wakeApi();
+
+//! Tema claro/oscuro: seguir al teléfono aunque cambie con la app abierta
+watchSystemTheme();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
