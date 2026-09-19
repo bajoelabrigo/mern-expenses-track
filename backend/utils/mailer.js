@@ -1,5 +1,6 @@
 const nodemailer = require("nodemailer");
 const {
+  BREVO_API_KEY,
   SMTP_HOST,
   SMTP_PORT,
   SMTP_USER,
@@ -8,10 +9,60 @@ const {
   isTest,
 } = require("../config/env");
 
-//! Un solo transporte con pool para toda la app (no uno por correo).
-let transporter = null;
+//! Dos formas de enviar, en este orden:
+//!   1. Brevo por su API HTTP (BREVO_API_KEY). Es la que se usa en Render: el
+//!      plan gratuito bloquea los puertos SMTP (25, 465 y 587) desde sept. 2025.
+//!   2. SMTP con nodemailer (SMTP_HOST), para un hosting que sí lo permita.
+//! Sin ninguna de las dos, el enlace se escribe en el log del servidor.
 
-const isMailConfigured = () => Boolean(SMTP_HOST && MAIL_FROM);
+const BREVO_URL = "https://api.brevo.com/v3/smtp/email";
+const BREVO_TIMEOUT_MS = 10_000;
+
+const isMailConfigured = () => Boolean((BREVO_API_KEY || SMTP_HOST) && MAIL_FROM);
+
+//! "Control de Gastos <a@b.com>" -> { name, email }; "a@b.com" -> { email }
+const parseAddress = (value) => {
+  const match = String(value || "").match(/^\s*"?([^"<]*?)"?\s*<([^>]+)>\s*$/);
+  if (match) {
+    const name = match[1].trim();
+    return name ? { name, email: match[2].trim() } : { email: match[2].trim() };
+  }
+  return { email: String(value || "").trim() };
+};
+
+//! Cuerpo de la petición a Brevo (función pura: se prueba sin red)
+const buildBrevoPayload = ({ from, to, subject, text, html }) => ({
+  sender: parseAddress(from),
+  to: [{ email: to }],
+  subject,
+  textContent: text,
+  htmlContent: html,
+});
+
+//! Envío por la API de Brevo. `fetchImpl` se inyecta en las pruebas.
+const sendViaBrevo = async (message, { apiKey, from, fetchImpl = fetch }) => {
+  const res = await fetchImpl(BREVO_URL, {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(buildBrevoPayload({ ...message, from })),
+    signal: AbortSignal.timeout(BREVO_TIMEOUT_MS),
+  });
+
+  if (!res.ok) {
+    //! Se registra el motivo que da Brevo (p. ej. remitente sin verificar),
+    //! nunca la clave
+    const body = await res.json().catch(() => ({}));
+    throw new Error(`Brevo ${res.status}: ${body.code || ""} ${body.message || ""}`.trim());
+  }
+  return true;
+};
+
+//! Un solo transporte SMTP con pool para toda la app (no uno por correo).
+let transporter = null;
 
 const getTransporter = () => {
   if (!transporter) {
@@ -26,11 +77,11 @@ const getTransporter = () => {
   return transporter;
 };
 
-//! Correos enviados durante las pruebas (para comprobar enlaces sin SMTP)
+//! Correos enviados durante las pruebas (para comprobar enlaces sin red)
 const sentInTests = [];
 
 //! Envía un correo. Nunca lanza: devuelve { sent, reason } para que quien
-//! llama decida qué decir al usuario. Un fallo de SMTP no debe tumbar una
+//! llama decida qué decir al usuario. Un fallo del correo no debe tumbar una
 //! invitación que ya quedó creada.
 const sendMail = async ({ to, subject, text, html }) => {
   if (isTest) {
@@ -40,13 +91,17 @@ const sendMail = async ({ to, subject, text, html }) => {
 
   if (!isMailConfigured()) {
     console.warn(
-      `[mail] SMTP sin configurar. No se envió "${subject}" a ${to}.\n${text}`
+      `[mail] Correo sin configurar. No se envió "${subject}" a ${to}.\n${text}`
     );
     return { sent: false, reason: "not_configured" };
   }
 
   try {
-    await getTransporter().sendMail({ from: MAIL_FROM, to, subject, text, html });
+    if (BREVO_API_KEY) {
+      await sendViaBrevo({ to, subject, text, html }, { apiKey: BREVO_API_KEY, from: MAIL_FROM });
+    } else {
+      await getTransporter().sendMail({ from: MAIL_FROM, to, subject, text, html });
+    }
     return { sent: true };
   } catch (err) {
     console.error(`[mail] Error enviando "${subject}" a ${to}:`, err.message);
@@ -76,4 +131,13 @@ const simpleEmail = ({ title, intro, buttonText, url, footer }) => ({
 </div>`,
 });
 
-module.exports = { sendMail, simpleEmail, isMailConfigured, sentInTests };
+module.exports = {
+  sendMail,
+  simpleEmail,
+  isMailConfigured,
+  sentInTests,
+  //! Expuestas para las pruebas
+  parseAddress,
+  buildBrevoPayload,
+  sendViaBrevo,
+};

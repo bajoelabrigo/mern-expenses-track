@@ -56,7 +56,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 | `SERVE_FRONTEND`  | no          | `true` si este servicio también sirve `frontend/dist`.             |
 | `COOKIE_SAMESITE` | no          | `none` (por defecto en producción), `lax` o `strict`.              |
 | `APP_URL`         | no          | URL pública del frontend, para los enlaces de los correos. Por defecto, el primer origen de `CORS_ORIGINS`. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | no | Correo saliente (invitaciones y recuperar contraseña). Sin `SMTP_HOST` no se envía nada: el enlace sale en el log y las invitaciones se comparten copiando el enlace. |
+| `BREVO_API_KEY`, `MAIL_FROM` | no | Correo saliente por la API de Brevo (invitaciones y recuperar contraseña). Es la opción para Render: su plan gratuito bloquea los puertos SMTP. `MAIL_FROM` debe ser un remitente verificado en Brevo. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | no | Correo por SMTP, para un hosting que lo permita (solo si no hay `BREVO_API_KEY`). Sin ninguno de los dos no se envía nada: el enlace sale en el log y las invitaciones se comparten copiando el enlace. |
 
 La app **no arranca** si falta `MONGO_URL` o `JWT_SECRET`, o si el secreto es
 demasiado corto: es intencional, evita desplegar con una configuración insegura.
@@ -84,7 +85,7 @@ demasiado corto: es intencional, evita desplegar con una configuración insegura
 ## Pruebas
 
 ```bash
-npm test --prefix backend    # 76 pruebas de integración sobre la API real
+npm test --prefix backend    # 81 pruebas de integración sobre la API real
 npm test --prefix frontend   # 36 pruebas de componentes, servicios y estado
 ```
 

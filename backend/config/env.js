@@ -101,8 +101,10 @@ module.exports = {
     /\/+$/,
     ""
   ),
-  //! Correo saliente (SMTP). Si falta SMTP_HOST los correos no se envían y el
-  //! enlace se escribe en el log del servidor.
+  //! Correo saliente. BREVO_API_KEY (API HTTP) tiene prioridad sobre SMTP: el
+  //! plan gratuito de Render bloquea los puertos SMTP. Sin ninguno, los correos
+  //! no se envían y el enlace se escribe en el log del servidor.
+  BREVO_API_KEY: leer("BREVO_API_KEY") || "",
   SMTP_HOST: leer("SMTP_HOST") || "",
   SMTP_PORT: Number(leer("SMTP_PORT")) || 587,
   SMTP_USER: leer("SMTP_USER") || "",
