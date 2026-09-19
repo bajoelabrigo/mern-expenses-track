@@ -54,7 +54,8 @@ despliega Netlify y Render) cuando está verificada.
 - [x] Tipos de ingreso de iglesia: diezmo, ofrenda, primicia, ofrenda especial
       (cada categoría de ingreso tiene su tipo; ingresos por tipo en el Inicio y
       en el Excel).
-- [ ] Miembros/donantes con privacidad (solo tesorería ve quién dio cuánto).
+- [x] Aportantes con privacidad: quién dio cuánto solo lo ven propietario,
+      tesorero y contador (la API lo oculta al auditor y a los lectores).
 - [ ] Constancias de donación anuales en PDF.
 - [ ] Conteo de ofrenda del culto con doble firma.
 - [x] Contabilidad por fondos (general, misiones, construcción, benevolencia):

@@ -4,7 +4,9 @@ const asyncHandler = require("express-async-handler");
 const Transaction = require("../model/Transaccion");
 const Fund = require("../model/Fund");
 const Category = require("../model/Category");
+const Donor = require("../model/Donor");
 const { effectiveIncomeKind, inferIncomeKind } = require("../utils/incomeKinds");
+const { can } = require("../utils/permissions");
 const {
   parseStartDate,
   parseEndDate,
@@ -30,6 +32,29 @@ const MAX_LIMIT = 100;
 //! Tope por movimiento: evita que un error de tipeo (un cero de más) o un
 //! valor absurdo desborde las sumas.
 const MAX_AMOUNT_CENTS = 100_000_000_000; // mil millones
+
+//! Quién dio cuánto solo lo ve la tesorería: a los demás se les quita el
+//! aportante de cada movimiento antes de responder (esconderlo solo en la
+//! pantalla no serviría de nada).
+const seesDonors = (req) => can(req.role, "donor:read");
+const visible = (req, doc) => {
+  if (seesDonors(req)) return doc;
+  const json = doc && typeof doc.toJSON === "function" ? doc.toJSON() : { ...doc };
+  delete json.donor;
+  return json;
+};
+const visibleList = (req, docs) => (seesDonors(req) ? docs : docs.map((d) => visible(req, d)));
+
+//! El aportante que manda el cliente: undefined = no se toca; null o "" = sin
+//! aportante. Solo tiene sentido en los ingresos.
+const resolveDonor = async (workspaceId, value) => {
+  if (value === undefined) return { unchanged: true };
+  if (value === null || value === "") return { donor: null };
+  if (!mongoose.isValidObjectId(value)) return { error: "Aportante inválido", status: 400 };
+  const donor = await Donor.findOne({ _id: value, workspace: workspaceId });
+  if (!donor) return { error: "Ese aportante no existe en este espacio", status: 404 };
+  return { donor };
+};
 
 //! Valida un monto de la API (en unidades) y lo devuelve en centavos.
 //! Devuelve { error } si no es válido.
@@ -63,6 +88,14 @@ const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {
 
   if (recurrent !== undefined && recurrent !== "") {
     filters.recurrent = String(recurrent) === "true";
+  }
+
+  //! Aportante (solo para quien puede verlos): un id o "sin" para los ingresos
+  //! sin aportante
+  if (query.donor !== undefined && query.donor !== "") {
+    if (query.donor === "sin") filters.donor = null;
+    else if (mongoose.isValidObjectId(query.donor)) filters.donor = query.donor;
+    else return { error: "Aportante inválido" };
   }
 
   //! Fondo: "general" son los que no tienen fondo (null también cubre los
@@ -149,6 +182,7 @@ const transactionController = {
       recurrenceCount = 1,
       clientId,
       fund,
+      donor,
     } = req.body;
 
     //! Reenvío de un movimiento registrado sin conexión que ya había llegado:
@@ -163,7 +197,7 @@ const transactionController = {
         workspace: req.workspace._id,
         clientId: normalizedClientId,
       });
-      if (existing.length > 0) return res.status(200).json(existing);
+      if (existing.length > 0) return res.status(200).json(visibleList(req, existing));
     }
 
     if (!type || amount === undefined || amount === null || !date) {
@@ -217,6 +251,19 @@ const transactionController = {
     if (resolved.error) return res.status(resolved.status).json({ message: resolved.error });
     const fundDoc = resolved.fund || null;
 
+    //! Registrar a nombre de alguien exige poder ver aportantes
+    const resolvedDonor = await resolveDonor(req.workspace._id, donor);
+    if (resolvedDonor.error) {
+      return res.status(resolvedDonor.status).json({ message: resolvedDonor.error });
+    }
+    const donorDoc = resolvedDonor.donor || null;
+    if (donorDoc && !seesDonors(req)) {
+      return res.status(403).json({ message: "Tu rol no permite registrar a nombre de un aportante" });
+    }
+    if (donorDoc && type !== "income") {
+      return res.status(400).json({ message: "Solo los ingresos llevan aportante" });
+    }
+
     const transactions = [];
 
     for (let i = 0; i < totalCount; i += 1) {
@@ -249,6 +296,7 @@ const transactionController = {
         type,
         category: normalizedCategory,
         fund: fundDoc ? fundDoc._id : null,
+        donor: donorDoc ? donorDoc._id : null,
         amountCents: cents,
         description,
         icon,
@@ -270,7 +318,7 @@ const transactionController = {
           workspace: req.workspace._id,
           clientId: normalizedClientId,
         });
-        return res.status(200).json(existing);
+        return res.status(200).json(visibleList(req, existing));
       }
       throw err;
     }
@@ -287,7 +335,7 @@ const transactionController = {
       note: created.length > 1 ? `Serie de ${created.length} movimientos` : "",
     });
 
-    res.status(201).json(created);
+    res.status(201).json(visibleList(req, created));
   }),
 
   //! Listado paginado con filtros
@@ -312,7 +360,8 @@ const transactionController = {
         .limit(parsedLimit)
         .populate("createdBy", "username")
         .populate("voidedBy", "username")
-        .populate("fund", "name icon"),
+        .populate("fund", "name icon")
+        .populate("donor", "name"),
     ]);
 
     res.status(200).json({
@@ -320,7 +369,7 @@ const transactionController = {
       currentPage: parsedPage,
       totalPages: Math.max(1, Math.ceil(total / parsedLimit)),
       limit: parsedLimit,
-      transactions,
+      transactions: visibleList(req, transactions),
     });
   }),
 
@@ -332,7 +381,7 @@ const transactionController = {
       return res.status(404).json({ message: "Transacción no encontrada" });
     }
 
-    res.status(200).json(transaction);
+    res.status(200).json(visible(req, transaction));
   }),
 
   //! Actualizar
@@ -349,7 +398,7 @@ const transactionController = {
       });
     }
 
-    const { type, category, amount, date, description, icon, fund } = req.body;
+    const { type, category, amount, date, description, icon, fund, donor } = req.body;
 
     //! Nombre del fondo antes y después, para que el historial se lea solo
     const currentFund = transaction.fund
@@ -358,6 +407,14 @@ const transactionController = {
     const resolved = await resolveFund(req.workspace._id, fund, { current: transaction.fund });
     if (resolved.error) return res.status(resolved.status).json({ message: resolved.error });
     const nextFund = resolved.unchanged ? currentFund : resolved.fund;
+
+    const resolvedDonor = await resolveDonor(req.workspace._id, donor);
+    if (resolvedDonor.error) {
+      return res.status(resolvedDonor.status).json({ message: resolvedDonor.error });
+    }
+    if (!resolvedDonor.unchanged && !seesDonors(req)) {
+      return res.status(403).json({ message: "Tu rol no permite cambiar el aportante" });
+    }
     //! Se anota si alguno de los dos no es el General (así se ve "Misiones → General")
     const fundLabel = (f) => (currentFund || nextFund ? fundName(f) : undefined);
     const before = transactionSnapshot(transaction, fundLabel(currentFund));
@@ -387,6 +444,11 @@ const transactionController = {
     if (description !== undefined) transaction.description = description;
     if (icon !== undefined) transaction.icon = icon;
     if (!resolved.unchanged) transaction.fund = nextFund ? nextFund._id : null;
+    if (!resolvedDonor.unchanged) {
+      transaction.donor = resolvedDonor.donor ? resolvedDonor.donor._id : null;
+    }
+    //! Un gasto nunca lleva aportante (p. ej. si se cambió de ingreso a gasto)
+    if (transaction.type !== "income") transaction.donor = null;
 
     const updatedTransaction = await transaction.save();
 
@@ -398,7 +460,7 @@ const transactionController = {
       after: transactionSnapshot(updatedTransaction, fundLabel(nextFund)),
     });
 
-    res.status(200).json(updatedTransaction);
+    res.status(200).json(visible(req, updatedTransaction));
   }),
 
   //! Anular (lo normal en vez de borrar). Se mantiene la ruta DELETE /delete/:id
@@ -432,7 +494,7 @@ const transactionController = {
       note: reason,
     });
 
-    res.status(200).json({ message: "Movimiento anulado", transaction });
+    res.status(200).json({ message: "Movimiento anulado", transaction: visible(req, transaction) });
   }),
 
   //! Deshacer una anulación
@@ -463,7 +525,7 @@ const transactionController = {
       after: transactionSnapshot(transaction),
     });
 
-    res.status(200).json({ message: "Movimiento restaurado", transaction });
+    res.status(200).json({ message: "Movimiento restaurado", transaction: visible(req, transaction) });
   }),
 
   //! Borrado definitivo. Es para lo que NUNCA fue dinero (una prueba, un
@@ -541,7 +603,7 @@ const transactionController = {
       after: { receipt: stored.format || stored.resourceType },
     });
 
-    res.status(200).json(transaction);
+    res.status(200).json(visible(req, transaction));
   }),
 
   //! Enlace temporal para ver el comprobante (quien pueda ver el movimiento)
@@ -635,7 +697,7 @@ const transactionController = {
 
     const transactions = await Transaction.find(filters).sort({ date: -1 });
 
-    res.status(200).json(transactions);
+    res.status(200).json(visibleList(req, transactions));
   }),
 
   //! Balance general (con filtros opcionales)
@@ -722,7 +784,8 @@ const transactionController = {
 
     const transactions = await Transaction.find(filters)
       .sort({ date: -1 })
-      .populate("fund", "name");
+      .populate("fund", "name")
+      .populate("donor", "name");
 
     //! En una iglesia, cada ingreso lleva su tipo (diezmo, ofrenda…) según su
     //! categoría; si la categoría ya no existe, se deduce de su nombre
@@ -745,6 +808,7 @@ const transactionController = {
       { header: "Tipo", key: "type", width: 10 },
       { header: "Categoría", key: "category", width: 20 },
       ...(isChurch ? [{ header: "Tipo de ingreso", key: "incomeKind", width: 18 }] : []),
+      ...(seesDonors(req) ? [{ header: "Aportante", key: "donor", width: 24 }] : []),
       { header: "Fondo", key: "fund", width: 18 },
       { header: "Descripción", key: "description", width: 30 },
       { header: `Monto (${req.workspace.currency})`, key: "amount", width: 14 },
@@ -767,6 +831,7 @@ const transactionController = {
         type: tx.type === "income" ? "Ingreso" : "Gasto",
         category: tx.category || "Sin categoría",
         ...(isChurch ? { incomeKind: incomeKindOf(tx) } : {}),
+        ...(seesDonors(req) ? { donor: tx.donor?.name || "" } : {}),
         fund: fundName(tx.fund),
         description: tx.description || "",
         amount: tx.amount,

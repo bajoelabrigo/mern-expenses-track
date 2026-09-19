@@ -16,6 +16,7 @@ import { toISODate } from "../../lib/periods";
 import { pressKey } from "../../lib/keypad";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useFunds } from "../../hooks/useFunds";
+import { useDonors } from "../../hooks/useDonors";
 import { Button, Chip, ListGroup, Segmented } from "../ui";
 import AlertMessage from "../Alert/AlertMessage";
 import ReceiptPicker from "./ReceiptPicker";
@@ -46,7 +47,7 @@ const TransactionForm = ({ transaction, children }) => {
   const location = useLocation();
   const queryClient = useQueryClient();
   const userId = useSelector((state) => state.auth.user?.id);
-  const { workspace, currency } = useWorkspace();
+  const { workspace, currency, can } = useWorkspace();
 
   const [type, setType] = useState(transaction?.type || "expense");
   //! "150.5" y no "150.50": el teclado lleva el monto como se escribiría
@@ -63,6 +64,12 @@ const TransactionForm = ({ transaction, children }) => {
     () => (transaction ? transaction.fund || "general" : location.state?.fund || "general")
   );
   const { funds, hasFunds } = useFunds();
+  //! Aportante: a nombre de quién entró (diezmo, ofrenda de alguien)
+  const [donor, setDonor] = useState(() => transaction?.donor || "");
+  const { donors, activeDonors, canSee: canSeeDonors } = useDonors();
+  const donorOptions = donors.filter((d) => !d.archived || d._id === transaction?.donor);
+  const showDonor = canSeeDonors && can("donor:write") && type === "income" &&
+    (activeDonors.length > 0 || Boolean(donor));
   //! Al registrar solo los activos; al editar, también el archivado que ya tenía
   const fundOptions = funds.filter((f) => !f.archived || (f._id && f._id === transaction?.fund));
   const showFund = funds.length > 0 && (hasFunds || fund !== "general");
@@ -176,6 +183,7 @@ const TransactionForm = ({ transaction, children }) => {
       type,
       category: selectedCategory,
       fund: fund === "general" ? null : fund,
+      ...(canSeeDonors ? { donor: type === "income" && donor ? donor : null } : {}),
       amount: numeric,
       //! Mediodía local: la fecha no se corre de día por la zona horaria
       date: new Date(`${date}T12:00:00`).toISOString(),
@@ -297,6 +305,27 @@ const TransactionForm = ({ transaction, children }) => {
             className="text-sm text-right font-semibold focus:outline-none"
           />
         </label>
+        {showDonor && (
+          <label className="flex items-center justify-between gap-3 px-4 h-13">
+            <span className="text-sm font-semibold text-ink-2">Aportante</span>
+            <span className="relative min-w-0 flex items-center">
+              <select
+                value={donor}
+                onChange={(e) => setDonor(e.target.value)}
+                className="appearance-none bg-transparent text-sm text-right font-semibold pr-6 min-w-0 truncate focus:outline-none"
+              >
+                <option value="">Sin aportante</option>
+                {donorOptions.map((d) => (
+                  <option key={d._id} value={d._id}>
+                    {d.name}
+                    {d.archived ? " (archivado)" : ""}
+                  </option>
+                ))}
+              </select>
+              <LuChevronDown aria-hidden="true" className="pointer-events-none absolute right-0 text-muted" />
+            </span>
+          </label>
+        )}
         {showFund && (
           <label className="flex items-center justify-between gap-3 px-4 h-13">
             <span className="text-sm font-semibold text-ink-2">Fondo</span>

@@ -29,6 +29,13 @@ const transactionSchema = new mongoose.Schema(
       lowercase: true,
       default: "uncategorized",
     },
+    //! Quién dio este ingreso (opcional, solo ingresos). Sensible: la API lo
+    //! oculta a quien no tenga donor:read.
+    donor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Donor",
+      default: null,
+    },
     //! Fondo al que pertenece; null = fondo General (lo que no tiene fondo)
     fund: {
       type: mongoose.Schema.Types.ObjectId,
@@ -135,5 +142,6 @@ transactionSchema.index(
 );
 transactionSchema.index({ workspace: 1, category: 1 });
 transactionSchema.index({ workspace: 1, fund: 1 });
+transactionSchema.index({ workspace: 1, donor: 1, date: -1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);

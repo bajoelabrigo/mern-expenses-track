@@ -12,8 +12,8 @@ import { buttonClass } from "../ui/styles";
 
 const useNavContext = () => {
   const user = useSelector((state) => state.auth.user);
-  const { can } = useWorkspace();
-  return { can, isAdmin: user?.role === "admin", user };
+  const { can, workspace } = useWorkspace();
+  return { can, workspace, isAdmin: user?.role === "admin", user };
 };
 
 const navLinkClass = ({ isActive }) =>

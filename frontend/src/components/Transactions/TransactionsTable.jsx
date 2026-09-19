@@ -56,9 +56,13 @@ const Row = ({ transaction: t, icon, currency, href, showDate }) => {
             ) : (
               <p className={cx("font-semibold truncate", struck)}>{title}</p>
             )}
-            {(t.description || t.fund?.name) && (
+            {(t.description || t.fund?.name || t.donor?.name) && (
               <p className="text-xs text-muted truncate">
-                {[t.description && capitalize(t.category), t.fund?.name && `${t.fund.icon || ""} ${t.fund.name}`.trim()]
+                {[
+                  t.description && capitalize(t.category),
+                  t.fund?.name && `${t.fund.icon || ""} ${t.fund.name}`.trim(),
+                  t.donor?.name,
+                ]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
