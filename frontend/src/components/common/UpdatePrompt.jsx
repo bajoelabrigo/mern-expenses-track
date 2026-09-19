@@ -1,4 +1,5 @@
 import { useRegisterSW } from "virtual:pwa-register/react";
+import { Button } from "../ui";
 
 //! Cada cuánto se comprueba si hay una versión nueva con la app abierta (una
 //! PWA instalada puede pasar días sin recargarse)
@@ -25,26 +26,18 @@ const UpdatePrompt = () => {
   return (
     <div
       role="alert"
-      className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:max-w-sm z-50 bg-white border border-blue-200 shadow-lg rounded-lg p-4 flex flex-wrap items-center gap-3"
+      className="fixed bottom-24 lg:bottom-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:max-w-sm z-50 bg-surface shadow-card rounded-card p-4 flex flex-wrap items-center gap-3"
     >
-      <p className="text-sm text-gray-800 flex-1 min-w-[12rem]">
+      <p className="text-sm font-semibold text-ink flex-1 min-w-[12rem]">
         Hay una versión nueva de la app.
       </p>
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setNeedRefresh(false)}
-          className="px-3 py-1.5 text-sm rounded-md border border-gray-300"
-        >
+        <Button variant="ghost" size="sm" onClick={() => setNeedRefresh(false)}>
           Más tarde
-        </button>
-        <button
-          type="button"
-          onClick={() => updateServiceWorker(true)}
-          className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
-        >
+        </Button>
+        <Button size="sm" onClick={() => updateServiceWorker(true)}>
           Actualizar
-        </button>
+        </Button>
       </div>
     </div>
   );

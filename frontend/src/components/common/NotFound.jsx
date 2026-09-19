@@ -1,15 +1,13 @@
-import { Link } from "react-router-dom";
+import { ButtonLink, EmptyState } from "../ui";
 
 const NotFound = () => (
-  <div className="max-w-md mx-auto my-20 text-center space-y-4">
-    <h1 className="text-4xl font-bold text-gray-800">404</h1>
-    <p className="text-gray-600">La página que buscas no existe.</p>
-    <Link
-      to="/"
-      className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+  <div className="max-w-md mx-auto px-4 py-16">
+    <EmptyState
+      title="Esta página no existe"
+      action={<ButtonLink to="/">Volver al inicio</ButtonLink>}
     >
-      Volver al inicio
-    </Link>
+      Puede que el enlace esté mal escrito o que la página ya no exista.
+    </EmptyState>
   </div>
 );
 

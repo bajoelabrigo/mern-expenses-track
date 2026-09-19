@@ -1,4 +1,3 @@
-import { FaUserCircle, FaEnvelope } from "react-icons/fa";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
@@ -7,6 +6,7 @@ import { updateProfileAPI } from "../../services/users/userService";
 import { updateUserAction } from "../../redux/slice/authSlice";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
+import { Button, Field, Input } from "../ui";
 
 const validationSchema = Yup.object({
   username: Yup.string()
@@ -45,75 +45,24 @@ export default function ProfileForm() {
     },
   });
 
+  const error_ = (name) => formik.touched[name] && formik.errors[name];
+
   return (
-    <div className="max-w-2xl mx-auto my-10 p-8 bg-white rounded-lg shadow-md">
-      <h1 className="mb-2 text-2xl text-center font-extrabold">
-        Bienvenido {user?.username}
-      </h1>
-      <h3 className="text-xl font-semibold text-gray-800 mb-4">
-        Actualizar perfil
-      </h3>
-
-      {isPending && <AlertMessage type="loading" message="Actualizando..." />}
+    <form onSubmit={formik.handleSubmit} className="space-y-4" noValidate>
       {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
-      {isSuccess && (
-        <AlertMessage type="success" message="Perfil actualizado con éxito" />
-      )}
+      {isSuccess && <AlertMessage type="success" message="Datos guardados." />}
 
-      <form onSubmit={formik.handleSubmit} className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <FaUserCircle className="text-3xl text-gray-400" />
-          <div className="flex-1">
-            <label
-              htmlFor="username"
-              className="text-sm font-medium text-gray-700"
-            >
-              Nombre de usuario
-            </label>
-            <input
-              id="username"
-              type="text"
-              autoComplete="username"
-              {...formik.getFieldProps("username")}
-              className="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 focus:border-blue-500"
-            />
-            {formik.touched.username && formik.errors.username && (
-              <span className="text-xs text-red-500">
-                {formik.errors.username}
-              </span>
-            )}
-          </div>
-        </div>
+      <Field label="Nombre de usuario" htmlFor="username" error={error_("username")}>
+        <Input id="username" autoComplete="username" {...formik.getFieldProps("username")} />
+      </Field>
 
-        <div className="flex items-center space-x-4">
-          <FaEnvelope className="text-3xl text-gray-400" />
-          <div className="flex-1">
-            <label htmlFor="email" className="text-sm font-medium text-gray-700">
-              Correo
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              {...formik.getFieldProps("email")}
-              className="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 focus:border-blue-500"
-            />
-            {formik.touched.email && formik.errors.email && (
-              <span className="text-xs text-red-500">
-                {formik.errors.email}
-              </span>
-            )}
-          </div>
-        </div>
+      <Field label="Correo" htmlFor="email" error={error_("email")}>
+        <Input id="email" type="email" autoComplete="email" {...formik.getFieldProps("email")} />
+      </Field>
 
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-60"
-        >
-          Guardar cambios
-        </button>
-      </form>
-    </div>
+      <Button type="submit" disabled={isPending || !formik.dirty}>
+        {isPending ? "Guardando…" : "Guardar cambios"}
+      </Button>
+    </form>
   );
 }

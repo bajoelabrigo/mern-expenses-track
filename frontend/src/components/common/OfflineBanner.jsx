@@ -12,7 +12,7 @@ const OfflineBanner = () => {
   return (
     <div
       role="status"
-      className="bg-amber-100 text-amber-900 text-sm text-center px-4 py-2 border-b border-amber-200"
+      className="bg-accent-soft text-ink text-sm font-medium text-center px-4 py-2"
     >
       {online
         ? "No se pudo conectar con el servidor: ves los últimos datos guardados en este dispositivo."

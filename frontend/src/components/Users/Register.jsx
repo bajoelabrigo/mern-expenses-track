@@ -1,12 +1,13 @@
 import { useEffect } from "react";
-import { FaUser, FaEnvelope, FaLock, FaChurch } from "react-icons/fa";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useMutation } from "@tanstack/react-query";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { registerAPI } from "../../services/users/userService";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
+import { Button, Field, Input, Select } from "../ui";
+import AuthShell from "./AuthShell";
 import { CURRENCIES } from "../../lib/money";
 
 const validationSchema = Yup.object({
@@ -89,145 +90,78 @@ const RegistrationForm = () => {
   }, [isSuccess, navigate]);
 
   return (
-    <form
-      onSubmit={formik.handleSubmit}
-      className="max-w-md mx-auto my-10 bg-white p-6 rounded-xl shadow-lg space-y-4 border border-gray-200"
+    <AuthShell
+      title="Crear cuenta"
+      subtitle={invitado ? "Crea tu cuenta para unirte al espacio al que te invitaron." : "Gratis. Tu espacio personal y, si quieres, el de tu iglesia."}
+      footer={
+        <>
+          ¿Ya tienes cuenta?{" "}
+          <Link to="/login" state={location.state} className="font-semibold text-ink underline underline-offset-4">
+            Entrar
+          </Link>
+        </>
+      }
     >
-      <h2 className="text-3xl font-semibold text-center text-gray-800">
-        Registrarse
-      </h2>
+      <form onSubmit={formik.handleSubmit} className="space-y-4" noValidate>
+        {isPending && <AlertMessage type="loading" message="Creando tu cuenta…" />}
+        {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
+        {isSuccess && <AlertMessage type="success" message="Cuenta creada. Te llevamos a entrar…" />}
 
-      {isPending && <AlertMessage type="loading" message="Creando cuenta..." />}
-      {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
-      {isSuccess && (
-        <AlertMessage
-          type="success"
-          message="Registro exitoso, te llevamos al login..."
-        />
-      )}
+        <Field label="Nombre de usuario" htmlFor="username" error={formik.touched.username && formik.errors.username}>
+          <Input id="username" autoComplete="username" {...formik.getFieldProps("username")} />
+        </Field>
 
-      <p className="text-sm text-center text-gray-500">
-        ¡Únete a nuestra comunidad ahora!
-      </p>
+        <Field label="Correo" htmlFor="email" error={formik.touched.email && formik.errors.email}>
+          <Input id="email" type="email" autoComplete="email" {...formik.getFieldProps("email")} />
+        </Field>
 
-      <div className="relative">
-        <FaUser className="absolute top-3 left-3 text-gray-400" />
-        <input
-          id="username"
-          type="text"
-          autoComplete="username"
-          {...formik.getFieldProps("username")}
-          placeholder="Nombre de usuario"
-          className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
-        />
-        {formik.touched.username && formik.errors.username && (
-          <span className="text-xs text-red-500">{formik.errors.username}</span>
-        )}
-      </div>
-
-      <div className="relative">
-        <FaEnvelope className="absolute top-3 left-3 text-gray-400" />
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          {...formik.getFieldProps("email")}
-          placeholder="Correo"
-          className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
-        />
-        {formik.touched.email && formik.errors.email && (
-          <span className="text-xs text-red-500">{formik.errors.email}</span>
-        )}
-      </div>
-
-      <label className="flex items-start gap-2 text-sm text-gray-700">
-        <input
-          type="checkbox"
-          checked={formik.values.llevaIglesia}
-          onChange={(e) => formik.setFieldValue("llevaIglesia", e.target.checked)}
-          className="mt-1"
-        />
-        <span>
-          Voy a llevar las cuentas de una iglesia o ministerio
-          <span className="block text-xs text-gray-500">
-            Siempre tendrás además un espacio personal para tus finanzas.
-          </span>
-        </span>
-      </label>
-
-      {formik.values.llevaIglesia && (
-        <div className="relative">
-          <FaChurch size={20} className="absolute top-3 left-3 text-gray-400" />
+        <label className="flex items-start gap-3 rounded-xl bg-surface-2 p-3 cursor-pointer">
           <input
-            id="iglesia"
-            type="text"
-            {...formik.getFieldProps("iglesia")}
-            placeholder="Nombre de la iglesia o ministerio"
-            className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
+            type="checkbox"
+            checked={formik.values.llevaIglesia}
+            onChange={(e) => formik.setFieldValue("llevaIglesia", e.target.checked)}
+            className="mt-0.5 h-5 w-5 accent-[var(--ink)]"
           />
-          {formik.touched.iglesia && formik.errors.iglesia && (
-            <span className="text-xs text-red-500">{formik.errors.iglesia}</span>
-          )}
-        </div>
-      )}
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="currency" className="text-sm text-gray-700">
-          Moneda en la que llevarás las cuentas
-        </label>
-        <select
-          id="currency"
-          {...formik.getFieldProps("currency")}
-          className="py-2 px-3 w-full rounded-md border border-gray-300 focus:border-blue-500"
-        >
-          {CURRENCIES.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.code} — {c.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="relative">
-        <FaLock className="absolute top-3 left-3 text-gray-400" />
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          {...formik.getFieldProps("password")}
-          placeholder="Contraseña (mínimo 8 caracteres)"
-          className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
-        />
-        {formik.touched.password && formik.errors.password && (
-          <span className="text-xs text-red-500">{formik.errors.password}</span>
-        )}
-      </div>
-
-      <div className="relative">
-        <FaLock className="absolute top-3 left-3 text-gray-400" />
-        <input
-          id="confirmPassword"
-          type="password"
-          autoComplete="new-password"
-          {...formik.getFieldProps("confirmPassword")}
-          placeholder="Confirmar contraseña"
-          className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
-        />
-        {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-          <span className="text-xs text-red-500">
-            {formik.errors.confirmPassword}
+          <span className="text-sm">
+            <span className="font-semibold text-ink">Llevaré las cuentas de una iglesia</span>
+            <span className="block text-muted">Además tendrás un espacio para tus finanzas personales.</span>
           </span>
-        )}
-      </div>
+        </label>
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="w-full bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white font-bold py-2 px-4 rounded-md focus:outline-none transition duration-150 ease-in-out disabled:opacity-60"
-      >
-        {isPending ? "Registrando..." : "Registrar"}
-      </button>
-    </form>
+        {formik.values.llevaIglesia && (
+          <Field label="Nombre de la iglesia o ministerio" htmlFor="iglesia" error={formik.touched.iglesia && formik.errors.iglesia}>
+            <Input id="iglesia" {...formik.getFieldProps("iglesia")} />
+          </Field>
+        )}
+
+        <Field label="Moneda" htmlFor="currency">
+          <Select id="currency" {...formik.getFieldProps("currency")}>
+            {CURRENCIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} — {c.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field label="Contraseña" htmlFor="password" hint="Mínimo 8 caracteres." error={formik.touched.password && formik.errors.password}>
+          <Input id="password" type="password" autoComplete="new-password" {...formik.getFieldProps("password")} />
+        </Field>
+
+        <Field label="Repite la contraseña" htmlFor="confirmPassword" error={formik.touched.confirmPassword && formik.errors.confirmPassword}>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            {...formik.getFieldProps("confirmPassword")}
+          />
+        </Field>
+
+        <Button type="submit" block disabled={isPending || isSuccess}>
+          {isPending ? "Creando cuenta…" : "Crear cuenta"}
+        </Button>
+      </form>
+    </AuthShell>
   );
 };
 

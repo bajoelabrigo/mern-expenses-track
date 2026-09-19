@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FaCamera, FaFilePdf, FaTimes } from "react-icons/fa";
+import { LuCamera, LuFileText, LuX } from "react-icons/lu";
 import { compressImage, RECEIPT_ACCEPT, RECEIPT_MAX_BYTES } from "../../lib/image";
 import { formatBytes } from "./receipt";
 
 //! Elegir el comprobante: en el móvil el selector ofrece cámara o galería. La
-//! foto se reduce aquí mismo antes de entregarla.
-const ReceiptPicker = ({ value, onChange, label = "Comprobante (opcional)", disabled }) => {
+//! foto se reduce aquí mismo antes de entregarla. `inset`: va dentro de una
+//! tarjeta (fondo gris en vez de tarjeta blanca sobre tarjeta blanca).
+const ReceiptPicker = ({ value, onChange, label = "Foto del comprobante", disabled, inset }) => {
+  const tile = inset ? "bg-surface-2" : "bg-surface shadow-card";
   const inputRef = useRef(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -40,33 +42,31 @@ const ReceiptPicker = ({ value, onChange, label = "Comprobante (opcional)", disa
 
   return (
     <div className="space-y-2">
-      <span className="flex gap-2 items-center text-gray-700 font-medium">
-        <FaCamera className="text-blue-500" />
-        {label}
-      </span>
-
       {value ? (
-        <div className="flex items-center gap-3 p-2 rounded-md border border-gray-200 bg-gray-50">
+        <div className={`flex items-center gap-3 p-2 pr-3 rounded-2xl ${tile}`}>
           {isPdf ? (
-            <FaFilePdf className="text-red-500 text-3xl shrink-0" />
+            <span className="h-12 w-12 shrink-0 rounded-xl bg-danger-soft text-danger grid place-items-center">
+              <LuFileText aria-hidden="true" className="text-xl" />
+            </span>
           ) : (
             <img
               src={previewUrl}
               alt="Vista previa del comprobante"
-              className="h-14 w-14 object-cover rounded"
+              className="h-12 w-12 object-cover rounded-xl"
             />
           )}
-          <span className="text-sm text-gray-700 truncate flex-1">
+          <span className="text-sm text-ink-2 truncate flex-1">
+            <span className="block font-semibold text-ink truncate">{label}</span>
             {value.name} · {formatBytes(value.size)}
           </span>
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="text-gray-500 hover:text-red-600"
+            className="p-2 text-muted hover:text-danger"
             aria-label="Quitar el comprobante elegido"
             disabled={disabled}
           >
-            <FaTimes />
+            <LuX aria-hidden="true" />
           </button>
         </div>
       ) : (
@@ -74,9 +74,10 @@ const ReceiptPicker = ({ value, onChange, label = "Comprobante (opcional)", disa
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || processing}
-          className="w-full py-3 border-2 border-dashed border-gray-300 rounded-md text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600 disabled:opacity-60"
+          className={`w-full h-12 rounded-2xl ${tile} text-sm font-semibold text-ink inline-flex items-center justify-center gap-2 hover:brightness-95 disabled:opacity-60`}
         >
-          {processing ? "Preparando la foto..." : "Tomar foto o elegir archivo (foto o PDF)"}
+          <LuCamera aria-hidden="true" className="text-lg" />
+          {processing ? "Preparando la foto…" : label}
         </button>
       )}
 
@@ -88,7 +89,7 @@ const ReceiptPicker = ({ value, onChange, label = "Comprobante (opcional)", disa
         className="hidden"
         aria-label={label}
       />
-      {error && <p className="text-red-500 text-xs">{error}</p>}
+      {error && <p className="text-xs font-medium text-danger px-1">{error}</p>}
     </div>
   );
 };

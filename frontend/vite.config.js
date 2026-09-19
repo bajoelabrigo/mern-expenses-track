@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 //! Colores de la app (también en index.html y en el icono)
-const THEME_COLOR = "#2563eb";
+const THEME_COLOR = "#ecebe6";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -32,7 +32,7 @@ export default defineConfig({
         display: "standalone",
         orientation: "any",
         theme_color: THEME_COLOR,
-        background_color: "#ffffff",
+        background_color: THEME_COLOR,
         categories: ["finance", "productivity"],
         icons: [
           { src: "pwa-64x64.png", sizes: "64x64", type: "image/png" },

@@ -203,6 +203,40 @@ describe("Transacciones", () => {
     await crear(token, { type: "expense", amount: 10, date: "2026-02-31" }).expect(400);
   });
 
+  test("busca en descripción y categoría, de forma literal", async () => {
+    const { token } = await createUser();
+    await crear(token, { type: "income", category: "diezmos", amount: 10, date: "2026-09-01", description: "Culto del domingo" });
+    await crear(token, { type: "expense", category: "luz", amount: 5, date: "2026-09-02", description: "Recibo (septiembre) 50% pagado" });
+    await crear(token, { type: "expense", category: "agua", amount: 3, date: "2026-09-03", description: "Sedapal" });
+
+    const buscar = (q) =>
+      request(app)
+        .get("/api/v1/transactions/lists")
+        .query({ q })
+        .set("Authorization", `Bearer ${token}`)
+        .expect(200);
+
+    assert.equal((await buscar("DOMINGO")).body.total, 1);
+    assert.equal((await buscar("luz")).body.total, 1);
+    //! Caracteres especiales de expresión regular se buscan tal cual
+    assert.equal((await buscar("(septiembre) 50%")).body.total, 1);
+    assert.equal((await buscar(".*")).body.total, 0);
+  });
+
+  test("filtra los recurrentes", async () => {
+    const { token } = await createUser();
+    await crear(token, { type: "expense", category: "internet", amount: 99, date: "2026-09-01", recurrent: true, recurrenceType: "monthly", recurrenceCount: 2 });
+    await crear(token, { type: "expense", category: "luz", amount: 5, date: "2026-09-02" });
+
+    const res = await request(app)
+      .get("/api/v1/transactions/lists")
+      .query({ recurrent: "true" })
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    assert.equal(res.body.total, 2);
+    res.body.transactions.forEach((t) => assert.equal(t.recurrent, true));
+  });
+
   test("un JSON mal formado responde 400 y no 500", async () => {
     const res = await request(app)
       .post("/api/v1/users/login")
@@ -275,6 +309,38 @@ describe("Transacciones", () => {
 
     assert.equal(res.body.income, 200);
     assert.equal(res.body.expense, 0);
+  });
+
+  test("el resumen por meses agrupa en la zona horaria pedida y omite los anulados", async () => {
+    const { token } = await createUser();
+    const porMes = (query) =>
+      request(app)
+        .get(`/api/v1/transactions/summary/by-month?${query}`)
+        .set("Authorization", `Bearer ${token}`);
+
+    //! 1 de febrero 03:00 UTC = 31 de enero 22:00 en Lima
+    await crear(token, { type: "income", category: "diezmos", amount: 100, date: "2026-02-01T03:00:00.000Z" }).expect(201);
+    await crear(token, { type: "expense", category: "luz", amount: 40.5, date: "2026-03-10T17:00:00.000Z" }).expect(201);
+    const anulado = await crear(token, { type: "expense", category: "luz", amount: 999, date: "2026-03-11T17:00:00.000Z" }).expect(201);
+    await request(app)
+      .post(`/api/v1/transactions/${anulado.body[0]._id}/void`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({ reason: "duplicado" })
+      .expect(200);
+    //! De otro año: no aparece
+    await crear(token, { type: "income", category: "diezmos", amount: 7, date: "2025-12-15T17:00:00.000Z" }).expect(201);
+
+    const lima = await porMes("year=2026&tz=America/Lima").expect(200);
+    assert.equal(lima.body.months.length, 12);
+    assert.deepEqual(lima.body.months[0], { month: 1, income: 100, expense: 0 });
+    assert.deepEqual(lima.body.months[1], { month: 2, income: 0, expense: 0 });
+    assert.deepEqual(lima.body.months[2], { month: 3, income: 0, expense: 40.5 });
+
+    const utc = await porMes("year=2026").expect(200);
+    assert.equal(utc.body.months[1].income, 100);
+
+    await porMes("year=abc").expect(400);
+    await porMes("year=2026&tz=Marte/Olympus").expect(400);
   });
 
   test("el endpoint de período filtra por tipo y por categoría", async () => {

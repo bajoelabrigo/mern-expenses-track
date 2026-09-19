@@ -81,9 +81,13 @@ export const listTransationsAPI = async ({
   page,
   limit,
   includeVoided,
+  q,
+  recurrent,
 }) => {
   const response = await axiosInstance.get("/transactions/lists", {
     params: {
+      q: q || undefined,
+      recurrent: recurrent ? "true" : undefined,
       category,
       type,
       startDate,
@@ -128,6 +132,16 @@ export const getBalanceAPI = async ({ startDate, endDate, type, category } = {})
 //! Resumen del mes en curso
 export const getMonthlySummaryAPI = async () => {
   const response = await axiosInstance.get("/transactions/summary/monthly");
+  return response.data;
+};
+
+//! Ingresos y gastos de cada mes del año, contados en la zona horaria del
+//! dispositivo
+export const getYearByMonthAPI = async (year) => {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const response = await axiosInstance.get("/transactions/summary/by-month", {
+    params: { year, tz },
+  });
   return response.data;
 };
 

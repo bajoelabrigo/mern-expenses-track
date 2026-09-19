@@ -1,37 +1,58 @@
-import { useState } from "react";
+import { useSelector } from "react-redux";
+import { LuLogOut } from "react-icons/lu";
+import { useLogout } from "../../hooks/useLogout";
+import ThemeToggle from "../layout/ThemeToggle";
+import { Button, Card } from "../ui";
+import { initials } from "../ui/styles";
 import ProfileForm from "./ProfileForm";
 import UpdatePasswordForm from "./UpdatePasswordForm";
 
-const TABS = [
-  { id: "perfil", label: "Actualizar perfil" },
-  { id: "password", label: "Actualizar contraseña" },
-];
+const Section = ({ id, title, children }) => (
+  <section aria-labelledby={id}>
+    <h2 id={id} className="text-sm font-bold text-muted px-1 mb-2">
+      {title}
+    </h2>
+    <Card className="p-5">{children}</Card>
+  </section>
+);
 
+//! Mi cuenta: datos, contraseña, apariencia y salir, todo en una pantalla
 const UserProfile = () => {
-  //! Antes iniciaba en undefined y no se veía ninguna pestaña
-  const [openTab, setOpenTab] = useState("perfil");
+  const user = useSelector((state) => state.auth.user);
+  const logout = useLogout();
 
   return (
-    <div className="w-full rounded-sm border border-gray-100 bg-white py-7 px-4 sm:px-10 lg:px-20 shadow-lg">
-      <div className="mb-6 flex flex-wrap gap-5 border-b border-gray-100 sm:gap-10">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setOpenTab(tab.id)}
-            aria-current={openTab === tab.id}
-            className={`border-b-2 py-4 text-sm font-medium hover:text-blue-500 md:text-base ${
-              openTab === tab.id
-                ? "text-blue-500 border-blue-500"
-                : "border-transparent"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <header className="flex items-center gap-4">
+        <span
+          aria-hidden="true"
+          className="h-16 w-16 shrink-0 rounded-full bg-ink text-surface grid place-items-center text-xl font-extrabold"
+        >
+          {initials(user?.username)}
+        </span>
+        <div className="min-w-0">
+          <h1 className="text-[26px] leading-tight font-extrabold tracking-tight text-ink truncate">
+            {user?.username}
+          </h1>
+          <p className="text-sm text-muted truncate">{user?.email}</p>
+        </div>
+      </header>
 
-      {openTab === "perfil" ? <ProfileForm /> : <UpdatePasswordForm />}
+      <Section id="tus-datos" title="Tus datos">
+        <ProfileForm />
+      </Section>
+
+      <Section id="contrasena" title="Contraseña">
+        <UpdatePasswordForm />
+      </Section>
+
+      <Section id="apariencia" title="Apariencia">
+        <ThemeToggle />
+      </Section>
+
+      <Button variant="danger-ghost" block onClick={logout}>
+        <LuLogOut aria-hidden="true" /> Salir
+      </Button>
     </div>
   );
 };

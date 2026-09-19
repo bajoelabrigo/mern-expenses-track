@@ -37,10 +37,11 @@ const AuditPage = lazy(() => import("./components/Workspaces/AuditPage"));
 const AcceptInvitation = lazy(() =>
   import("./components/Workspaces/AcceptInvitation")
 );
+const MovementsPage = lazy(() => import("./components/Transactions/MovementsPage"));
 const AdminUsersList = lazy(() => import("./components/Admin/AdminUsersList"));
 
 const Cargando = () => (
-  <p className="text-center text-gray-500 py-10">Cargando...</p>
+  <p className="text-center text-muted py-10">Cargando...</p>
 );
 
 //! Ruta privada que además exige un permiso del rol en el espacio actual
@@ -112,6 +113,14 @@ const App = () => (
             element={
               <Privada>
                 <Dashboard />
+              </Privada>
+            }
+          />
+          <Route
+            path="movimientos"
+            element={
+              <Privada>
+                <MovementsPage />
               </Privada>
             }
           />

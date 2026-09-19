@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
-import { FaLock } from "react-icons/fa";
 import { resetPasswordAPI } from "../../services/users/userService";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
+import { Button, ButtonLink, Field, Input } from "../ui";
+import AuthShell from "./AuthShell";
 
 const MIN_LENGTH = 8;
 
@@ -35,62 +36,52 @@ const ResetPassword = () => {
 
   if (isSuccess) {
     return (
-      <div className="max-w-md mx-auto my-10 bg-white p-6 rounded-lg space-y-5 border border-gray-200 text-center">
+      <AuthShell title="Contraseña actualizada">
         <AlertMessage type="success" message={data.message} />
-        <Link
-          to="/login"
-          className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-        >
-          Iniciar sesión
-        </Link>
-      </div>
+        <ButtonLink to="/login" block>
+          Entrar
+        </ButtonLink>
+      </AuthShell>
     );
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-md mx-auto my-10 bg-white p-6 rounded-lg space-y-5 border border-gray-200"
-    >
-      <h2 className="text-2xl font-semibold text-center text-gray-800">Nueva contraseña</h2>
+    <AuthShell title="Nueva contraseña" subtitle="Elige una que no uses en otro sitio.">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {localError && <AlertMessage type="error" message={localError} />}
+        {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
+        {isError && error?.response?.data?.code === "INVALID_RESET_TOKEN" && (
+          <p className="text-sm text-center">
+            <Link to="/olvide-contrasena" className="font-semibold text-ink underline underline-offset-4">
+              Pedir un enlace nuevo
+            </Link>
+          </p>
+        )}
 
-      {localError && <AlertMessage type="error" message={localError} />}
-      {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
-      {isError && error?.response?.data?.code === "INVALID_RESET_TOKEN" && (
-        <p className="text-sm text-center">
-          <Link to="/olvide-contrasena" className="text-blue-600 hover:underline">
-            Pedir un enlace nuevo
-          </Link>
-        </p>
-      )}
-
-      {[
-        { id: "new-password", value: password, set: setPassword, label: "Contraseña nueva (mínimo 8 caracteres)" },
-        { id: "confirm-password", value: confirm, set: setConfirm, label: "Repite la contraseña" },
-      ].map((field) => (
-        <div key={field.id} className="relative">
-          <FaLock className="absolute top-3 left-3 text-gray-400" />
-          <input
-            id={field.id}
+        <Field label="Contraseña nueva" htmlFor="new-password" hint="Mínimo 8 caracteres.">
+          <Input
+            id="new-password"
             type="password"
             autoComplete="new-password"
-            value={field.value}
-            onChange={(e) => field.set(e.target.value)}
-            placeholder={field.label}
-            aria-label={field.label}
-            className="pl-10 pr-4 py-2 w-full rounded-md border border-gray-300 focus:border-blue-500"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
-        </div>
-      ))}
+        </Field>
+        <Field label="Repite la contraseña" htmlFor="confirm-password">
+          <Input
+            id="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
+        </Field>
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="w-full bg-gradient-to-r from-blue-500 to-teal-500 hover:from-blue-600 hover:to-teal-600 text-white font-bold py-2 px-4 rounded-md disabled:opacity-60"
-      >
-        {isPending ? "Guardando..." : "Guardar contraseña"}
-      </button>
-    </form>
+        <Button type="submit" block disabled={isPending}>
+          {isPending ? "Guardando…" : "Guardar contraseña"}
+        </Button>
+      </form>
+    </AuthShell>
   );
 };
 

@@ -6,7 +6,10 @@ import { useWorkspace } from "../../hooks/useWorkspace";
 import { getErrorMessage } from "../../lib/axios";
 import { formatMoney } from "../../lib/money";
 import { ROLE_LABELS } from "../../lib/roles";
+import { dayLabel } from "../../lib/periods";
 import AlertMessage from "../Alert/AlertMessage";
+import { Button, EmptyState, ListGroup, PageHeader } from "../ui";
+import { capitalize, initials } from "../ui/styles";
 
 const ACTION_LABELS = {
   "transaction.create": "registró un movimiento",
@@ -50,6 +53,7 @@ const formatValue = (field, value, currency) => {
   if (field === "date") return new Date(value).toLocaleDateString("es");
   if (field === "type") return value === "income" ? "Ingreso" : "Gasto";
   if (field === "role") return ROLE_LABELS[value] || value;
+  if (field === "category" || field === "name") return capitalize(String(value));
   if (typeof value === "boolean") return value ? "Sí" : "No";
   return String(value);
 };
@@ -70,14 +74,14 @@ const Changes = ({ entry, currency }) => {
   if (rows.length === 0) return null;
 
   return (
-    <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+    <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm rounded-xl bg-surface-2 px-3 py-2">
       {rows.map((field) => (
         <div key={field} className="contents">
-          <dt className="text-gray-500">{FIELD_LABELS[field] || field}</dt>
-          <dd className="text-gray-800 break-words">
+          <dt className="text-muted">{FIELD_LABELS[field] || field}</dt>
+          <dd className="text-ink break-words">
             {before && after ? (
               <>
-                <span className="line-through text-gray-400">
+                <span className="line-through text-muted">
                   {formatValue(field, before[field], currency)}
                 </span>{" "}
                 → {formatValue(field, after[field], currency)}
@@ -110,61 +114,86 @@ const AuditPage = () => {
   const entries = data?.entries || [];
   const totalPages = data?.totalPages || 1;
 
+  //! Agrupado por día, como los movimientos
+  const days = [];
+  for (const entry of entries) {
+    const label = dayLabel(entry.createdAt);
+    if (days.at(-1)?.label !== label) days.push({ label, entries: [] });
+    days.at(-1).entries.push(entry);
+  }
+
   return (
-    <div className="max-w-3xl mx-auto my-8 px-2 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-800">Historial de cambios</h1>
-        <p className="text-sm text-gray-500">
-          {workspace.name}: quién hizo qué y cuándo. No se puede editar ni borrar.
-        </p>
-      </div>
+    <div className="max-w-2xl mx-auto">
+      <PageHeader
+        title="Historial"
+        subtitle="Quién hizo qué y cuándo. Nadie puede editarlo ni borrarlo."
+      />
 
-      {isLoading && <AlertMessage type="loading" message="Cargando historial..." />}
-      {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
+      <div className="space-y-6">
+        {isLoading && <AlertMessage type="loading" message="Cargando historial…" />}
+        {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
 
-      {!isLoading && entries.length === 0 && (
-        <p className="text-gray-500">Todavía no hay cambios registrados.</p>
-      )}
+        {!isLoading && !isError && entries.length === 0 && (
+          <EmptyState title="Todavía no hay cambios">
+            Cada movimiento, categoría o miembro que se toque aparecerá aquí.
+          </EmptyState>
+        )}
 
-      <ul className="space-y-3">
-        {entries.map((entry) => (
-          <li key={entry._id} className="bg-white p-4 rounded-lg shadow border border-gray-200">
-            <p className="text-gray-800">
-              <strong>{entry.actorName || "Alguien"}</strong>{" "}
-              {ACTION_LABELS[entry.action] || entry.action}
-            </p>
-            <p className="text-xs text-gray-500">
-              {new Date(entry.createdAt).toLocaleString("es")}
-            </p>
-            {entry.note && <p className="text-sm text-gray-700 mt-1 italic">{entry.note}</p>}
-            <Changes entry={entry} currency={currency} />
-          </li>
+        {days.map((day) => (
+          <section key={day.label} aria-label={day.label}>
+            <h2 className="text-sm font-bold text-muted px-1 mb-2">{day.label}</h2>
+            <ListGroup>
+              {day.entries.map((entry) => (
+                <article key={entry._id} className="px-4 py-3.5 flex gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="h-9 w-9 shrink-0 rounded-full bg-surface-2 grid place-items-center text-xs font-bold text-ink-2"
+                  >
+                    {initials(entry.actorName)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="text-ink">
+                        <strong className="font-semibold">{entry.actorName || "Alguien"}</strong>{" "}
+                        {ACTION_LABELS[entry.action] || entry.action}
+                      </p>
+                      <time dateTime={entry.createdAt} className="shrink-0 text-xs text-muted tabular">
+                        {new Date(entry.createdAt).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })}
+                      </time>
+                    </div>
+                    {entry.note && <p className="text-sm text-ink-2 mt-1">“{entry.note}”</p>}
+                    <Changes entry={entry} currency={currency} />
+                  </div>
+                </article>
+              ))}
+            </ListGroup>
+          </section>
         ))}
-      </ul>
 
-      {totalPages > 1 && (
-        <div className="flex justify-between items-center">
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
-          >
-            Más recientes
-          </button>
-          <span className="text-sm text-gray-600">
-            Página {page} de {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50"
-          >
-            Más antiguos
-          </button>
-        </div>
-      )}
+        {totalPages > 1 && (
+          <nav aria-label="Páginas del historial" className="flex justify-between items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              Más recientes
+            </Button>
+            <span className="text-sm text-muted tabular">
+              {page} de {totalPages}
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+            >
+              Más antiguos
+            </Button>
+          </nav>
+        )}
+      </div>
     </div>
   );
 };

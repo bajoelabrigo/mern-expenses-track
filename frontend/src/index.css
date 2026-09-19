@@ -1,1 +1,112 @@
 @import "tailwindcss";
+
+/* El tema lo decide data-theme en <html> ("light" | "dark"); lo fija el
+   script de index.html (preferencia guardada o la del sistema) antes de pintar,
+   así no hay destello del tema equivocado al abrir la app. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ── Colores de la app ────────────────────────────────────────────────────
+   Un color se define UNA vez; el modo oscuro solo cambia su valor. En los
+   componentes se usan por su papel (bg-surface, text-muted, bg-accent...). */
+:root {
+  --bg: #ecebe6;
+  --surface: #ffffff;
+  --surface-2: #f5f4f0;
+  --ink: #161615;
+  --ink-2: #3b3a37;
+  --muted: #86837c;
+  --line: #e4e2dc;
+  --accent: #e5a33b;
+  --accent-ink: #1f1405;
+  --accent-soft: #fbefd9;
+  --income: #1e9b58;
+  --income-soft: #e2f3e9;
+  --expense: #d98a1f;
+  --danger: #d9443f;
+  --danger-soft: #fbe6e5;
+  --shadow: 0 1px 2px rgb(20 20 18 / 0.04);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e0e0e;
+  --surface: #1a1a1a;
+  --surface-2: #232323;
+  --ink: #f2f1ee;
+  --ink-2: #cfcdc8;
+  --muted: #8d8b86;
+  --line: #2c2c2b;
+  --accent: #f0b14b;
+  --accent-ink: #1f1405;
+  --accent-soft: #3a2c14;
+  --income: #3cc77f;
+  --income-soft: #183324;
+  --expense: #f0b14b;
+  --danger: #ff6b66;
+  --danger-soft: #3a1c1b;
+  --shadow: none;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-income: var(--income);
+  --color-income-soft: var(--income-soft);
+  --color-expense: var(--expense);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --shadow-card: var(--shadow);
+  --radius-card: 1.25rem;
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Los importes se alinean por columnas: cifras de ancho fijo */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  input,
+  select,
+  textarea {
+    color: var(--ink);
+    background: transparent;
+  }
+  ::placeholder {
+    color: var(--muted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

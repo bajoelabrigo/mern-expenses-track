@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FaPaperclip } from "react-icons/fa";
+import { LuPaperclip } from "react-icons/lu";
 import {
   attachReceiptAPI,
   removeReceiptAPI,
@@ -36,8 +36,8 @@ const ReceiptManager = ({ transaction, canWrite }) => {
 
   return (
     <section className="space-y-3">
-      <h3 className="flex gap-2 items-center text-gray-700 font-medium">
-        <FaPaperclip className="text-blue-500" /> Comprobante
+      <h3 className="flex gap-2 items-center font-bold text-ink">
+        <LuPaperclip aria-hidden="true" className="text-muted" /> Comprobante
       </h3>
 
       {error && <AlertMessage type="error" message={getErrorMessage(error)} />}
@@ -45,13 +45,13 @@ const ReceiptManager = ({ transaction, canWrite }) => {
 
       {receipt ? (
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-gray-700">
+          <span className="text-ink-2 font-semibold">
             {receipt.format === "pdf" ? "PDF" : "Foto"} · {formatBytes(receipt.bytes)}
           </span>
           <button
             type="button"
             onClick={() => openReceipt(transaction._id)}
-            className="text-blue-600 hover:underline"
+            className="font-semibold text-ink underline underline-offset-4"
           >
             Ver
           </button>
@@ -64,19 +64,20 @@ const ReceiptManager = ({ transaction, canWrite }) => {
                 }
               }}
               disabled={remove.isPending}
-              className="text-red-600 hover:underline"
+              className="font-semibold text-danger"
             >
               Quitar
             </button>
           )}
         </div>
       ) : (
-        <p className="text-sm text-gray-500">Este movimiento no tiene comprobante.</p>
+        <p className="text-sm text-muted">Este movimiento no tiene comprobante.</p>
       )}
 
       {canWrite && !transaction.voided && (
         <>
           <ReceiptPicker
+            inset
             value={file}
             onChange={setFile}
             label={receipt ? "Reemplazar el comprobante" : "Adjuntar comprobante"}
@@ -87,7 +88,7 @@ const ReceiptManager = ({ transaction, canWrite }) => {
               type="button"
               onClick={() => upload.mutate({ id: transaction._id, file })}
               disabled={upload.isPending || !online}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm disabled:opacity-60"
+              className="w-full h-11 rounded-full bg-ink text-surface font-semibold text-sm disabled:opacity-50"
             >
               {upload.isPending ? "Subiendo..." : online ? "Guardar comprobante" : "Sin conexión"}
             </button>

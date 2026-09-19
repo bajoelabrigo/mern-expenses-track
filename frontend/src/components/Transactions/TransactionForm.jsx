@@ -1,71 +1,84 @@
-import { useEffect, useState } from "react";
-import { useFormik } from "formik";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import * as Yup from "yup";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  FaDollarSign,
-  FaCalendarAlt,
-  FaRegCommentDots,
-  FaWallet,
-} from "react-icons/fa";
+import { LuDelete, LuPlus, LuRepeat, LuX } from "react-icons/lu";
 import { listCategoriesAPI } from "../../services/category/categoryService";
 import {
   addTransactionAPI,
   attachReceiptAPI,
+  updateTransactionAPI,
 } from "../../services/transactions/transactionService";
-import ReceiptPicker from "./ReceiptPicker";
 import { getErrorMessage, isNetworkError } from "../../lib/axios";
 import { addToOutbox, newClientId } from "../../lib/outbox";
+import { formatMoney, formatTypedAmount } from "../../lib/money";
+import { toISODate } from "../../lib/periods";
+import { pressKey } from "../../lib/keypad";
 import { useWorkspace } from "../../hooks/useWorkspace";
+import { Button, Chip, ListGroup, Segmented } from "../ui";
 import AlertMessage from "../Alert/AlertMessage";
+import ReceiptPicker from "./ReceiptPicker";
+import { capitalize } from "../ui/styles";
 
-const validationSchema = Yup.object({
-  type: Yup.string()
-    .required("El tipo de transacción es obligatorio")
-    .oneOf(["income", "expense"], "Tipo inválido"),
-  amount: Yup.number()
-    .typeError("El monto debe ser un número")
-    .required("El monto es obligatorio")
-    .positive("El monto debe ser positivo"),
-  category: Yup.string().required("La categoría es obligatoria"),
-  date: Yup.date()
-    .typeError("Fecha inválida")
-    .required("La fecha es obligatoria"),
-  description: Yup.string(),
-  recurrent: Yup.boolean(),
-  recurrenceType: Yup.string().when("recurrent", {
-    is: true,
-    then: (schema) =>
-      schema
-        .required("El tipo de recurrencia es obligatorio")
-        .oneOf(["daily", "weekly", "monthly", "yearly"], "Recurrencia inválida"),
-  }),
-  recurrenceCount: Yup.number().when("recurrent", {
-    is: true,
-    then: (schema) =>
-      schema
-        .typeError("Debe ser un número")
-        .required("Indica cuántas veces se repite")
-        .min(1, "Debe ser al menos 1")
-        .max(365, "Demasiadas repeticiones (máximo 365)"),
-  }),
-});
+const TYPES = [
+  { value: "expense", label: "Gasto" },
+  { value: "income", label: "Ingreso" },
+];
 
-const TransactionForm = () => {
+const RECURRENCE = [
+  { value: "weekly", label: "Cada semana" },
+  { value: "monthly", label: "Cada mes" },
+  { value: "yearly", label: "Cada año" },
+];
+
+const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"];
+
+
+//! Registrar un movimiento: monto con teclado propio (como una calculadora),
+//! Gasto / Ingreso, categoría en píldoras, fecha, nota, repetición y foto.
+//! Con `transaction` es la misma pantalla para EDITAR (sin repetición ni
+//! bandeja sin conexión: editar exige conexión). `children` va debajo del
+//! teclado (acciones del movimiento en la edición).
+const TransactionForm = ({ transaction, children }) => {
+  const editing = Boolean(transaction);
   const navigate = useNavigate();
-
+  const location = useLocation();
   const queryClient = useQueryClient();
   const userId = useSelector((state) => state.auth.user?.id);
-  const { workspace } = useWorkspace();
+  const { workspace, currency } = useWorkspace();
+
+  const [type, setType] = useState(transaction?.type || "expense");
+  //! "150.5" y no "150.50": el teclado lleva el monto como se escribiría
+  const [amount, setAmount] = useState(() => (transaction ? String(transaction.amount) : ""));
+  const [category, setCategory] = useState(transaction?.category || "");
+  const [date, setDate] = useState(() => toISODate(transaction ? new Date(transaction.date) : new Date()));
+  const [description, setDescription] = useState(transaction?.description || "");
+  const [recurrent, setRecurrent] = useState(false);
+  const [recurrenceType, setRecurrenceType] = useState("monthly");
+  const [recurrenceCount, setRecurrenceCount] = useState(12);
   const [receiptFile, setReceiptFile] = useState(null);
+
+  const {
+    data: categories = [],
+    isError: isCategoriesError,
+    error: categoriesError,
+  } = useQuery({ queryFn: listCategoriesAPI, queryKey: ["list-categories"] });
+  const visibleCategories = useMemo(
+    () => categories.filter((c) => c.type === type),
+    [categories, type]
+  );
+  //! Al cambiar Gasto/Ingreso, la categoría elegida puede dejar de valer
+  const selectedCategory = visibleCategories.some((c) => c.name === category) ? category : "";
 
   //! Intenta enviar; sin conexión (o si el servidor no responde) lo guarda en
   //! la bandeja de salida con el espacio actual y se envía solo después. El
   //! mismo clientId en ambos caminos: si el envío llegó pero se perdió la
   //! respuesta, el reenvío no lo duplica.
   const saveTransaction = async (values) => {
+    if (editing) {
+      await updateTransactionAPI({ ...values, id: transaction._id });
+      return { queued: false, receiptError: "" };
+    }
     const clientId = newClientId();
     const queue = () => {
       addToOutbox({
@@ -88,16 +101,12 @@ const TransactionForm = () => {
     }
 
     //! El comprobante se sube después del movimiento. Si falla, el movimiento
-    //! YA está guardado: se avisa para adjuntarlo desde "Editar", nunca se
-    //! presenta como si no se hubiera guardado nada.
+    //! YA está guardado: se avisa para adjuntarlo después, nunca se presenta
+    //! como si no se hubiera guardado nada.
     let receiptError = "";
     if (receiptFile && created?.[0]?._id) {
       try {
-        await attachReceiptAPI({
-          id: created[0]._id,
-          file: receiptFile,
-          workspaceId: workspace._id,
-        });
+        await attachReceiptAPI({ id: created[0]._id, file: receiptFile, workspaceId: workspace._id });
       } catch (err) {
         receiptError = getErrorMessage(err);
       }
@@ -105,18 +114,18 @@ const TransactionForm = () => {
     return { queued: false, receiptError };
   };
 
-  const { mutateAsync, isPending, isError, error, isSuccess, data } = useMutation({
+  const { mutate, isPending, isError, error, isSuccess, data } = useMutation({
     mutationFn: saveTransaction,
     mutationKey: ["add-transaction"],
     //! Sin esto React Query PAUSA la mutación al detectar que no hay conexión
-    //! y el botón se queda en "Guardando..." para siempre: saveTransaction ya
+    //! y el botón se queda en "Guardando…" para siempre: saveTransaction ya
     //! decide ella misma qué hacer sin conexión (guardarlo en la bandeja).
     networkMode: "always",
     onSuccess: (result) => {
-      //! Refresca listado, gráficos y balances
       if (!result.queued) {
         queryClient.invalidateQueries({ queryKey: ["list-transactions"] });
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        if (editing) queryClient.invalidateQueries({ queryKey: ["transaction", transaction._id] });
       }
     },
   });
@@ -125,277 +134,251 @@ const TransactionForm = () => {
   //! Sin conexión el comprobante no viaja en la bandeja de salida
   const receiptLost = queued && Boolean(receiptFile);
 
-  //! Categorías para el desplegable
-  const {
-    data: categories = [],
-    isError: isCategoriesError,
-    error: categoriesError,
-  } = useQuery({
-    queryFn: listCategoriesAPI,
-    queryKey: ["list-categories"],
-  });
-
-  const formik = useFormik({
-    initialValues: {
-      type: "",
-      amount: "",
-      category: "",
-      date: "",
-      description: "",
-      recurrent: false,
-      recurrenceType: "",
-      recurrenceCount: "",
-    },
-    validationSchema,
-    onSubmit: async (values) => {
-      const adjustedValues = {
-        ...values,
-        //! Mediodía local evita el desfase de zona horaria al guardar la fecha
-        date: new Date(`${values.date}T12:00:00`).toISOString(),
-        recurrenceCount: values.recurrent ? Number(values.recurrenceCount) : 0,
-      };
-
-      try {
-        await mutateAsync(adjustedValues);
-      } catch {
-        // el mensaje se muestra con AlertMessage
-      }
-    },
-  });
-
   useEffect(() => {
-    if (isSuccess) {
-      //! Si quedó en la bandeja se deja leer el aviso un poco más
-      const timeout = setTimeout(() => {
-        navigate("/dashboard");
-      }, queued || receiptError ? 4000 : 1000);
-      return () => clearTimeout(timeout);
-    }
-  }, [isSuccess, navigate, queued, receiptError]);
+    if (!isSuccess) return undefined;
+    const back = editing ? "/movimientos" : "/dashboard";
+    const timeout = setTimeout(() => navigate(back), queued || receiptError ? 4000 : 900);
+    return () => clearTimeout(timeout);
+  }, [isSuccess, navigate, queued, receiptError, editing]);
+
+  const press = useCallback((key) => setAmount((a) => pressKey(a, key)), []);
+
+  //! En el ordenador el monto también se escribe con el teclado físico
+  useEffect(() => {
+    const onKey = (e) => {
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (/^[0-9]$/.test(e.key)) press(e.key);
+      else if (e.key === "." || e.key === ",") press(".");
+      else if (e.key === "Backspace") press("back");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [press]);
+
+  const numeric = Number(amount || 0);
+  //! Un anulado no se edita (el servidor lo rechaza): primero se restaura
+  const locked = editing && transaction.voided;
+  const canSave = numeric > 0 && selectedCategory && !isPending && !isSuccess && !locked;
+
+  const submit = () => {
+    if (!canSave) return;
+    mutate({
+      type,
+      category: selectedCategory,
+      amount: numeric,
+      //! Mediodía local: la fecha no se corre de día por la zona horaria
+      date: new Date(`${date}T12:00:00`).toISOString(),
+      description: description.trim(),
+      ...(editing
+        ? {}
+        : {
+            recurrent,
+            recurrenceType: recurrent ? recurrenceType : undefined,
+            recurrenceCount: recurrent ? Number(recurrenceCount) : 0,
+          }),
+    });
+  };
 
   return (
-    <form
-      onSubmit={formik.handleSubmit}
-      className="max-w-lg mx-auto my-10 bg-white p-6 rounded-lg shadow-lg space-y-6"
-    >
-      <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-800">
-          Detalles de la transacción
-        </h2>
-        <p className="text-gray-600">Llena todos los campos a continuación.</p>
+    <div className="max-w-md mx-auto space-y-4">
+      <div className="flex items-center gap-3">
+        <Link
+          to={editing ? "/movimientos" : "/dashboard"}
+          aria-label={editing ? "Volver" : "Cancelar"}
+          className="p-2 -ml-2 text-muted hover:text-ink"
+        >
+          <LuX aria-hidden="true" className="text-xl" />
+        </Link>
+        <Segmented
+          label="Tipo de movimiento"
+          options={TYPES}
+          value={type}
+          onChange={setType}
+          className="flex-1"
+        />
       </div>
 
-      {isPending && <AlertMessage type="loading" message="Guardando..." />}
-      {isCategoriesError && (
-        <AlertMessage type="error" message={getErrorMessage(categoriesError)} />
-      )}
+      {/* Monto */}
+      <div className="text-center py-3">
+        <output
+          aria-live="polite"
+          aria-label="Monto"
+          className={`block text-[52px] leading-none font-extrabold tracking-tight tabular ${
+            amount ? "text-ink" : "text-muted"
+          }`}
+        >
+          {formatTypedAmount(amount, currency)}
+        </output>
+        <p className="mt-2 text-sm text-muted">
+          {editing
+            ? "Corrige lo que haga falta; el cambio queda en el historial."
+            : `${type === "income" ? "¿Cuánto entró?" : "¿Cuánto salió?"} Usa el teclado de abajo.`}
+        </p>
+      </div>
+
+      {isCategoriesError && <AlertMessage type="error" message={getErrorMessage(categoriesError)} />}
       {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
       {isSuccess && (
         <AlertMessage
           type="success"
           message={
             queued
-              ? "Sin conexión: guardado en este dispositivo. Se enviará solo al volver la conexión."
-              : "Transacción agregada exitosamente"
+              ? "Sin conexión: guardado en este teléfono. Se enviará solo al volver la conexión."
+              : editing
+                ? "Cambios guardados"
+                : type === "income"
+                  ? "Ingreso registrado"
+                  : "Gasto registrado"
           }
         />
       )}
       {isSuccess && receiptLost && (
         <AlertMessage
           type="error"
-          message="El comprobante no se guardó sin conexión: adjúntalo desde Editar cuando vuelvas a tener señal."
+          message="El comprobante no se guardó sin conexión: adjúntalo desde el movimiento cuando vuelvas a tener señal."
         />
       )}
       {isSuccess && receiptError && (
         <AlertMessage
           type="error"
-          message={`El movimiento se guardó, pero el comprobante no: ${receiptError} Adjúntalo desde Editar.`}
+          message={`El movimiento se guardó, pero el comprobante no: ${receiptError} Adjúntalo desde el movimiento.`}
         />
       )}
 
-      {/* Type */}
-      <div className="space-y-2">
-        <label
-          htmlFor="type"
-          className="flex gap-2 items-center text-gray-700 font-medium"
+      {/* Categoría */}
+      <section aria-labelledby="categoria-titulo">
+        <h2
+          id="categoria-titulo"
+          className="text-[11px] font-bold tracking-[0.08em] uppercase text-muted mb-2 px-1"
         >
-          <FaWallet className="text-blue-500" />
-          <span>Tipo</span>
-        </label>
-        <select
-          {...formik.getFieldProps("type")}
-          id="type"
-          className="block w-full p-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-        >
-          <option value="">Seleccione el tipo de transacción</option>
-          <option value="income">Ingreso</option>
-          <option value="expense">Gasto</option>
-        </select>
-        {formik.touched.type && formik.errors.type && (
-          <p className="text-red-500 text-xs">{formik.errors.type}</p>
-        )}
-      </div>
-
-      {/* Amount */}
-      <div className="flex flex-col space-y-1">
-        <label htmlFor="amount" className="text-gray-700 font-medium">
-          <FaDollarSign className="inline mr-2 text-blue-500" />
-          Cantidad
-        </label>
-        <input
-          type="number"
-          {...formik.getFieldProps("amount")}
-          id="amount"
-          placeholder="Cantidad"
-          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-        />
-        {formik.touched.amount && formik.errors.amount && (
-          <p className="text-red-500 text-xs italic">{formik.errors.amount}</p>
-        )}
-      </div>
-
-      {/* Category */}
-      <div className="flex flex-col space-y-1">
-        <label htmlFor="category" className="text-gray-700 font-medium">
-          <FaRegCommentDots className="inline mr-2 text-blue-500" />
-          Categoria
-        </label>
-        <select
-          {...formik.getFieldProps("category")}
-          id="category"
-          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-        >
-          <option value="">Seleccione una categoría</option>
-          {categories.map((category) => (
-            <option key={category._id} value={category.name}>
-              {category.icon} {category.name}
-            </option>
+          Categoría
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          {visibleCategories.map((c) => (
+            <Chip key={c._id} selected={selectedCategory === c.name} onClick={() => setCategory(c.name)}>
+              {c.icon} {capitalize(c.name)}
+            </Chip>
           ))}
-        </select>
-        {formik.touched.category && formik.errors.category && (
-          <p className="text-red-500 text-xs italic">
-            {formik.errors.category}
-          </p>
-        )}
-      </div>
-
-      {/* Date */}
-      <div className="flex flex-col space-y-1">
-        <label htmlFor="date" className="text-gray-700 font-medium">
-          <FaCalendarAlt className="inline mr-2 text-blue-500" />
-          Fecha
-        </label>
-        <input
-          type="date"
-          {...formik.getFieldProps("date")}
-          id="date"
-          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-        />
-        {formik.touched.date && formik.errors.date && (
-          <p className="text-red-500 text-xs italic">{formik.errors.date}</p>
-        )}
-      </div>
-
-      {/* Description */}
-      <div className="flex flex-col space-y-1">
-        <label htmlFor="description" className="text-gray-700 font-medium">
-          <FaRegCommentDots className="inline mr-2 text-blue-500" />
-          Descripción (Opcional)
-        </label>
-        <textarea
-          {...formik.getFieldProps("description")}
-          id="description"
-          placeholder="Descripción"
-          rows="3"
-          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-        ></textarea>
-        {formik.touched.description && formik.errors.description && (
-          <p className="text-red-500 text-xs italic">
-            {formik.errors.description}
-          </p>
-        )}
-      </div>
-
-      {/* Recurrent checkbox */}
-      <div className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          id="recurrent"
-          name="recurrent"
-          checked={formik.values.recurrent}
-          onChange={formik.handleChange}
-          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-        />
-        <label htmlFor="recurrent" className="text-gray-700 font-medium">
-          Transacción repetida (recurrente)
-        </label>
-      </div>
-
-      {/* Conditional recurrence fields */}
-      {formik.values.recurrent && (
-        <div className="space-y-3">
-          {/* Recurrence Type */}
-          <div>
-            <label
-              htmlFor="recurrenceType"
-              className="text-gray-700 font-medium"
-            >
-              Tipo de recurrencia
-            </label>
-            <select
-              {...formik.getFieldProps("recurrenceType")}
-              id="recurrenceType"
-              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50 mt-1"
-            >
-              <option value="">Seleccionar recurrencia</option>
-              <option value="daily">Diariamente</option>
-              <option value="weekly">Semanalmente</option>
-              <option value="monthly">Mensualmente</option>
-              <option value="yearly">Anualmente</option>
-            </select>
-            {formik.touched.recurrenceType && formik.errors.recurrenceType && (
-              <p className="text-red-500 text-xs italic">
-                {formik.errors.recurrenceType}
-              </p>
-            )}
-          </div>
-
-          {/* Recurrence Count */}
-          <div>
-            <label
-              htmlFor="recurrenceCount"
-              className="text-gray-700 font-medium"
-            >
-              Recuento de repeticiones
-            </label>
-            <input
-              type="number"
-              {...formik.getFieldProps("recurrenceCount")}
-              id="recurrenceCount"
-              placeholder="Ejemplo: 6"
-              className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50"
-            />
-            {formik.touched.recurrenceCount &&
-              formik.errors.recurrenceCount && (
-                <p className="text-red-500 text-xs italic">
-                  {formik.errors.recurrenceCount}
-                </p>
-              )}
-          </div>
+          <Link
+            to="/add-category"
+            state={{ type, returnTo: location.pathname }}
+            className="h-9 px-4 rounded-full text-sm font-semibold inline-flex items-center gap-1 border border-dashed border-muted/50 text-muted hover:text-ink"
+          >
+            <LuPlus aria-hidden="true" /> Nueva
+          </Link>
         </div>
+        {visibleCategories.length === 0 && (
+          <p className="mt-2 text-sm text-muted px-1">
+            Aún no hay categorías de {type === "income" ? "ingreso" : "gasto"} en este espacio.
+          </p>
+        )}
+      </section>
+
+      {/* Detalles */}
+      <ListGroup>
+        <label className="flex items-center justify-between gap-3 px-4 h-13">
+          <span className="text-sm font-semibold text-ink-2">Fecha</span>
+          <input
+            type="date"
+            value={date}
+            max="9999-12-31"
+            onChange={(e) => setDate(e.target.value || toISODate(new Date()))}
+            className="text-sm text-right font-semibold focus:outline-none"
+          />
+        </label>
+        <label className="flex items-center justify-between gap-3 px-4 h-13">
+          <span className="text-sm font-semibold text-ink-2">Nota</span>
+          <input
+            type="text"
+            value={description}
+            maxLength={500}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Añadir una nota"
+            className="flex-1 min-w-0 text-sm text-right focus:outline-none"
+          />
+        </label>
+        {!editing && (
+        <div className="px-4 py-3">
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-sm font-semibold text-ink-2 inline-flex items-center gap-2">
+              <LuRepeat aria-hidden="true" className="text-muted" /> Se repite
+            </span>
+            <input
+              type="checkbox"
+              checked={recurrent}
+              onChange={(e) => setRecurrent(e.target.checked)}
+              className="h-5 w-5 accent-[var(--ink)]"
+            />
+          </label>
+          {recurrent && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <select
+                aria-label="Frecuencia"
+                value={recurrenceType}
+                onChange={(e) => setRecurrenceType(e.target.value)}
+                className="h-10 rounded-xl bg-surface-2 px-3 text-sm font-semibold"
+              >
+                {RECURRENCE.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+              <label className="h-10 rounded-xl bg-surface-2 px-3 text-sm font-semibold flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={recurrenceCount}
+                  onChange={(e) => setRecurrenceCount(e.target.value)}
+                  className="w-12 text-right focus:outline-none"
+                  aria-label="Cantidad de veces"
+                />
+                veces
+              </label>
+            </div>
+          )}
+        </div>
+        )}
+      </ListGroup>
+
+      {!editing && (
+        <ReceiptPicker value={receiptFile} onChange={setReceiptFile} disabled={isPending || isSuccess} />
       )}
 
-      {/* Submit */}
-      <ReceiptPicker value={receiptFile} onChange={setReceiptFile} disabled={isPending || isSuccess} />
+      {/* Teclado */}
+      <div className="grid grid-cols-3 gap-2" role="group" aria-label="Teclado numérico">
+        {KEYS.map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => press(key)}
+            aria-label={key === "back" ? "Borrar" : key === "." ? "Decimales" : key}
+            className="h-14 rounded-2xl bg-surface shadow-card text-xl font-bold text-ink active:bg-surface-2 transition flex items-center justify-center"
+          >
+            {key === "back" ? <LuDelete aria-hidden="true" /> : key}
+          </button>
+        ))}
+      </div>
 
-      <button
-        type="submit"
-        disabled={isPending || isSuccess}
-        className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none transition-colors duration-200 disabled:opacity-60"
-      >
-        {isPending ? "Guardando..." : "Enviar transacción"}
-      </button>
-    </form>
+      <Button variant="accent" size="lg" block onClick={submit} disabled={!canSave}>
+        {isPending
+          ? "Guardando…"
+          : locked
+            ? "Anulado: restáuralo para editarlo"
+            : editing
+              ? "Guardar cambios"
+              : numeric > 0
+                ? `Registrar ${type === "income" ? "ingreso" : "gasto"} de ${formatMoney(numeric, currency)}`
+                : "Escribe el monto"}
+      </Button>
+      {numeric > 0 && !selectedCategory && (
+        <p className="text-center text-xs text-muted -mt-2">Elige una categoría para registrar.</p>
+      )}
+
+      {children}
+    </div>
   );
 };
 

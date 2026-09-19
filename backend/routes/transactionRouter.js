@@ -23,6 +23,11 @@ transactionRouter.get(
   transactionController.getMonthlySummary
 );
 transactionRouter.get(
+  "/summary/by-month",
+  read,
+  transactionController.getYearByMonth
+);
+transactionRouter.get(
   "/export/excel",
   read,
   transactionController.generateExcelReport

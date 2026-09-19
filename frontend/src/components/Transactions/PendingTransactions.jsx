@@ -3,6 +3,9 @@ import { removeFromOutbox } from "../../lib/outbox";
 import { formatMoney } from "../../lib/money";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useOnline } from "../../hooks/useOnline";
+import { LuCloudUpload } from "react-icons/lu";
+import { capitalize } from "../ui/styles";
+
 
 //! Movimientos registrados sin conexión que aún no llegaron al servidor, en el
 //! espacio actual. Los fallidos (el servidor los rechazó) se pueden
@@ -23,58 +26,46 @@ const PendingTransactions = () => {
   };
 
   return (
-    <section className="mb-4 p-4 rounded-lg border border-amber-200 bg-amber-50">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <h3 className="font-semibold text-amber-900">
-          Por enviar ({items.length})
-        </h3>
+    <section className="mb-4 rounded-card bg-accent-soft p-4" aria-label="Por enviar">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-extrabold text-ink inline-flex items-center gap-2">
+          <LuCloudUpload aria-hidden="true" /> Por enviar ({items.length})
+        </h2>
         {online && (
-          <button
-            type="button"
-            onClick={sync}
-            className="text-sm text-blue-700 hover:underline"
-          >
+          <button type="button" onClick={sync} className="text-sm font-semibold text-ink underline underline-offset-4">
             Enviar ahora
           </button>
         )}
       </div>
-      <p className="text-xs text-amber-800 mb-3">
-        Guardados en este dispositivo. Se envían solos al volver la conexión.
+      <p className="text-xs text-ink-2 mt-1 mb-3">
+        Guardados en este teléfono. Se envían solos al volver la conexión.
       </p>
-      <ul className="space-y-2">
+      <ul className="bg-surface rounded-2xl divide-y divide-line overflow-hidden">
         {items.map((item) => (
-          <li
-            key={item.id}
-            className="bg-white rounded-md border border-amber-100 p-2 flex flex-wrap items-center justify-between gap-2"
-          >
-            <div className="text-sm">
-              <span className="text-gray-600">
-                {new Date(item.payload.date).toLocaleDateString("es-PE")}
-              </span>{" "}
-              <span className="capitalize">{item.payload.category}</span>{" "}
-              <span className="font-semibold">
+          <li key={item.id} className="px-3 py-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm min-w-0">
+              <p className="font-semibold text-ink truncate">
+                {item.payload.description || capitalize(item.payload.category)}
+              </p>
+              <p className="text-xs text-muted">
+                {new Date(item.payload.date).toLocaleDateString("es", { day: "numeric", month: "short" })} ·{" "}
+                {capitalize(item.payload.category)}
+              </p>
+              {item.status === "failed" && (
+                <p className="text-xs font-semibold text-danger mt-1">No se pudo guardar: {item.error}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <span className={`font-bold tabular ${item.payload.type === "income" ? "text-income" : "text-ink"}`}>
                 {item.payload.type === "expense" ? "−" : "+"}
                 {formatMoney(item.payload.amount, currency)}
               </span>
               {item.status === "failed" && (
-                <p className="text-xs text-red-700 mt-1">No se pudo guardar: {item.error}</p>
-              )}
-            </div>
-            <div className="flex gap-3 text-sm">
-              {item.status === "failed" && (
-                <button
-                  type="button"
-                  onClick={() => retry(item.id)}
-                  className="text-blue-700 hover:underline"
-                >
+                <button type="button" onClick={() => retry(item.id)} className="font-semibold text-ink underline">
                   Reintentar
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => discard(item)}
-                className="text-red-600 hover:underline"
-              >
+              <button type="button" onClick={() => discard(item)} className="font-semibold text-danger">
                 Descartar
               </button>
             </div>

@@ -67,12 +67,12 @@ const renderConEstado = (ui, { user = null, ruta = "/" } = {}) => {
 };
 
 describe("AlertMessage", () => {
-  it("muestra los errores en rojo y con rol de alerta", () => {
+  it("muestra los errores con el color de peligro y rol de alerta", () => {
     render(<AlertMessage type="error" message="Credenciales inválidas" />);
 
     const alerta = screen.getByRole("alert");
     expect(alerta).toHaveTextContent("Credenciales inválidas");
-    expect(alerta.className).toContain("text-red-800");
+    expect(alerta.className).toContain("text-danger");
   });
 });
 

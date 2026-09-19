@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LuCheck, LuCopy, LuMessageCircle } from "react-icons/lu";
 import {
   createInvitationAPI,
   listInvitationsAPI,
@@ -18,6 +19,12 @@ import {
   canManageMember,
 } from "../../lib/roles";
 import AlertMessage from "../Alert/AlertMessage";
+import { Button, Card, Chip, Field, Input, ListGroup, Notice, PageHeader } from "../ui";
+import { initials } from "../ui/styles";
+
+const SectionTitle = ({ children }) => (
+  <h2 className="text-sm font-bold text-muted px-1 mb-2">{children}</h2>
+);
 
 //! Enlace de la invitación recién creada, con las formas de compartirlo
 const InvitationLink = ({ invitation, workspaceName, onClose }) => {
@@ -35,44 +42,37 @@ const InvitationLink = ({ invitation, workspaceName, onClose }) => {
   const whatsappText = `Te invito a llevar las cuentas de "${workspaceName}". Entra aquí para unirte: ${invitation.url}`;
 
   return (
-    <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
-      <p className="text-sm text-green-900">
+    <div className="space-y-3">
+      <Notice tone={invitation.emailSent ? "success" : "warning"}>
         {invitation.emailSent
-          ? `Enviamos la invitación a ${invitation.email}. También puedes compartir el enlace:`
-          : `No se pudo enviar el correo a ${invitation.email}. Comparte este enlace con esa persona:`}
-      </p>
-      <input
+          ? `Enviamos la invitación a ${invitation.email}. También puedes compartir el enlace.`
+          : `No se pudo enviar el correo a ${invitation.email}. Comparte este enlace con esa persona.`}
+      </Notice>
+      <Input
         readOnly
         value={invitation.url}
         onFocus={(e) => e.target.select()}
         aria-label="Enlace de la invitación"
-        className="w-full p-2 text-sm rounded-md border border-green-300 bg-white"
+        className="text-sm text-ink-2"
       />
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={copy}
-          className="px-3 py-1.5 text-sm rounded-md bg-white border border-green-300 hover:bg-green-100"
-        >
-          {copied ? "¡Copiado!" : "Copiar enlace"}
-        </button>
         <a
           href={`https://wa.me/?text=${encodeURIComponent(whatsappText)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="px-3 py-1.5 text-sm rounded-md bg-green-600 text-white hover:bg-green-700"
+          className="inline-flex items-center gap-2 h-11 px-5 rounded-full font-semibold text-[15px] bg-income text-white hover:opacity-90 transition"
         >
-          Enviar por WhatsApp
+          <LuMessageCircle aria-hidden="true" /> Enviar por WhatsApp
         </a>
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-3 py-1.5 text-sm rounded-md text-gray-600 hover:underline"
-        >
-          Cerrar
-        </button>
+        <Button variant="secondary" onClick={copy}>
+          {copied ? <LuCheck aria-hidden="true" /> : <LuCopy aria-hidden="true" />}
+          {copied ? "Copiado" : "Copiar enlace"}
+        </Button>
+        <Button variant="ghost" onClick={onClose}>
+          Listo
+        </Button>
       </div>
-      <p className="text-xs text-green-800">
+      <p className="text-xs text-muted">
         Solo funciona para {invitation.email} y caduca en 7 días.
       </p>
     </div>
@@ -160,155 +160,150 @@ const MembersPage = () => {
   const canLeave = (m) => !(m.role === "propietario" && ownerCount <= 1);
 
   return (
-    <div className="max-w-3xl mx-auto my-8 px-2 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-800">Miembros</h1>
-        <p className="text-sm text-gray-500">{workspace.name}</p>
-      </div>
+    <div className="max-w-2xl mx-auto">
+      <PageHeader title="Miembros" subtitle={`Quién lleva las cuentas de ${workspace.name}.`} />
+      <div className="space-y-6">
+        {mutationError && (
+          <AlertMessage type="error" message={getErrorMessage(mutationError.error)} />
+        )}
 
-      {mutationError && (
-        <AlertMessage type="error" message={getErrorMessage(mutationError.error)} />
-      )}
+        {canManage && (
+          <section aria-labelledby="invitar">
+            <SectionTitle>
+              <span id="invitar">Invitar a alguien</span>
+            </SectionTitle>
+            <Card className="p-5">
+              {lastInvitation ? (
+                <InvitationLink
+                  invitation={lastInvitation}
+                  workspaceName={workspace.name}
+                  onClose={() => setLastInvitation(null)}
+                />
+              ) : (
+                <form onSubmit={handleInvite} className="space-y-4">
+                  <Field label="Correo" htmlFor="invite-email">
+                    <Input
+                      id="invite-email"
+                      type="email"
+                      required
+                      value={invite.email}
+                      onChange={(e) => setInvite({ ...invite, email: e.target.value })}
+                      placeholder="tesorera@correo.com"
+                    />
+                  </Field>
+                  <fieldset>
+                    <legend className="text-sm font-semibold text-ink-2 mb-2">Rol</legend>
+                    <div className="flex flex-wrap gap-2">
+                      {roles.map((r) => (
+                        <Chip
+                          key={r}
+                          selected={invite.role === r}
+                          onClick={() => setInvite({ ...invite, role: r })}
+                          className={invite.role === r ? "" : "shadow-none bg-surface-2"}
+                        >
+                          {ROLE_LABELS[r]}
+                        </Chip>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-sm text-muted">{ROLE_HELP[invite.role]}.</p>
+                  </fieldset>
+                  <Button type="submit" block disabled={inviteMutation.isPending}>
+                    {inviteMutation.isPending ? "Invitando…" : "Crear invitación"}
+                  </Button>
+                </form>
+              )}
+            </Card>
+          </section>
+        )}
 
-      {canManage && (
-        <section className="bg-white p-5 rounded-lg shadow border border-gray-200 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">Invitar a alguien</h2>
-
-          {lastInvitation ? (
-            <InvitationLink
-              invitation={lastInvitation}
-              workspaceName={workspace.name}
-              onClose={() => setLastInvitation(null)}
-            />
-          ) : (
-            <form onSubmit={handleInvite} className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="invite-email" className="text-sm text-gray-700">
-                    Correo
-                  </label>
-                  <input
-                    id="invite-email"
-                    type="email"
-                    required
-                    value={invite.email}
-                    onChange={(e) => setInvite({ ...invite, email: e.target.value })}
-                    placeholder="tesorera@correo.com"
-                    className="p-2 rounded-md border border-gray-300"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="invite-role" className="text-sm text-gray-700">
-                    Rol
-                  </label>
-                  <select
-                    id="invite-role"
-                    value={invite.role}
-                    onChange={(e) => setInvite({ ...invite, role: e.target.value })}
-                    className="p-2 rounded-md border border-gray-300"
-                  >
-                    {roles.map((r) => (
-                      <option key={r} value={r}>
-                        {ROLE_LABELS[r]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">{ROLE_HELP[invite.role]}</p>
-              <button
-                type="submit"
-                disabled={inviteMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md disabled:opacity-60"
-              >
-                {inviteMutation.isPending ? "Invitando..." : "Crear invitación"}
-              </button>
-            </form>
+        <section aria-labelledby="con-acceso">
+          <SectionTitle>
+            <span id="con-acceso">Personas con acceso · {members.length}</span>
+          </SectionTitle>
+          {membersQuery.isLoading && <AlertMessage type="loading" message="Cargando…" />}
+          {membersQuery.isError && (
+            <AlertMessage type="error" message={getErrorMessage(membersQuery.error)} />
+          )}
+          {members.length > 0 && (
+            <ListGroup>
+              {members.map((m) => {
+                const manageable = !m.isMe && canManage && canManageMember(myRole, m.role);
+                return (
+                  <div key={m.userId} className="px-4 py-3 flex flex-wrap items-center gap-3">
+                    <span
+                      aria-hidden="true"
+                      className="h-11 w-11 shrink-0 rounded-full bg-surface-2 grid place-items-center text-sm font-bold text-ink-2"
+                    >
+                      {initials(m.username)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-ink truncate">
+                        {m.username} {m.isMe && <span className="font-normal text-muted">(tú)</span>}
+                      </p>
+                      {m.email && <p className="text-sm text-muted truncate">{m.email}</p>}
+                    </div>
+                    <div className="flex items-center gap-1 ml-auto">
+                      {manageable ? (
+                        <select
+                          aria-label={`Rol de ${m.username}`}
+                          value={m.role}
+                          onChange={(e) =>
+                            roleMutation.mutate({ id, userId: m.userId, role: e.target.value })
+                          }
+                          className="h-9 pl-3 pr-2 text-sm font-semibold rounded-full bg-surface-2 text-ink border-0 focus:outline-none focus:ring-2 focus:ring-ink"
+                        >
+                          {roles.map((r) => (
+                            <option key={r} value={r}>
+                              {ROLE_LABELS[r]}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-sm font-semibold px-3 py-1.5 rounded-full bg-surface-2 text-ink-2">
+                          {ROLE_LABELS[m.role]}
+                        </span>
+                      )}
+                      {(manageable || (m.isMe && canLeave(m))) && (
+                        <Button variant="danger-ghost" size="sm" onClick={() => handleRemove(m)}>
+                          {m.isMe ? "Salir" : "Quitar"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </ListGroup>
           )}
         </section>
-      )}
 
-      <section className="bg-white p-5 rounded-lg shadow border border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">
-          Personas con acceso ({members.length})
-        </h2>
-        {membersQuery.isLoading && <AlertMessage type="loading" message="Cargando..." />}
-        {membersQuery.isError && (
-          <AlertMessage type="error" message={getErrorMessage(membersQuery.error)} />
+        {canManage && invitations.length > 0 && (
+          <section aria-labelledby="pendientes">
+            <SectionTitle>
+              <span id="pendientes">Invitaciones pendientes · {invitations.length}</span>
+            </SectionTitle>
+            <ListGroup>
+              {invitations.map((inv) => (
+                <div key={inv._id} className="px-4 py-3 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-ink truncate">{inv.email}</p>
+                    <p className="text-sm text-muted">
+                      {ROLE_LABELS[inv.role]}, invitó {inv.invitedBy}. Caduca el{" "}
+                      {new Date(inv.expiresAt).toLocaleDateString("es", { day: "numeric", month: "short" })}.
+                    </p>
+                  </div>
+                  <Button
+                    variant="danger-ghost"
+                    size="sm"
+                    onClick={() => revokeMutation.mutate({ id, invitationId: inv._id })}
+                  >
+                    Revocar
+                  </Button>
+                </div>
+              ))}
+            </ListGroup>
+          </section>
         )}
-        <ul className="divide-y divide-gray-100">
-          {members.map((m) => {
-            const manageable = !m.isMe && canManage && canManageMember(myRole, m.role);
-            return (
-              <li key={m.userId} className="py-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-gray-800">
-                    {m.username} {m.isMe && <span className="text-gray-400">(tú)</span>}
-                  </p>
-                  {m.email && <p className="text-sm text-gray-500 truncate">{m.email}</p>}
-                </div>
-                <div className="flex items-center gap-2">
-                  {manageable ? (
-                    <select
-                      aria-label={`Rol de ${m.username}`}
-                      value={m.role}
-                      onChange={(e) =>
-                        roleMutation.mutate({ id, userId: m.userId, role: e.target.value })
-                      }
-                      className="p-1.5 text-sm rounded-md border border-gray-300"
-                    >
-                      {roles.map((r) => (
-                        <option key={r} value={r}>
-                          {ROLE_LABELS[r]}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <span className="text-sm px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-                      {ROLE_LABELS[m.role]}
-                    </span>
-                  )}
-                  {(manageable || (m.isMe && canLeave(m))) && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(m)}
-                      className="text-sm text-red-600 hover:underline"
-                    >
-                      {m.isMe ? "Salir" : "Quitar"}
-                    </button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      {canManage && invitations.length > 0 && (
-        <section className="bg-white p-5 rounded-lg shadow border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">Invitaciones pendientes</h2>
-          <ul className="divide-y divide-gray-100">
-            {invitations.map((inv) => (
-              <li key={inv._id} className="py-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-gray-800 truncate">{inv.email}</p>
-                  <p className="text-xs text-gray-500">
-                    {ROLE_LABELS[inv.role]} · invitó {inv.invitedBy} · caduca el{" "}
-                    {new Date(inv.expiresAt).toLocaleDateString("es")}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => revokeMutation.mutate({ id, invitationId: inv._id })}
-                  className="text-sm text-red-600 hover:underline"
-                >
-                  Revocar
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      </div>
     </div>
   );
 };

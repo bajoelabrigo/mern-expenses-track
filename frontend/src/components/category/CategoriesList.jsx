@@ -1,6 +1,6 @@
-import { FaTrash, FaEdit } from "react-icons/fa";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { LuChevronRight, LuPlus, LuTrash2 } from "react-icons/lu";
 import {
   deleteCategoryAPI,
   listCategoriesAPI,
@@ -8,6 +8,13 @@ import {
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
 import { useWorkspace } from "../../hooks/useWorkspace";
+import { ButtonLink, CategoryIcon, EmptyState, ListGroup, PageHeader } from "../ui";
+import { capitalize } from "../ui/styles";
+
+const GROUPS = [
+  { type: "income", title: "Ingresos" },
+  { type: "expense", title: "Gastos" },
+];
 
 const CategoriesList = () => {
   const queryClient = useQueryClient();
@@ -40,7 +47,7 @@ const CategoriesList = () => {
   const handleDelete = async (id, nombre) => {
     //! Borrar una categoría reasigna sus transacciones: conviene confirmar
     const confirmado = window.confirm(
-      `¿Eliminar la categoría "${nombre}"? Sus transacciones pasarán a "uncategorized".`
+      `¿Eliminar la categoría "${nombre}"? Sus movimientos pasarán a "uncategorized".`
     );
     if (!confirmado) return;
 
@@ -52,86 +59,76 @@ const CategoriesList = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto my-10 bg-white p-6 rounded-lg shadow-lg">
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <h2 className="text-2xl font-semibold text-gray-800">Categorías</h2>
-        {canWrite && (
-          <Link
-            to="/add-category"
-            className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md"
+    <div className="max-w-2xl mx-auto">
+      <PageHeader
+        title="Categorías"
+        subtitle="Cómo se agrupan los movimientos de este espacio."
+        action={
+          canWrite && (
+            <ButtonLink to="/add-category" size="sm">
+              <LuPlus aria-hidden="true" /> Nueva
+            </ButtonLink>
+          )
+        }
+      />
+
+      <div className="space-y-6">
+        {isLoading && <AlertMessage type="loading" message="Cargando…" />}
+        {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
+        {isDeleteError && <AlertMessage type="error" message={getErrorMessage(deleteError)} />}
+
+        {!isLoading && !isError && categories.length === 0 && (
+          <EmptyState
+            title="Todavía no hay categorías"
+            action={canWrite && <ButtonLink to="/add-category">Crear la primera</ButtonLink>}
           >
-            Nueva categoría
-          </Link>
+            Por ejemplo: diezmos, ofrendas, luz, alquiler.
+          </EmptyState>
         )}
+
+        {GROUPS.map(({ type, title }) => {
+          const items = categories.filter((c) => c.type === type);
+          if (items.length === 0) return null;
+          return (
+            <section key={type} aria-label={title}>
+              <h2 className="text-sm font-bold text-muted px-1 mb-2">
+                {title} <span className="font-semibold">· {items.length}</span>
+              </h2>
+              <ListGroup>
+                {items.map((category) => (
+                  <div key={category._id} className="flex items-center gap-3 pl-4 pr-2 py-3">
+                    <CategoryIcon name={category.name} icon={category.icon} />
+                    {canWrite ? (
+                      <Link
+                        to={`/update-category/${category._id}`}
+                        className="flex-1 min-w-0 flex items-center gap-2 font-semibold text-ink"
+                        aria-label={`Editar ${category.name}`}
+                      >
+                        <span className="truncate">{capitalize(category.name)}</span>
+                        <LuChevronRight aria-hidden="true" className="ml-auto text-muted shrink-0" />
+                      </Link>
+                    ) : (
+                      <span className="flex-1 min-w-0 truncate font-semibold text-ink">
+                        {capitalize(category.name)}
+                      </span>
+                    )}
+                    {canWrite && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(category._id, category.name)}
+                        className="h-10 w-10 grid place-items-center rounded-full text-muted hover:text-danger hover:bg-danger-soft transition"
+                        aria-label={`Eliminar ${category.name}`}
+                      >
+                        <LuTrash2 aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </ListGroup>
+            </section>
+          );
+        })}
       </div>
-
-      {isLoading && <AlertMessage type="loading" message="Cargando..." />}
-      {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
-      {isDeleteError && (
-        <AlertMessage type="error" message={getErrorMessage(deleteError)} />
-      )}
-
-      {!isLoading && categories.length === 0 && (
-        <p className="text-gray-500 text-sm">
-          Este espacio todavía no tiene categorías.
-          {canWrite && (
-            <>
-              {" "}
-              <Link to="/add-category" className="text-blue-600 hover:underline">
-                Crea la primera
-              </Link>
-              .
-            </>
-          )}
-        </p>
-      )}
-
-      <ul className="space-y-4">
-        {categories.map((category) => (
-          <li
-            key={category._id}
-            className="flex justify-between items-center bg-gray-50 p-3 rounded-md"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{category?.icon || "📁"}</span>
-              <div>
-                <span className="text-gray-800 font-medium capitalize">
-                  {category?.name}
-                </span>
-                <span
-                  className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    category.type === "income"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {category.type === "income" ? "Ingreso" : "Gasto"}
-                </span>
-              </div>
-            </div>
-
-            {canWrite && (
-            <div className="flex space-x-3">
-              <Link
-                to={`/update-category/${category._id}`}
-                className="text-blue-500 hover:text-blue-700"
-                aria-label={`Editar ${category.name}`}
-              >
-                <FaEdit />
-              </Link>
-              <button
-                type="button"
-                onClick={() => handleDelete(category._id, category.name)}
-                className="text-red-500 hover:text-red-700"
-                aria-label={`Eliminar ${category.name}`}
-              >
-                <FaTrash />
-              </button>
-            </div>
-            )}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 };
