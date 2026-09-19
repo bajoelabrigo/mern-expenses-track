@@ -111,7 +111,23 @@ const transactionController = {
       recurrent = false,
       recurrenceType,
       recurrenceCount = 1,
+      clientId,
     } = req.body;
+
+    //! Reenvío de un movimiento registrado sin conexión que ya había llegado:
+    //! se devuelve el existente en vez de crearlo otra vez.
+    let normalizedClientId;
+    if (clientId !== undefined && clientId !== null && clientId !== "") {
+      normalizedClientId = String(clientId).trim();
+      if (!/^[A-Za-z0-9_-]{8,64}$/.test(normalizedClientId)) {
+        return res.status(400).json({ message: "Identificador de cliente inválido" });
+      }
+      const existing = await Transaction.find({
+        workspace: req.workspace._id,
+        clientId: normalizedClientId,
+      });
+      if (existing.length > 0) return res.status(200).json(existing);
+    }
 
     if (!type || amount === undefined || amount === null || !date) {
       return res
@@ -185,6 +201,8 @@ const transactionController = {
       }
 
       transactions.push({
+        //! En una serie recurrente solo el primero lleva el identificador
+        ...(normalizedClientId && i === 0 ? { clientId: normalizedClientId } : {}),
         workspace: req.workspace._id,
         createdBy: req.user._id,
         type,
@@ -199,7 +217,21 @@ const transactionController = {
       });
     }
 
-    const created = await Transaction.insertMany(transactions);
+    let created;
+    try {
+      created = await Transaction.insertMany(transactions);
+    } catch (err) {
+      //! Dos reenvíos simultáneos del mismo movimiento: el segundo choca con el
+      //! índice único y devuelve el que guardó el primero
+      if (err.code === 11000 && normalizedClientId) {
+        const existing = await Transaction.find({
+          workspace: req.workspace._id,
+          clientId: normalizedClientId,
+        });
+        return res.status(200).json(existing);
+      }
+      throw err;
+    }
 
     //! Una entrada por alta: una serie recurrente se registra una vez, con
     //! cuántos movimientos generó.

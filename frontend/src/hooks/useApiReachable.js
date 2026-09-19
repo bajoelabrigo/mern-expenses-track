@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-
-//! Error de red: la petición no obtuvo respuesta (sin internet, servidor caído
-//! o despertando). Un 4xx/5xx sí es una respuesta y no cuenta.
-export const isNetworkError = (error) => Boolean(error) && !error.response;
+import { isNetworkError } from "../lib/axios";
 
 //! ¿Responde la API? navigator.onLine solo dice si hay red, no si el servidor
 //! contesta (wifi sin salida a internet, Render dormido). Se deduce de las
