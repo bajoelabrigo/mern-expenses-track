@@ -6,6 +6,14 @@ instalable en el móvil (PWA) y con versión `.apk`.
 Cada fase se entrega en su propia rama, con pruebas, y solo pasa a `main` (que
 despliega Netlify y Render) cuando está verificada.
 
+## Arreglos pendientes
+
+- [ ] **El saldo cuenta movimientos con fecha futura.** Al marcar "Se repite",
+      la app crea de una vez todas las repeticiones con sus fechas futuras, y
+      el "Saldo en caja" del Inicio (y el balance de la API) las suma. Quien
+      registre el alquiler de todo el año se ve el saldo descontado de golpe.
+      Arreglar al hacer las recurrentes de la fase 4, o antes si estorba.
+
 ## Fase 1 — Base: espacios, roles y confianza
 
 - [x] **Espacios de trabajo**: cada usuario tiene un espacio personal y puede
@@ -86,6 +94,8 @@ despliega Netlify y Render) cuando está verificada.
 - [ ] Conciliación bancaria y cierre mensual (bloquea editar meses cerrados).
 - [ ] Varias sedes con informe consolidado.
 - [ ] Landing page, alta guiada y datos de ejemplo.
+- [ ] Soporte: centro de ayuda (cómo registrar, roles, fondos, constancias) y
+      un botón de "reportar problema" desde la app.
 - [ ] Verificación de correo y 2FA para tesoreros.
 - [ ] Exportación completa de datos, términos y privacidad.
 - [ ] Infraestructura: plan de pago en Render (sin arranque en frío) y copias
