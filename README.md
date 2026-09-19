@@ -251,6 +251,13 @@ SPA; solo hay que definir las variables de entorno en cada panel.
 | `JWT_SECRET`     | secreto de 48 bytes                    |
 | `CORS_ORIGINS`   | `https://TU-SITIO.netlify.app`         |
 | `SERVE_FRONTEND` | `false`                                |
+| `BREVO_API_KEY`  | clave de API de Brevo (correo)         |
+| `MAIL_FROM`      | `Control de Gastos <remitente-verificado@…>` |
+
+**Render** (Settings): *Build Command* `npm install --prefix backend` y *Start
+Command* `npm run start`. No uses `npm run build` en Render: con
+`NODE_ENV=production` npm omite las dependencias de desarrollo, la compilación
+del frontend falla (y además el frontend ya lo sirve Netlify).
 
 Al estar en dominios distintos, la cookie de sesión se emite con
 `SameSite=None; Secure`. Los navegadores que bloquean cookies de terceros

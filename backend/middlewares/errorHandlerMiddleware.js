@@ -11,6 +11,15 @@ const errorHandler = (err, req, res, next) => { // eslint-disable-line no-unused
   let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
   let message = err.message || "Error interno del servidor";
 
+  //! Errores de cliente que traen su propio código (p. ej. un JSON mal formado
+  //! o demasiado grande, de express.json). Antes salían como 500.
+  const ownStatus = err.status || err.statusCode;
+  if (ownStatus >= 400 && ownStatus < 500) {
+    statusCode = ownStatus;
+    if (err.type === "entity.parse.failed") message = "El cuerpo de la petición no es un JSON válido";
+    if (err.type === "entity.too.large") message = "La petición es demasiado grande";
+  }
+
   //! ID de Mongo con formato inválido
   if (err.name === "CastError") {
     statusCode = 400;

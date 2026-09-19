@@ -203,6 +203,15 @@ describe("Transacciones", () => {
     await crear(token, { type: "expense", amount: 10, date: "2026-02-31" }).expect(400);
   });
 
+  test("un JSON mal formado responde 400 y no 500", async () => {
+    const res = await request(app)
+      .post("/api/v1/users/login")
+      .set("Content-Type", "application/json")
+      .send("{malo")
+      .expect(400);
+    assert.match(res.body.message, /JSON válido/);
+  });
+
   test("un id con formato inválido responde 400 y no 500", async () => {
     const { token } = await createUser();
 
