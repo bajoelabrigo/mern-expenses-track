@@ -4,8 +4,8 @@ import { formatMoney } from "../../lib/money";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useOnline } from "../../hooks/useOnline";
 import { LuCloudUpload } from "react-icons/lu";
+import { capitalize } from "../ui/styles";
 
-const capitalize = (text = "") => text.charAt(0).toUpperCase() + text.slice(1);
 
 //! Movimientos registrados sin conexión que aún no llegaron al servidor, en el
 //! espacio actual. Los fallidos (el servidor los rechazó) se pueden

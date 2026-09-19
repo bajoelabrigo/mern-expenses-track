@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { Link } from "react-router-dom";
+import { LuChevronDown } from "react-icons/lu";
 import { formatMoney } from "../../lib/money";
 import { buttonClass, categoryColor, cx, inputClass } from "./styles";
 
@@ -100,9 +101,15 @@ export const Input = forwardRef(({ className, ...props }, ref) => (
 Input.displayName = "Input";
 
 export const Select = forwardRef(({ className, children, ...props }, ref) => (
-  <select ref={ref} className={inputClass(cx("appearance-none pr-10 bg-no-repeat", className))} {...props}>
-    {children}
-  </select>
+  <div className="relative">
+    <select ref={ref} className={inputClass(cx("appearance-none pr-10", className))} {...props}>
+      {children}
+    </select>
+    <LuChevronDown
+      aria-hidden="true"
+      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted"
+    />
+  </div>
 ));
 Select.displayName = "Select";
 

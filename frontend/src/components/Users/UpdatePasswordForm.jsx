@@ -1,4 +1,3 @@
-import { AiOutlineLock } from "react-icons/ai";
 import { useMutation } from "@tanstack/react-query";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -8,6 +7,7 @@ import { changePasswordAPI } from "../../services/users/userService";
 import { logoutAction } from "../../redux/slice/authSlice";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
+import { Button, Field, Input } from "../ui";
 
 const validationSchema = Yup.object({
   currentPassword: Yup.string().required("Ingresa tu contraseña actual"),
@@ -22,6 +22,12 @@ const validationSchema = Yup.object({
     .oneOf([Yup.ref("newPassword")], "Las contraseñas no coinciden")
     .required("Debes confirmar la nueva contraseña"),
 });
+
+const FIELDS = [
+  { name: "currentPassword", label: "Contraseña actual", autoComplete: "current-password" },
+  { name: "newPassword", label: "Contraseña nueva", autoComplete: "new-password", hint: "Mínimo 8 caracteres." },
+  { name: "confirmPassword", label: "Repite la contraseña nueva", autoComplete: "new-password" },
+];
 
 const UpdatePassword = () => {
   const dispatch = useDispatch();
@@ -51,71 +57,32 @@ const UpdatePassword = () => {
     },
   });
 
-  const campo = (name, label, placeholder, autoComplete) => (
-    <div className="mb-4">
-      <label className="block text-sm font-medium mb-2" htmlFor={name}>
-        {label}
-      </label>
-      <div className="flex items-center border-2 shadow border-gray-400 py-2 px-3 rounded">
-        <AiOutlineLock className="text-gray-400 mr-2" />
-        <input
-          id={name}
-          type="password"
-          autoComplete={autoComplete}
-          {...formik.getFieldProps(name)}
-          className="outline-none flex-1"
-          placeholder={placeholder}
-        />
-      </div>
-      {formik.touched[name] && formik.errors[name] && (
-        <span className="text-xs text-red-500">{formik.errors[name]}</span>
-      )}
-    </div>
-  );
-
   return (
-    <div className="flex flex-col items-center justify-center p-4">
-      <h2 className="text-lg font-semibold mb-4">Cambiar contraseña</h2>
-      <form onSubmit={formik.handleSubmit} className="w-full max-w-xs">
-        {isPending && <AlertMessage type="loading" message="Actualizando..." />}
-        {isError && (
-          <AlertMessage type="error" message={getErrorMessage(error)} />
-        )}
-        {isSuccess && (
-          <AlertMessage
-            type="success"
-            message="Contraseña actualizada. Vuelve a iniciar sesión."
-          />
-        )}
+    <form onSubmit={formik.handleSubmit} className="space-y-4" noValidate>
+      <p className="text-sm text-muted">
+        Al cambiarla se cierra la sesión en todos tus dispositivos.
+      </p>
+      {isError && <AlertMessage type="error" message={getErrorMessage(error)} />}
+      {isSuccess && (
+        <AlertMessage type="success" message="Contraseña cambiada. Vuelve a entrar." />
+      )}
 
-        {campo(
-          "currentPassword",
-          "Contraseña actual",
-          "Tu contraseña actual",
-          "current-password"
-        )}
-        {campo(
-          "newPassword",
-          "Nueva contraseña",
-          "Mínimo 8 caracteres",
-          "new-password"
-        )}
-        {campo(
-          "confirmPassword",
-          "Confirmar nueva contraseña",
-          "Repite la nueva contraseña",
-          "new-password"
-        )}
-
-        <button
-          type="submit"
-          disabled={isPending}
-          className="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-60"
+      {FIELDS.map(({ name, label, autoComplete, hint }) => (
+        <Field
+          key={name}
+          label={label}
+          htmlFor={name}
+          hint={hint}
+          error={formik.touched[name] && formik.errors[name]}
         >
-          Actualizar contraseña
-        </button>
-      </form>
-    </div>
+          <Input id={name} type="password" autoComplete={autoComplete} {...formik.getFieldProps(name)} />
+        </Field>
+      ))}
+
+      <Button type="submit" disabled={isPending}>
+        {isPending ? "Cambiando…" : "Cambiar contraseña"}
+      </Button>
+    </form>
   );
 };
 

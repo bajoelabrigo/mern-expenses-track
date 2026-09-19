@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { LuPaperclip } from "react-icons/lu";
 import { CategoryIcon, Money } from "../ui";
+import { capitalize } from "../ui/styles";
 
-const capitalize = (text = "") => text.charAt(0).toUpperCase() + text.slice(1);
 
 //! Una fila del libro: ícono de la categoría, concepto, detalle e importe.
 //! Toda la fila lleva a editar (si se puede) o al detalle.

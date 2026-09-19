@@ -25,7 +25,7 @@ import { getErrorMessage } from "../../lib/axios";
 import { formatMoney, fromCents, toCents } from "../../lib/money";
 import { periodRange, toISODate } from "../../lib/periods";
 import { Card, Eyebrow, Segmented, EmptyState, ButtonLink } from "../ui";
-import { CATEGORY_COLORS } from "../ui/styles";
+import { CATEGORY_COLORS, capitalize, initials } from "../ui/styles";
 import AlertMessage from "../Alert/AlertMessage";
 import WorkspacePicker from "../layout/WorkspacePicker";
 import PendingTransactions from "../Transactions/PendingTransactions";
@@ -33,7 +33,6 @@ import TransactionRow from "../Transactions/TransactionRow";
 
 ChartJS.register(ArcElement, CategoryScale, Filler, LinearScale, LineElement, PointElement, Tooltip);
 
-const capitalize = (text = "") => text.charAt(0).toUpperCase() + text.slice(1);
 
 const PERIODS = [
   { value: "week", label: "Semana" },
@@ -124,7 +123,6 @@ const Dashboard = () => {
   //! Variación del flujo neto frente al período anterior
   const delta = prevTotals.net !== 0 ? (totals.net - prevTotals.net) / Math.abs(prevTotals.net) : null;
   const maxInOut = Math.max(totals.income, totals.expense, 1);
-  const initials = (user?.username || "?").slice(0, 2).toUpperCase();
 
   return (
     <div className="space-y-5">
@@ -138,7 +136,7 @@ const Dashboard = () => {
           aria-label="Tu perfil"
           className="h-10 w-10 shrink-0 rounded-full bg-accent-soft text-ink font-bold text-sm flex items-center justify-center"
         >
-          {initials}
+          {initials(user?.username)}
         </Link>
       </header>
 

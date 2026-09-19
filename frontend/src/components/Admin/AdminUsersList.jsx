@@ -6,6 +6,8 @@ import { useWorkspace } from "../../hooks/useWorkspace";
 import { getErrorMessage } from "../../lib/axios";
 import { ROLE_LABELS } from "../../lib/roles";
 import AlertMessage from "../Alert/AlertMessage";
+import { Button, Chip, ListGroup, PageHeader } from "../ui";
+import { initials } from "../ui/styles";
 
 const TABS = [
   { id: "espacios", label: "Espacios" },
@@ -34,116 +36,102 @@ const AdminUsersList = () => {
   const active = tab === "usuarios" ? usersQuery : workspacesQuery;
 
   return (
-    <div className="p-4 bg-white rounded shadow overflow-x-auto">
-      <h2 className="text-2xl font-bold mb-4">Administración</h2>
+    <div className="max-w-3xl mx-auto">
+      <PageHeader
+        title="Administración"
+        subtitle="Toda la plataforma. Al entrar como soporte, cada cambio queda en el historial del espacio."
+      />
 
-      <div className="mb-4 flex gap-6 border-b border-gray-100">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            aria-current={tab === t.id}
-            className={`border-b-2 py-2 text-sm font-medium ${
-              tab === t.id ? "text-blue-600 border-blue-600" : "border-transparent"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <div className="space-y-4">
+        <div className="flex gap-2">
+          {TABS.map((t) => (
+            <Chip key={t.id} selected={tab === t.id} onClick={() => setTab(t.id)}>
+              {t.label}
+            </Chip>
+          ))}
+        </div>
 
-      {active.isLoading && <p className="p-4">Cargando...</p>}
-      {active.isError && (
-        <AlertMessage type="error" message={getErrorMessage(active.error)} />
-      )}
+        {active.isLoading && <AlertMessage type="loading" message="Cargando…" />}
+        {active.isError && <AlertMessage type="error" message={getErrorMessage(active.error)} />}
 
-      {tab === "usuarios" && usersQuery.data && (
-        <table className="w-full border text-left">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2">Usuario</th>
-              <th className="p-2">Correo</th>
-              <th className="p-2">Espacios</th>
-              <th className="p-2">Rol</th>
-            </tr>
-          </thead>
-          <tbody>
-            {usersQuery.data.map((u) => (
-              <tr key={u._id} className="border-t align-top">
-                <td className="p-2">{u.username}</td>
-                <td className="p-2">{u.email}</td>
-                <td className="p-2">
-                  <ul className="space-y-1">
-                    {u.workspaces.map((w) => (
-                      <li key={w._id} className="text-sm">
-                        <button
-                          type="button"
-                          onClick={() => entrar(w._id)}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {w.kind === "iglesia" ? "⛪" : "👤"} {w.name}
-                        </button>{" "}
-                        <span className="text-gray-500">({ROLE_LABELS[w.role]})</span>
-                      </li>
-                    ))}
-                  </ul>
-                </td>
-                <td className="p-2">
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      u.role === "admin"
-                        ? "bg-purple-100 text-purple-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {u.role}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {tab === "espacios" && workspacesQuery.data && (
-        <table className="w-full border text-left">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="p-2">Espacio</th>
-              <th className="p-2">Moneda</th>
-              <th className="p-2">Miembros</th>
-              <th className="p-2">Movimientos</th>
-              <th className="p-2">Creado</th>
-              <th className="p-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
+        {tab === "espacios" && workspacesQuery.data && (
+          <ListGroup>
             {workspacesQuery.data.map((w) => (
-              <tr key={w._id} className="border-t">
-                <td className="p-2">
-                  {w.kind === "iglesia" ? "⛪" : "👤"} {w.name}
-                </td>
-                <td className="p-2">{w.currency}</td>
-                <td className="p-2">{w.members}</td>
-                <td className="p-2">{w.transactions}</td>
-                <td className="p-2">{new Date(w.createdAt).toLocaleDateString("es")}</td>
-                <td className="p-2">
-                  <button
-                    type="button"
-                    onClick={() => entrar(w._id)}
-                    className="text-blue-600 hover:underline"
-                  >
+              <div key={w._id} className="px-4 py-3.5 flex items-start gap-3">
+                <span
+                  aria-hidden="true"
+                  className="h-11 w-11 shrink-0 rounded-xl bg-surface-2 grid place-items-center text-xl"
+                >
+                  {w.kind === "iglesia" ? "⛪" : "👤"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-ink truncate">{w.name}</p>
+                  <dl className="mt-0.5 flex flex-wrap gap-x-3 text-sm text-muted">
+                    <Stat label="Miembros" value={w.members} />
+                    <Stat label="Movimientos" value={w.transactions} />
+                    <Stat label="Moneda" value={w.currency} />
+                    <Stat label="Creado" value={new Date(w.createdAt).toLocaleDateString("es")} />
+                  </dl>
+                  <Button variant="secondary" size="sm" className="mt-3" onClick={() => entrar(w._id)}>
                     Entrar como soporte
-                  </button>
-                </td>
-              </tr>
+                  </Button>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      )}
+          </ListGroup>
+        )}
+
+        {tab === "usuarios" && usersQuery.data && (
+          <ListGroup>
+            {usersQuery.data.map((u) => (
+              <div key={u._id} className="px-4 py-3.5 flex gap-3">
+                <span
+                  aria-hidden="true"
+                  className="h-11 w-11 shrink-0 rounded-full bg-surface-2 grid place-items-center text-sm font-bold text-ink-2"
+                >
+                  {initials(u.username)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-ink truncate">{u.username}</p>
+                    {u.role === "admin" && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-accent-soft text-ink">
+                        admin
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted truncate">{u.email}</p>
+                  {u.workspaces.length > 0 && (
+                    <ul className="mt-2 flex flex-wrap gap-2">
+                      {u.workspaces.map((w) => (
+                        <li key={w._id}>
+                          <button
+                            type="button"
+                            onClick={() => entrar(w._id)}
+                            className="h-8 px-3 rounded-full bg-surface-2 text-xs font-semibold text-ink-2 hover:text-ink transition"
+                          >
+                            {w.kind === "iglesia" ? "⛪" : "👤"} {w.name}{" "}
+                            <span className="font-normal text-muted">({ROLE_LABELS[w.role]})</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            ))}
+          </ListGroup>
+        )}
+      </div>
     </div>
   );
 };
+
+const Stat = ({ label, value }) => (
+  <div className="flex gap-1">
+    <dt>{label}</dt>
+    <dd className="font-semibold text-ink-2 tabular">{value}</dd>
+  </div>
+);
 
 export default AdminUsersList;

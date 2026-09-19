@@ -77,6 +77,7 @@ const ReceiptManager = ({ transaction, canWrite }) => {
       {canWrite && !transaction.voided && (
         <>
           <ReceiptPicker
+            inset
             value={file}
             onChange={setFile}
             label={receipt ? "Reemplazar el comprobante" : "Adjuntar comprobante"}

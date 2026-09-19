@@ -1,106 +1,27 @@
-import { Disclosure } from "@headlessui/react";
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
-import { FaChurch } from "react-icons/fa6";
-import { RiLoginCircleLine } from "react-icons/ri";
-import { FaRegUser } from "react-icons/fa";
 import { Link } from "react-router-dom";
+import { FaChurch } from "react-icons/fa6";
+import { buttonClass } from "../ui/styles";
 
+//! Barra de las páginas públicas (portada, entrar, crear cuenta)
 export default function PublicNavbar() {
   return (
-    <Disclosure as="nav" className="bg-white shadow">
-      {({ open }) => (
-        <>
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 justify-between">
-              <div className="flex">
-                <div className="-ml-2 mr-2 flex items-center md:hidden">
-                  {/* Mobile menu button */}
-                  <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500">
-                    <span className="absolute -inset-0.5" />
-                    <span className="sr-only">Abrir menu principal</span>
-                    {open ? (
-                      <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-                    ) : (
-                      <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-                    )}
-                  </Disclosure.Button>
-                </div>
-                <div className="flex flex-shrink-0 items-center">
-                  {/* Logo */}
-                  <FaChurch className="h-8 w-auto text-blue-500" />
-                </div>
-                <div className="hidden md:ml-6 md:flex md:space-x-8">
-                  <Link
-                    to="/"
-                    className="inline-flex items-center border-b-2 border-indigo-500 px-1 pt-1 text-sm font-medium text-gray-900"
-                  >
-                    Control de Gastos
-                  </Link>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Link
-                    to="/register"
-                    className="relative inline-flex items-center gap-x-1.5 rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 focus-visible:outline  focus-visible:outline-offset-2 focus-visible:outline-indigo-600 "
-                  >
-                    <FaRegUser className="-ml-0.5 h-5 w-5" aria-hidden="true" />
-                    Crear cuenta
-                  </Link>
-                  <Link
-                    to="/login"
-                    className="relative ml-2 inline-flex items-center gap-x-1.5 rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 animate-bounce"
-                  >
-                    <RiLoginCircleLine
-                      className="-ml-0.5 h-5 w-5"
-                      aria-hidden="true"
-                    />
-                    Entrar
-                  </Link>
-                </div>
-                <div className="hidden md:ml-4 md:flex md:flex-shrink-0 md:items-center">
-                  <button
-                    type="button"
-                    className="relative rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                  >
-                    <span className="absolute -inset-1.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <Disclosure.Panel className="md:hidden">
-            <div className="space-y-1 pb-3 pt-2">
-              <Link to="/">
-                <Disclosure.Button
-                  as="button"
-                  className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
-                >
-                  Bajo el abrigo del altisimo
-                </Disclosure.Button>
-              </Link>
-
-              <Link to="/register">
-                <Disclosure.Button
-                  as="button"
-                  className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
-                >
-                  Crear cuenta
-                </Disclosure.Button>
-              </Link>
-              <Link to="/login">
-                <Disclosure.Button
-                  as="button"
-                  className="block border-l-4 border-transparent py-2 pl-3 pr-4 text-base font-medium text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 sm:pl-5 sm:pr-6"
-                >
-                  Entrar
-                </Disclosure.Button>
-              </Link>
-            </div>
-          </Disclosure.Panel>
-        </>
-      )}
-    </Disclosure>
+    <header className="sticky top-0 z-20 bg-bg/90 backdrop-blur border-b border-line">
+      <div className="mx-auto max-w-5xl px-4 h-16 flex items-center justify-between gap-3">
+        <Link to="/" aria-label="Control de Gastos, inicio" className="flex items-center gap-2 font-extrabold tracking-tight">
+          <span className="h-9 w-9 rounded-xl bg-accent text-accent-ink grid place-items-center">
+            <FaChurch aria-hidden="true" />
+          </span>
+          <span className="hidden sm:inline">Control de Gastos</span>
+        </Link>
+        <nav aria-label="Cuenta" className="flex items-center gap-2">
+          <Link to="/login" className={buttonClass({ variant: "ghost", size: "sm" })}>
+            Entrar
+          </Link>
+          <Link to="/register" className={buttonClass({ variant: "primary", size: "sm" })}>
+            Crear cuenta
+          </Link>
+        </nav>
+      </div>
+    </header>
   );
 }

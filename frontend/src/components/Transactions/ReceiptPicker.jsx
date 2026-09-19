@@ -4,8 +4,10 @@ import { compressImage, RECEIPT_ACCEPT, RECEIPT_MAX_BYTES } from "../../lib/imag
 import { formatBytes } from "./receipt";
 
 //! Elegir el comprobante: en el móvil el selector ofrece cámara o galería. La
-//! foto se reduce aquí mismo antes de entregarla.
-const ReceiptPicker = ({ value, onChange, label = "Foto del comprobante", disabled }) => {
+//! foto se reduce aquí mismo antes de entregarla. `inset`: va dentro de una
+//! tarjeta (fondo gris en vez de tarjeta blanca sobre tarjeta blanca).
+const ReceiptPicker = ({ value, onChange, label = "Foto del comprobante", disabled, inset }) => {
+  const tile = inset ? "bg-surface-2" : "bg-surface shadow-card";
   const inputRef = useRef(null);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -41,7 +43,7 @@ const ReceiptPicker = ({ value, onChange, label = "Foto del comprobante", disabl
   return (
     <div className="space-y-2">
       {value ? (
-        <div className="flex items-center gap-3 p-2 pr-3 rounded-2xl bg-surface shadow-card">
+        <div className={`flex items-center gap-3 p-2 pr-3 rounded-2xl ${tile}`}>
           {isPdf ? (
             <span className="h-12 w-12 shrink-0 rounded-xl bg-danger-soft text-danger grid place-items-center">
               <LuFileText aria-hidden="true" className="text-xl" />
@@ -72,7 +74,7 @@ const ReceiptPicker = ({ value, onChange, label = "Foto del comprobante", disabl
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || processing}
-          className="w-full h-12 rounded-2xl bg-surface shadow-card text-sm font-semibold text-ink inline-flex items-center justify-center gap-2 hover:bg-surface-2 disabled:opacity-60"
+          className={`w-full h-12 rounded-2xl ${tile} text-sm font-semibold text-ink inline-flex items-center justify-center gap-2 hover:brightness-95 disabled:opacity-60`}
         >
           <LuCamera aria-hidden="true" className="text-lg" />
           {processing ? "Preparando la foto…" : label}

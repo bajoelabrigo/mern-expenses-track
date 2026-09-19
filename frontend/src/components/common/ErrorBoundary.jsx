@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { Button, EmptyState } from "../ui";
 
 //! Evita que un error de render deje la app en blanco sin explicación.
 class ErrorBoundary extends Component {
@@ -19,20 +20,14 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="max-w-md mx-auto my-20 text-center space-y-4">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Algo salió mal
-          </h1>
-          <p className="text-gray-600">
-            Ocurrió un error inesperado. Recarga la página para continuar.
-          </p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
+        <div className="max-w-md mx-auto px-4 py-16">
+          <EmptyState
+            title="Algo salió mal"
+            action={<Button onClick={() => window.location.reload()}>Recargar</Button>}
           >
-            Recargar
-          </button>
+            Ocurrió un error inesperado. Recarga la página para continuar; lo que ya
+            guardaste no se pierde.
+          </EmptyState>
         </div>
       );
     }

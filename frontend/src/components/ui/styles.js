@@ -53,3 +53,16 @@ const hash = (text) =>
 
 export const categoryColor = (name) =>
   CATEGORY_COLORS[hash(name) % (CATEGORY_COLORS.length - 1)];
+
+//! "alquiler del local" → "Alquiler del local" (la clase `capitalize` de CSS
+//! pondría mayúscula a cada palabra)
+export const capitalize = (text = "") => text.charAt(0).toUpperCase() + text.slice(1);
+
+//! "pastor_juan" → "PJ", para los avatares
+export const initials = (name) =>
+  (name || "")
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("") || "?";

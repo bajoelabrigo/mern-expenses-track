@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LuDelete, LuPlus, LuRepeat, LuX } from "react-icons/lu";
@@ -18,6 +18,7 @@ import { useWorkspace } from "../../hooks/useWorkspace";
 import { Button, Chip, ListGroup, Segmented } from "../ui";
 import AlertMessage from "../Alert/AlertMessage";
 import ReceiptPicker from "./ReceiptPicker";
+import { capitalize } from "../ui/styles";
 
 const TYPES = [
   { value: "expense", label: "Gasto" },
@@ -32,7 +33,6 @@ const RECURRENCE = [
 
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"];
 
-const capitalize = (text = "") => text.charAt(0).toUpperCase() + text.slice(1);
 
 //! Registrar un movimiento: monto con teclado propio (como una calculadora),
 //! Gasto / Ingreso, categoría en píldoras, fecha, nota, repetición y foto.
@@ -42,6 +42,7 @@ const capitalize = (text = "") => text.charAt(0).toUpperCase() + text.slice(1);
 const TransactionForm = ({ transaction, children }) => {
   const editing = Boolean(transaction);
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const userId = useSelector((state) => state.auth.user?.id);
   const { workspace, currency } = useWorkspace();
@@ -261,6 +262,7 @@ const TransactionForm = ({ transaction, children }) => {
           ))}
           <Link
             to="/add-category"
+            state={{ type, returnTo: location.pathname }}
             className="h-9 px-4 rounded-full text-sm font-semibold inline-flex items-center gap-1 border border-dashed border-muted/50 text-muted hover:text-ink"
           >
             <LuPlus aria-hidden="true" /> Nueva
