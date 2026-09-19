@@ -442,6 +442,11 @@ describe("Transacciones", () => {
     });
     assert.ok(categorias.includes("diezmos"));
     assert.ok(!categorias.includes("ofrendas"));
+
+    //! En una iglesia, cada ingreso dice su tipo (aquí deducido del nombre)
+    const encabezados = sheet.getRow(1).values.filter(Boolean);
+    assert.ok(encabezados.includes("Tipo de ingreso"));
+    assert.equal(sheet.getRow(2).getCell(encabezados.indexOf("Tipo de ingreso") + 1).value, "Diezmo");
   });
 
   test("actualizar una transacción valida los datos nuevos", async () => {

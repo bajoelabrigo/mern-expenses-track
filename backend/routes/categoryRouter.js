@@ -13,6 +13,7 @@ const read = requirePermission("tx:read");
 const write = requirePermission("category:write");
 
 categoryRouter.post("/create", write, categoryController.create);
+categoryRouter.post("/church-defaults", write, categoryController.addChurchDefaults);
 categoryRouter.get("/lists", read, categoryController.lists);
 categoryRouter.put(
   "/update/:id",

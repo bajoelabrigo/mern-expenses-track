@@ -178,4 +178,56 @@ describe("Categorías", () => {
       .set("Authorization", `Bearer ${token}`)
       .expect(400);
   });
+
+  test("las de ingreso tienen tipo: deducido del nombre o elegido a mano", async () => {
+    const { token } = await createUser();
+    const lista = async () =>
+      (await request(app).get("/api/v1/categories/lists").set("Authorization", `Bearer ${token}`).expect(200)).body;
+
+    await crearCategoria(token, { name: "Diezmos del mes", type: "income" }).expect(201);
+    await crearCategoria(token, { name: "Primícias", type: "income" }).expect(201);
+    await crearCategoria(token, { name: "Ofrenda especial de aniversario", type: "income" }).expect(201);
+    await crearCategoria(token, { name: "ofrendas", type: "income" }).expect(201);
+    await crearCategoria(token, { name: "alquiler", type: "expense", incomeKind: "diezmo" }).expect(201);
+    const pactos = (await crearCategoria(token, { name: "pactos", type: "income" }).expect(201)).body;
+    await crearCategoria(token, { name: "x", type: "income", incomeKind: "limosna" }).expect(400);
+
+    const porNombre = Object.fromEntries((await lista()).map((c) => [c.name, c.incomeKind]));
+    assert.deepEqual(porNombre, {
+      "alquiler": null,
+      "diezmos del mes": "diezmo",
+      "ofrenda especial de aniversario": "especial",
+      "ofrendas": "ofrenda",
+      "pactos": "otro",
+      "primícias": "primicia",
+    });
+
+    //! Elegido a mano queda guardado; con null vuelve a deducirse
+    const put = (body) =>
+      request(app)
+        .put(`/api/v1/categories/update/${pactos._id}`)
+        .set("Authorization", `Bearer ${token}`)
+        .send(body);
+    assert.equal((await put({ incomeKind: "especial" }).expect(200)).body.incomeKind, "especial");
+    assert.equal((await put({ name: "pactos de fe" }).expect(200)).body.incomeKind, "especial");
+    assert.equal((await put({ incomeKind: null }).expect(200)).body.incomeKind, "otro");
+    //! Si pasa a ser de gasto, deja de tener tipo de ingreso
+    assert.equal((await put({ type: "expense", incomeKind: "diezmo" }).expect(200)).body.incomeKind, null);
+  });
+
+  test("agrega las categorías base de iglesia que faltan, sin duplicar", async () => {
+    const { token } = await createUser({ iglesia: "Iglesia Betel" });
+    const base = () =>
+      request(app).post("/api/v1/categories/church-defaults").set("Authorization", `Bearer ${token}`);
+
+    //! "Diezmo" en singular ya cubre los diezmos
+    await crearCategoria(token, { name: "Diezmo", type: "income" }).expect(201);
+
+    const primera = await base().expect(201);
+    assert.deepEqual(primera.body.added.map((c) => c.name), ["ofrendas", "primicias", "ofrenda especial"]);
+    assert.deepEqual(primera.body.added.map((c) => c.incomeKind), ["ofrenda", "primicia", "especial"]);
+
+    const segunda = await base().expect(200);
+    assert.equal(segunda.body.added.length, 0);
+  });
 });

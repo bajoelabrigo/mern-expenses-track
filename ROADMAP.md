@@ -51,7 +51,9 @@ despliega Netlify y Render) cuando está verificada.
 
 ## Fase 3 — Núcleo de iglesia
 
-- [ ] Tipos de ingreso de iglesia: diezmo, ofrenda, primicia, ofrenda especial.
+- [x] Tipos de ingreso de iglesia: diezmo, ofrenda, primicia, ofrenda especial
+      (cada categoría de ingreso tiene su tipo; ingresos por tipo en el Inicio y
+      en el Excel).
 - [ ] Miembros/donantes con privacidad (solo tesorería ve quién dio cuánto).
 - [ ] Constancias de donación anuales en PDF.
 - [ ] Conteo de ofrenda del culto con doble firma.

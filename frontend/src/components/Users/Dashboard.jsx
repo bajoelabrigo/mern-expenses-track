@@ -36,6 +36,8 @@ import PendingTransactions from "../Transactions/PendingTransactions";
 import TransactionRow from "../Transactions/TransactionRow";
 import TransactionsTable from "../Transactions/TransactionsTable";
 import FundsSummaryCard from "../Funds/FundsSummaryCard";
+import IncomeByKindCard from "./IncomeByKindCard";
+import { useFunds } from "../../hooks/useFunds";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, LinearScale, LineElement, PointElement, Tooltip);
 
@@ -415,6 +417,18 @@ const Dashboard = () => {
   const series = useMemo(() => runningNet(transactions, range.start, range.end), [transactions, range]);
   const spending = useMemo(() => spendingByCategory(transactions), [transactions]);
   const iconOf = (name) => categories.find((c) => c.name === name)?.icon;
+  const isChurch = workspace?.kind === "iglesia";
+  const { hasFunds } = useFunds();
+  const incomeByKind = isChurch && totals.income > 0 && (
+    <IncomeByKindCard
+      transactions={transactions}
+      categories={categories}
+      currency={currency}
+      periodLabel={range.label}
+      wide={!hasFunds}
+      className={hasFunds ? "" : "xl:col-span-3"}
+    />
+  );
   const money = (cents) => formatMoney(fromCents(cents), currency);
 
   //! El flujo neto se compara en dinero, no en porcentaje: si el mes anterior
@@ -521,7 +535,12 @@ const Dashboard = () => {
           />
         </div>
 
-        <FundsSummaryCard currency={currency} />
+        {(incomeByKind || hasFunds) && (
+          <div className="grid xl:grid-cols-3 gap-4 items-start">
+            {incomeByKind}
+            <FundsSummaryCard currency={currency} className={isChurch ? "xl:col-span-2" : "xl:col-span-3"} />
+          </div>
+        )}
 
         <section>
           {recentHeader}
@@ -594,6 +613,8 @@ const Dashboard = () => {
           </Card>
         ))}
       </section>
+
+      {incomeByKind}
 
       {/* En qué se fue */}
       {spending.total > 0 && <SpendingDonut spending={spending} colors={colors} currency={currency} />}
