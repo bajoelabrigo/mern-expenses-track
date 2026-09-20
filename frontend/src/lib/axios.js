@@ -34,6 +34,11 @@ let redirigiendo = false;
 //! pero NO se echa a nadie al login (quien entra a bajarse la app no tiene por
 //! qué acabar en un formulario).
 const PUBLICAS = ["/", "/descargas", "/login", "/register", "/olvide-contrasena"];
+//! Las que llevan algo variable detrás (el enlace de cuentas de una iglesia)
+const PUBLICAS_CON_COLA = ["/cuentas/", "/invitacion/", "/restablecer-contrasena/"];
+
+const esPublica = (ruta) =>
+  PUBLICAS.includes(ruta) || PUBLICAS_CON_COLA.some((p) => ruta.startsWith(p));
 
 //! Response: cualquier 401 cierra la sesión local y manda al login.
 axiosInstance.interceptors.response.use(
@@ -46,7 +51,7 @@ axiosInstance.interceptors.response.use(
       clearStoredAuth();
       clearStoredWorkspaceId();
       //! Pero solo se manda al login desde una página que la necesita
-      if (!PUBLICAS.includes(window.location.pathname)) {
+      if (!esPublica(window.location.pathname)) {
         redirigiendo = true;
         window.location.assign("/login");
       }

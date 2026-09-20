@@ -11,6 +11,8 @@ const Donor = require("../model/Donor");
 const FundTransfer = require("../model/FundTransfer");
 const AuditLog = require("../model/AuditLog");
 const { logoStorage } = require("../services/logoStorage");
+const OfferingCount = require("../model/OfferingCount");
+const PublicReport = require("../model/PublicReport");
 const User = require("../model/User");
 const {
   createWorkspace,
@@ -235,6 +237,8 @@ exports.remove = asyncHandler(async (req, res) => {
     Fund.deleteMany({ workspace: workspaceId }),
     Donor.deleteMany({ workspace: workspaceId }),
     FundTransfer.deleteMany({ workspace: workspaceId }),
+    OfferingCount.deleteMany({ workspace: workspaceId }),
+    PublicReport.deleteMany({ workspace: workspaceId }),
     Invitation.deleteMany({ workspace: workspaceId }),
     AuditLog.deleteMany({ workspace: workspaceId }),
     Membership.deleteMany({ workspace: workspaceId }),

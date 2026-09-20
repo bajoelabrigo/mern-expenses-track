@@ -231,6 +231,17 @@ describe("Conteo de ofrenda con doble firma", () => {
     assert.equal(lista.body.me, String(pastor.user._id || pastor.user.id));
   });
 
+  test("borrar el espacio se lleva sus conteos", async () => {
+    const { pastor, ws } = await iglesiaConDos();
+    await contar(pastor, ws, { amount: 100 }).expect(201);
+
+    const workspaces = (await as("get", "/api/v1/workspaces", pastor).expect(200)).body;
+    const nombre = workspaces.find((w) => String(w._id) === String(ws)).name;
+    await as("delete", `/api/v1/workspaces/${ws}`, pastor).send({ confirmName: nombre }).expect(200);
+
+    assert.equal(await OfferingCount.countDocuments({ workspace: ws }), 0);
+  });
+
   test("las dos firmas quedan en el historial", async () => {
     const { pastor, tesorero, ws } = await iglesiaConDos();
     const creado = await contar(pastor, ws, { amount: 450 }).expect(201);

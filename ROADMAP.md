@@ -90,7 +90,11 @@ despliega Netlify y Render) cuando está verificada.
       propietario) y sale impreso en los informes, el de actividad y las
       constancias. Solo PNG y JPG, que son los que pdfkit sabe incrustar. Es
       público, al revés que los comprobantes: va en papeles que se reparten.
-- [ ] Enlace de solo lectura para compartir un informe con la congregación.
+- [x] Enlace de solo lectura para la congregación: una página sin sesión con
+      **solo totales** (nunca aportantes, comprobantes ni el detalle de cada
+      movimiento). Token de 32 bytes guardado con hash, se puede apagar,
+      rehacer (el anterior muere al instante) o quitar, y cuenta las visitas.
+      Solo el propietario lo maneja. Publica el mes o el año en curso.
 
 ## Fase 4 — Núcleo personal
 

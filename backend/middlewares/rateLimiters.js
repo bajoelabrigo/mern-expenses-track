@@ -43,4 +43,18 @@ const emailLimiter = rateLimit({
   },
 });
 
-module.exports = { authLimiter, apiLimiter, emailLimiter };
+//! El resumen público de una iglesia: no lleva sesión, así que es lo único
+//! que cualquiera puede pedir desde fuera. El límite corta el raspado y
+//! cualquier intento de adivinar enlaces a fuerza bruta.
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip,
+  message: {
+    message: "Demasiadas peticiones. Espera un momento e inténtalo de nuevo.",
+  },
+});
+
+module.exports = { authLimiter, apiLimiter, emailLimiter, publicLimiter };

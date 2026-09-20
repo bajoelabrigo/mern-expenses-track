@@ -12,6 +12,7 @@ import NotFound from "./components/common/NotFound";
 //! cuando el usuario entra a esas pantallas.
 const RegistrationForm = lazy(() => import("./components/Users/Register"));
 const Downloads = lazy(() => import("./components/Home/Downloads"));
+const PublicReport = lazy(() => import("./components/Public/PublicReport"));
 const ReportsPage = lazy(() => import("./components/Reports/ReportsPage"));
 const CountsPage = lazy(() => import("./components/Counts/CountsPage"));
 const SupportPage = lazy(() => import("./components/Support/SupportPage"));
@@ -73,6 +74,8 @@ const App = () => (
         <Route path="/" element={<Layout />}>
           <Route index element={<HeroSection />} />
           <Route path="descargas" element={<Downloads />} />
+          {/* Las cuentas que la iglesia comparte: sin sesión, a propósito */}
+          <Route path="cuentas/:token" element={<PublicReport />} />
           <Route path="login" element={<LoginForm />} />
           <Route path="register" element={<RegistrationForm />} />
           <Route path="olvide-contrasena" element={<ForgotPassword />} />
