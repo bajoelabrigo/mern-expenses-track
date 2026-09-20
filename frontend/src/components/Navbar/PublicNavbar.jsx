@@ -14,6 +14,9 @@ export default function PublicNavbar() {
           <span className="hidden sm:inline">Control de Gastos</span>
         </Link>
         <nav aria-label="Cuenta" className="flex items-center gap-2">
+          <Link to="/descargas" className={buttonClass({ variant: "ghost", size: "sm" })}>
+            Descargar
+          </Link>
           <Link to="/login" className={buttonClass({ variant: "ghost", size: "sm" })}>
             Entrar
           </Link>

@@ -94,8 +94,15 @@ despliega Netlify y Render) cuando está verificada.
 
 ## Fase 5 — Servicio para iglesias
 
-- [ ] Donaciones en línea con PayPal (se reutiliza el sistema probado de
-      `holy_app`: órdenes, suscripciones, webhooks, reembolsos y comisiones).
+- [x] Página de descargas (`/descargas`): el APK para Android con sus pasos de
+      instalación, y cómo instalarla desde el navegador en iPhone, Android y
+      computadora. Es la página que se comparte con las iglesias.
+- [ ] **Hazte Socio de la App**: aporte con PayPal para sostener el servicio,
+      del usuario al desarrollador (NO son ofrendas a la iglesia: el nombre
+      evita esa confusión). Se reutiliza el sistema probado de `holy_app`:
+      órdenes, suscripciones, webhooks firmados, reembolsos y comisiones.
+      Tarjeta de invitación al final de la barra lateral, como el "Get Pro"
+      del ejemplo que pasó el usuario.
 - [ ] Planes de suscripción para iglesias (PayPal Subscriptions).
 - [ ] Flujo de aprobación de gastos (solicitar, aprobar, pagar).
 - [ ] Conciliación bancaria y cierre mensual (bloquea editar meses cerrados).

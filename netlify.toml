@@ -44,6 +44,14 @@
     Cache-Control = "no-cache"
     Content-Type = "application/manifest+json"
 
+# El APK que se ofrece en /descargas. Con su tipo correcto, Android lo reconoce
+# como aplicación en vez de como un archivo cualquiera.
+[[headers]]
+  for = "/descargas/*.apk"
+  [headers.values]
+    Content-Type = "application/vnd.android.package-archive"
+    Cache-Control = "public, max-age=86400"
+
 # Verificación de la app Android (Trusted Web Activity): Android descarga este
 # archivo para confirmar que el APK es de este sitio y abrirlo sin barra de
 # dirección. Debe servirse como JSON.

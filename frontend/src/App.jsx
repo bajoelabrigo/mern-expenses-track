@@ -11,6 +11,7 @@ import NotFound from "./components/common/NotFound";
 //! Carga diferida: chart.js y el selector de emojis solo se descargan
 //! cuando el usuario entra a esas pantallas.
 const RegistrationForm = lazy(() => import("./components/Users/Register"));
+const Downloads = lazy(() => import("./components/Home/Downloads"));
 const ForgotPassword = lazy(() => import("./components/Users/ForgotPassword"));
 const ResetPassword = lazy(() => import("./components/Users/ResetPassword"));
 const UserProfile = lazy(() => import("./components/Users/UserProfile"));
@@ -68,6 +69,7 @@ const App = () => (
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<HeroSection />} />
+          <Route path="descargas" element={<Downloads />} />
           <Route path="login" element={<LoginForm />} />
           <Route path="register" element={<RegistrationForm />} />
           <Route path="olvide-contrasena" element={<ForgotPassword />} />
