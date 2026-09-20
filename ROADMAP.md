@@ -103,12 +103,19 @@ despliega Netlify y Render) cuando está verificada.
 - [x] Página de descargas (`/descargas`): el APK para Android con sus pasos de
       instalación, y cómo instalarla desde el navegador en iPhone, Android y
       computadora. Es la página que se comparte con las iglesias.
-- [ ] **Hazte Socio de la App**: aporte con PayPal para sostener el servicio,
-      del usuario al desarrollador (NO son ofrendas a la iglesia: el nombre
-      evita esa confusión). Se reutiliza el sistema probado de `holy_app`:
-      órdenes, suscripciones, webhooks firmados, reembolsos y comisiones.
-      Tarjeta de invitación al final de la barra lateral, como el "Get Pro"
-      del ejemplo que pasó el usuario.
+- [x] **Hazte Socio de la App**: aporte voluntario con PayPal para sostener el
+      servicio (NO son ofrendas a la iglesia: el nombre evita esa confusión).
+      Órdenes, captura, webhooks firmados, reembolsos (incluidos los parciales)
+      y comisión de PayPal guardada. Tarjeta al final de la barra lateral.
+      **Solo en la web**: dentro de la app de Android no se muestra, porque la
+      política de pagos de Google Play prohíbe llevar al usuario a pagar por
+      fuera (le pasó a AnkiDroid en 2026). Ver `frontend/src/lib/platform.js`.
+      Falta: crear la app en PayPal y poner sus claves (PAYPAL_CLIENT_ID,
+      PAYPAL_CLIENT_SECRET, PAYPAL_MODE, PAYPAL_WEBHOOK_ID en el backend y
+      VITE_PAYPAL_CLIENT_ID en Netlify). Sin ellas la sección avisa de que no
+      está disponible.
+- [ ] Aporte mensual recurrente (PayPal Subscriptions), si los aportes de una
+      vez funcionan.
 - [ ] Planes de suscripción para iglesias (PayPal Subscriptions).
 - [ ] Flujo de aprobación de gastos (solicitar, aprobar, pagar).
 - [ ] Conciliación bancaria y cierre mensual (bloquea editar meses cerrados).

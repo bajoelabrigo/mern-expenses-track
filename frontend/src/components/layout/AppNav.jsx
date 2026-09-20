@@ -7,6 +7,7 @@ import { useWorkspace } from "../../hooks/useWorkspace";
 import { useLogout } from "../../hooks/useLogout";
 import { visibleNavItems } from "./navItems";
 import ThemeToggle from "./ThemeToggle";
+import SupportCard from "./SupportCard";
 import WorkspacePicker from "./WorkspacePicker";
 import { buttonClass } from "../ui/styles";
 
@@ -28,8 +29,8 @@ export const Sidebar = () => {
   const items = visibleNavItems(ctx);
 
   return (
-    <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col gap-6 px-4 py-6 border-r border-line bg-bg">
-      <div className="flex items-center gap-2 px-2">
+    <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col gap-5 px-4 py-5 border-r border-line bg-bg">
+      <div className="flex items-center gap-2 px-2 shrink-0">
         <FaChurch aria-hidden="true" className="text-accent text-2xl" />
         <span className="font-extrabold tracking-tight">Control de Gastos</span>
       </div>
@@ -42,7 +43,7 @@ export const Sidebar = () => {
         <NavLinkButton />
       )}
 
-      <nav aria-label="Secciones" className="flex flex-col gap-1">
+      <nav aria-label="Secciones" className="flex flex-col gap-1 flex-1 min-h-0 overflow-y-auto">
         {items.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} className={navLinkClass}>
             <Icon aria-hidden="true" className="text-lg" /> {label}
@@ -50,7 +51,8 @@ export const Sidebar = () => {
         ))}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-3">
+      <div className="flex flex-col gap-3 shrink-0">
+        <SupportCard />
         <ThemeToggle />
         <button
           type="button"
@@ -65,7 +67,11 @@ export const Sidebar = () => {
 };
 
 const NavLinkButton = () => (
-  <NavLink to="/add-transaction" className={buttonClass({ variant: "accent", block: true })}>
+  //! `shrink-0`: en una columna flexible sin sitio, el botón se aplastaría
+  <NavLink
+    to="/add-transaction"
+    className={`${buttonClass({ variant: "accent", block: true })} shrink-0`}
+  >
     <LuPlus aria-hidden="true" className="text-lg" /> Registrar
   </NavLink>
 );
@@ -177,6 +183,10 @@ const MoreSheet = ({ onClose, ctx }) => {
             </NavLink>
           ))}
         </nav>
+
+        <div className="mt-4">
+          <SupportCard onNavigate={onClose} />
+        </div>
 
         <div className="mt-4 bg-surface rounded-card shadow-card p-3">
           <p className="text-xs font-semibold text-muted mb-2 px-1">Tema</p>
