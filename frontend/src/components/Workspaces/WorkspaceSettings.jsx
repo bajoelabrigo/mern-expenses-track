@@ -15,6 +15,7 @@ import { CURRENCIES } from "../../lib/money";
 import AlertMessage from "../Alert/AlertMessage";
 import { Button, Card, Field, Input, Notice, PageHeader, Select } from "../ui";
 import LogoCard from "./LogoCard";
+import PublicLinkCard from "./PublicLinkCard";
 
 const WorkspaceSettings = () => {
   const navigate = useNavigate();
@@ -109,6 +110,8 @@ const WorkspaceSettings = () => {
           upload={setWorkspaceLogoAPI}
           remove={removeWorkspaceLogoAPI}
         />
+
+        {workspace.kind === "iglesia" && <PublicLinkCard workspace={workspace} />}
 
         {can("workspace:delete") && (
           <Card as="section" aria-labelledby="borrar-espacio" className="p-5 space-y-4">

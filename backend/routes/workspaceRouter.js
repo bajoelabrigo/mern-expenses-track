@@ -5,6 +5,7 @@ const { withWorkspace, requirePermission, HEADER } = require("../middlewares/wor
 const { emailLimiter } = require("../middlewares/rateLimiters");
 const { logoUpload } = require("../middlewares/logoUpload");
 const ctrl = require("../controllers/workspaceController");
+const publicLink = require("../controllers/publicReportController");
 
 const router = express.Router();
 
@@ -23,6 +24,14 @@ const scoped = [validateObjectId(), fromParam, withWorkspace];
 
 router.get("/:id", scoped, requirePermission("tx:read"), ctrl.getOne);
 router.put("/:id", scoped, requirePermission("workspace:manage"), ctrl.update);
+//! El enlace de solo lectura para la congregación. Publicar las cuentas es
+//! decisión del propietario, de nadie más.
+const manageLink = requirePermission("workspace:manage");
+router.get("/:id/enlace-publico", scoped, manageLink, publicLink.get);
+router.post("/:id/enlace-publico", scoped, manageLink, publicLink.create);
+router.put("/:id/enlace-publico", scoped, manageLink, publicLink.update);
+router.delete("/:id/enlace-publico", scoped, manageLink, publicLink.remove);
+
 //! El logo del espacio (lo que sale impreso en los informes)
 router.put(
   "/:id/logo",
