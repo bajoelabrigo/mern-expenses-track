@@ -7,6 +7,7 @@ const { audit } = require("../utils/audit");
 const Category = require("../model/Category");
 const { effectiveIncomeKind, inferIncomeKind } = require("../utils/incomeKinds");
 const { buildStatements, fileSlug } = require("../services/statementPdf");
+const { logoBytesFor } = require("../services/logoStorage");
 const { upToToday } = require("../utils/dates");
 
 //! Lo que se guarda en el historial de un aportante (sin montos: el historial
@@ -266,6 +267,7 @@ const donorController = {
       year,
       issuedBy: req.user.username,
       statements: [{ donor, summary }],
+      logo: await logoBytesFor(req.workspace),
     });
     sendPdf(res, doc, `constancia-${fileSlug(donor.name)}-${year}.pdf`);
   }),
@@ -298,6 +300,7 @@ const donorController = {
       year,
       issuedBy: req.user.username,
       statements,
+      logo: await logoBytesFor(req.workspace),
     });
     sendPdf(res, doc, `constancias-${fileSlug(req.workspace.name)}-${year}.pdf`);
   }),

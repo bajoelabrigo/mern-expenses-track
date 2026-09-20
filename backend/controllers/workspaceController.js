@@ -10,6 +10,7 @@ const Fund = require("../model/Fund");
 const Donor = require("../model/Donor");
 const FundTransfer = require("../model/FundTransfer");
 const AuditLog = require("../model/AuditLog");
+const { logoStorage } = require("../services/logoStorage");
 const User = require("../model/User");
 const {
   createWorkspace,
@@ -45,6 +46,8 @@ const workspaceView = (workspace, role, defaultId) => ({
   name: workspace.name,
   kind: workspace.kind,
   currency: workspace.currency,
+  //! Solo la URL: el resto de datos del logo es cosa del servidor
+  logo: workspace.logo?.url || "",
   role,
   permissions: permissionsFor(role),
   isDefault: defaultId ? String(workspace._id) === String(defaultId) : false,
@@ -142,6 +145,72 @@ exports.update = asyncHandler(async (req, res) => {
     entityId: req.workspace._id,
     before,
     after: { name: req.workspace.name, currency: req.workspace.currency },
+  });
+
+  res.json(workspaceView(req.workspace, req.role, req.user.defaultWorkspace));
+});
+
+//! d.2) Logo de la iglesia, el que sale impreso en informes y constancias
+exports.setLogo = asyncHandler(async (req, res) => {
+  if (!logoStorage.isConfigured()) {
+    return res.status(503).json({
+      message: "Todavía no se puede guardar el logo. Inténtalo más tarde.",
+    });
+  }
+
+  let saved;
+  try {
+    saved = await logoStorage.upload({
+      buffer: req.file.buffer,
+      workspaceId: req.workspace._id,
+    });
+  } catch {
+    return res.status(502).json({ message: "No se pudo guardar el logo. Inténtalo de nuevo." });
+  }
+
+  const before = { logo: req.workspace.logo?.url || "" };
+  req.workspace.logo = {
+    publicId: saved.publicId,
+    url: saved.url,
+    width: saved.width,
+    height: saved.height,
+  };
+  await req.workspace.save();
+
+  await audit(req, {
+    action: "workspace.logo",
+    entity: "workspace",
+    entityId: req.workspace._id,
+    before,
+    after: { logo: saved.url },
+  });
+
+  res.json(workspaceView(req.workspace, req.role, req.user.defaultWorkspace));
+});
+
+exports.removeLogo = asyncHandler(async (req, res) => {
+  const { publicId, url } = req.workspace.logo || {};
+  if (!url) return res.status(404).json({ message: "Este espacio no tiene logo" });
+
+  //! Si Cloudinary falla se quita igual de la app: lo que el usuario pidió es
+  //! dejar de usarlo, y un archivo huérfano no hace daño.
+  if (publicId) {
+    try {
+      await logoStorage.destroy({ publicId });
+    } catch {
+      /* se ignora a propósito */
+    }
+  }
+
+  req.workspace.logo = { publicId: "", url: "", width: 0, height: 0 };
+  await req.workspace.save();
+
+  await audit(req, {
+    action: "workspace.logo",
+    entity: "workspace",
+    entityId: req.workspace._id,
+    before: { logo: url },
+    after: { logo: "" },
   });
 
   res.json(workspaceView(req.workspace, req.role, req.user.defaultWorkspace));

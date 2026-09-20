@@ -55,4 +55,6 @@ const receiptUpload = (req, res, next) =>
     next();
   });
 
-module.exports = { receiptUpload, MAX_BYTES };
+//! `looksLike` lo reusa la subida del logo: el tipo que declara el navegador
+//! se puede falsificar en cualquier formulario, no solo en el de comprobantes.
+module.exports = { receiptUpload, MAX_BYTES, looksLike };

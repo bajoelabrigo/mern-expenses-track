@@ -29,7 +29,7 @@ const KIND_LABELS = {
 };
 
 //! Una constancia (una página): quién aportó, cuánto y en qué se registró
-const statementPage = (doc, { workspace, donor, summary, year, issuedBy }) => {
+const statementPage = (doc, { workspace, donor, summary, year, issuedBy, logo }) => {
   const { currency, name: churchName } = workspace;
   const left = doc.page.margins.left;
   const width = contentWidth(doc);
@@ -38,6 +38,7 @@ const statementPage = (doc, { workspace, donor, summary, year, issuedBy }) => {
     churchName,
     kind: "Constancia de aportes",
     title: `CONSTANCIA DE APORTES ${year}`,
+    logo,
   });
 
   doc.font("Helvetica").fontSize(11).fillColor(INK).text(
@@ -80,7 +81,7 @@ const statementPage = (doc, { workspace, donor, summary, year, issuedBy }) => {
 };
 
 //! Documento con una constancia por aportante (una página cada una)
-const buildStatements = ({ workspace, year, issuedBy, statements }) => {
+const buildStatements = ({ workspace, year, issuedBy, statements, logo }) => {
   const doc = new PDFDocument({
     size: "A4",
     margin: 56,
@@ -88,7 +89,7 @@ const buildStatements = ({ workspace, year, issuedBy, statements }) => {
   });
   statements.forEach((statement, i) => {
     if (i > 0) doc.addPage();
-    statementPage(doc, { workspace, year, issuedBy, ...statement });
+    statementPage(doc, { workspace, year, issuedBy, logo, ...statement });
   });
   doc.end();
   return doc;

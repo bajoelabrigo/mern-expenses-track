@@ -26,6 +26,14 @@ const workspaceSchema = new mongoose.Schema(
       enum: { values: CURRENCIES, message: "Moneda no admitida" },
       default: "USD",
     },
+    //! Logo de la iglesia: sale impreso en los informes y las constancias. Es
+    //! público (va en papeles que se reparten), así que se guarda su URL.
+    logo: {
+      publicId: { type: String, default: "" },
+      url: { type: String, default: "" },
+      width: { type: Number, default: 0 },
+      height: { type: Number, default: 0 },
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

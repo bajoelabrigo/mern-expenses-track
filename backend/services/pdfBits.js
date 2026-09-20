@@ -91,8 +91,25 @@ const tableRow = (doc, label, values, { bold = false, top = false, muted = false
   doc.moveDown(0.55);
 };
 
-//! Encabezado: nombre de la iglesia, de qué es el papel y su título
-const header = (doc, { churchName, kind, title }) => {
+//! Alto del logo impreso, en puntos (unos 2 cm)
+const LOGO_HEIGHT = 56;
+
+//! Encabezado: el logo si lo hay, el nombre de la iglesia, de qué es el papel
+//! y su título. `logo` son los bytes ya descargados (PNG o JPEG).
+const header = (doc, { churchName, kind, title, logo }) => {
+  if (logo) {
+    try {
+      //! `fit` respeta la proporción sea cual sea la forma del logo, y con
+      //! `align` queda centrado aunque sea más ancho que alto
+      doc.image(logo, doc.page.margins.left, doc.y, {
+        fit: [contentWidth(doc), LOGO_HEIGHT],
+        align: "center",
+      });
+      doc.y += LOGO_HEIGHT + 10;
+    } catch {
+      //! Un logo ilegible no puede impedir que salga el informe
+    }
+  }
   doc.font("Helvetica-Bold").fontSize(16).fillColor(INK).text(churchName, { align: "center" });
   doc.font("Helvetica").fontSize(10).fillColor(MUTED).text(kind, { align: "center" });
   doc.moveDown(1.5);

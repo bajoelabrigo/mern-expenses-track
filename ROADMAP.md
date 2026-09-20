@@ -82,8 +82,10 @@ despliega Netlify y Render) cuando está verificada.
       se fue, saldo de cierre, el reparto por fondos **a esa fecha** y las
       firmas. El anual añade la tabla mes a mes. Comparten las piezas de
       `services/pdfBits.js` con el informe de actividad.
-- [ ] Logo de la iglesia en los informes: primero hay que poder subirlo desde
-      Ajustes del espacio (a Cloudinary, como los comprobantes).
+- [x] Logo de la iglesia: se sube desde Ajustes del espacio (solo el
+      propietario) y sale impreso en los informes, el de actividad y las
+      constancias. Solo PNG y JPG, que son los que pdfkit sabe incrustar. Es
+      público, al revés que los comprobantes: va en papeles que se reparten.
 - [ ] Enlace de solo lectura para compartir un informe con la congregación.
 
 ## Fase 4 — Núcleo personal

@@ -96,12 +96,12 @@ const newDoc = (title) =>
   new PDFDocument({ size: "A4", margin: 56, info: { Title: title } });
 
 //! Informe de un mes
-const buildMonthlyReport = ({ workspace, report, issuedBy }) => {
+const buildMonthlyReport = ({ workspace, report, issuedBy, logo }) => {
   const { currency, name: churchName } = workspace;
   const title = `${MONTHS[report.month - 1].toUpperCase()} ${report.year}`;
   const doc = newDoc(`Informe ${title}`);
 
-  header(doc, { churchName, kind: "Informe mensual de tesorería", title });
+  header(doc, { churchName, kind: "Informe mensual de tesorería", title, logo });
   summaryBlock(doc, report, currency);
   breakdowns(doc, report, currency);
   fundsBlock(doc, report.funds, currency);
@@ -117,7 +117,7 @@ const buildMonthlyReport = ({ workspace, report, issuedBy }) => {
 };
 
 //! Informe de un año, con la tabla mes a mes
-const buildAnnualReport = ({ workspace, report, issuedBy }) => {
+const buildAnnualReport = ({ workspace, report, issuedBy, logo }) => {
   const { currency, name: churchName } = workspace;
   const doc = newDoc(`Informe ${report.year}`);
 
@@ -125,6 +125,7 @@ const buildAnnualReport = ({ workspace, report, issuedBy }) => {
     churchName,
     kind: "Informe anual de tesorería",
     title: `AÑO ${report.year}`,
+    logo,
   });
   summaryBlock(doc, report, currency);
 
