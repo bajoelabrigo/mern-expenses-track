@@ -52,7 +52,19 @@ Requisitos: JDK 17 y el SDK de Android (`android/local.properties` con
    `apksigner` pide la contraseña; la huella que imprime `verify` debe ser la de
    arriba.
 
+4. Publica el archivo en la web, que es de donde lo bajan las iglesias:
+   ```bash
+   cp app/build/outputs/apk/release/control-de-gastos-X.Y.Z.apk \
+      ../frontend/public/descargas/
+   git rm ../frontend/public/descargas/control-de-gastos-<versión vieja>.apk
+   ```
+   y actualiza `version`, `file`, `size` y `date` en
+   `frontend/src/lib/appRelease.js`: es lo único que lee la página `/descargas`.
+   El APK sí va al repositorio (no lo cubre el `.gitignore` de esta carpeta),
+   para que Netlify lo despliegue con el sitio.
+
 ## Instalar
 
-Pasa el `.apk` al teléfono (WhatsApp, Drive, cable) y ábrelo. Android pedirá
+Lo normal es bajarlo de la página `/descargas` del sitio. También se puede
+pasar el `.apk` al teléfono (WhatsApp, Drive, cable) y abrirlo. Android pedirá
 permitir "instalar apps de origen desconocido" para esa app la primera vez.

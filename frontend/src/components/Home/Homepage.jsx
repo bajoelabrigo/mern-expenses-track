@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { LuCloudOff, LuHistory, LuLock, LuUsers } from "react-icons/lu";
 import { ButtonLink, Card, CategoryIcon } from "../ui";
 
@@ -105,6 +106,11 @@ const Homepage = () => (
         <p className="mt-4 text-sm text-muted">
           También sirve para tus finanzas personales: cada cuenta trae su propio espacio.
         </p>
+        <p className="mt-2 text-sm">
+          <Link to="/descargas" className="font-semibold text-ink underline underline-offset-4 hover:text-accent">
+            Descárgala para tu celular
+          </Link>
+        </p>
       </div>
       <PhonePreview />
     </section>
@@ -138,7 +144,9 @@ const Homepage = () => (
 
     <footer className="py-8 border-t border-line text-sm text-muted flex flex-wrap justify-between gap-2">
       <span>Control de Gastos</span>
-      <span>Instálala en tu celular desde el navegador.</span>
+      <Link to="/descargas" className="hover:text-ink">
+        Instálala en tu celular
+      </Link>
     </footer>
   </div>
 );

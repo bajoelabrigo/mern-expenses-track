@@ -30,18 +30,26 @@ axiosInstance.interceptors.request.use((config) => {
 //! Evita disparar varias redirecciones si fallan varias peticiones a la vez
 let redirigiendo = false;
 
+//! Páginas que se ven sin sesión: si ahí caduca el token, se limpia la sesión
+//! pero NO se echa a nadie al login (quien entra a bajarse la app no tiene por
+//! qué acabar en un formulario).
+const PUBLICAS = ["/", "/descargas", "/login", "/register", "/olvide-contrasena"];
+
 //! Response: cualquier 401 cierra la sesión local y manda al login.
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    const enLogin = window.location.pathname === "/login";
 
-    if (status === 401 && !enLogin && !redirigiendo) {
-      redirigiendo = true;
+    if (status === 401 && !redirigiendo) {
+      //! La sesión caducada se limpia siempre
       clearStoredAuth();
       clearStoredWorkspaceId();
-      window.location.assign("/login");
+      //! Pero solo se manda al login desde una página que la necesita
+      if (!PUBLICAS.includes(window.location.pathname)) {
+        redirigiendo = true;
+        window.location.assign("/login");
+      }
     }
 
     //! El espacio recordado ya no existe o ya no se pertenece a él (lo sacaron,
