@@ -73,6 +73,26 @@ describe("Aportantes", () => {
     await as("get", `/api/v1/donors/${marta._id}?year=abc`, pastor, ws).expect(400);
   });
 
+  test("lo que todavía no pasó no entra en su total ni en la constancia", async () => {
+    const { pastor, ws } = await iglesia();
+    const marta = (await crearAportante(pastor, ws, { name: "Marta" }).expect(201)).body;
+    const hoy = new Date();
+    const manana = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    await ingreso(pastor, ws, { amount: 200, donor: marta._id, date: ayer }).expect(201);
+    //! Diezmo del mes que viene, creado por adelantado
+    await ingreso(pastor, ws, { amount: 200, donor: marta._id, date: manana }).expect(201);
+
+    const lista = await aportantes(pastor, ws, `?year=${hoy.getFullYear()}`);
+    assert.equal(lista.donors[0].given, 200);
+    assert.equal(lista.donors[0].gifts, 1);
+
+    const { statementSummaries } = require("../controllers/donorController");
+    const resumen = (await statementSummaries(ws, hoy.getFullYear())).get(String(marta._id));
+    assert.equal(resumen.total, 200);
+  });
+
   test("quién dio cuánto solo lo ve la tesorería", async () => {
     const { pastor, ws } = await iglesia();
     const contador = await createUser();

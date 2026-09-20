@@ -449,6 +449,41 @@ describe("Transacciones", () => {
     assert.equal(sheet.getRow(2).getCell(encabezados.indexOf("Tipo de ingreso") + 1).value, "Diezmo");
   });
 
+  test("el saldo no cuenta lo que todavía no pasó", async () => {
+    const { token } = await createUser();
+    const manana = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    await crear(token, { type: "income", category: "diezmos", amount: 500, date: ayer }).expect(201);
+    //! Una repetición creada por adelantado (alquiler del mes que viene)
+    await crear(token, { type: "expense", category: "alquiler", amount: 2000, date: manana }).expect(201);
+
+    const balance = await request(app)
+      .get("/api/v1/transactions/balance")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    assert.equal(balance.body.income, 500);
+    assert.equal(balance.body.expense, 0, "el gasto de mañana todavía no salió");
+    assert.equal(balance.body.balance, 500);
+
+    //! El gráfico del año sigue la misma regla
+    const mes = Number(manana.slice(5, 7));
+    const porMes = await request(app)
+      .get(`/api/v1/transactions/summary/by-month?year=${manana.slice(0, 4)}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    const fila = porMes.body.months?.find((m) => m.month === mes);
+    assert.equal(fila?.expense || 0, 0, "el gasto de mañana tampoco pinta la barra");
+
+    //! Pero el movimiento sigue existiendo en el listado
+    const lista = await request(app)
+      .get("/api/v1/transactions/lists")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+    assert.equal(lista.body.total, 2);
+  });
+
   test("actualizar una transacción valida los datos nuevos", async () => {
     const { token } = await createUser();
 

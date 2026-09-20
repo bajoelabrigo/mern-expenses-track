@@ -70,5 +70,10 @@ export const dayLabel = (dateValue, today = new Date()) => {
   });
 };
 
+//! ¿Es de un día que todavía no llega? Lo programado (una repetición creada
+//! por adelantado) no suma en saldos ni totales hasta que le toca.
+export const isScheduled = (dateValue, today = new Date()) =>
+  toISODate(new Date(dateValue)) > toISODate(today);
+
 export const shortDate = (dateValue) =>
   new Date(dateValue).toLocaleDateString("es", { day: "numeric", month: "short" });

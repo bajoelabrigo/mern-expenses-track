@@ -7,6 +7,7 @@ const { audit } = require("../utils/audit");
 const Category = require("../model/Category");
 const { effectiveIncomeKind, inferIncomeKind } = require("../utils/incomeKinds");
 const { buildStatements, fileSlug } = require("../services/statementPdf");
+const { upToToday } = require("../utils/dates");
 
 //! Lo que se guarda en el historial de un aportante (sin montos: el historial
 //! lo leen roles que no ven cuánto dio cada quien; por eso además estas
@@ -44,11 +45,12 @@ const parseDonorInput = (body, { partial = false } = {}) => {
   return { values };
 };
 
-//! Cuánto dio cada aportante en un año (clave: id). Los anulados no cuentan.
+//! Cuánto dio cada aportante en un año (clave: id). No cuentan los anulados ni
+//! lo que tenga fecha futura: una constancia dice lo que ya se recibió.
 const donorTotals = async (workspaceId, year) => {
   const rows = await Transaction.aggregate([
     {
-      $match: {
+      $match: upToToday({
         workspace: new mongoose.Types.ObjectId(String(workspaceId)),
         type: "income",
         voided: { $ne: true },
@@ -56,7 +58,7 @@ const donorTotals = async (workspaceId, year) => {
         ...(year
           ? { date: { $gte: new Date(Date.UTC(year, 0, 1)), $lt: new Date(Date.UTC(year + 1, 0, 1)) } }
           : {}),
-      },
+      }),
     },
     {
       $group: {
@@ -88,13 +90,13 @@ const findInWorkspace = (req) => Donor.findOne({ _id: req.params.id, workspace: 
 //! Lo aportado en el año por cada persona, repartido por tipo y por mes: es lo
 //! que lleva la constancia. Clave del mapa: id del aportante.
 const statementSummaries = async (workspaceId, year, donorIds) => {
-  const match = {
+  const match = upToToday({
     workspace: new mongoose.Types.ObjectId(String(workspaceId)),
     type: "income",
     voided: { $ne: true },
     donor: donorIds ? { $in: donorIds.map((id) => new mongoose.Types.ObjectId(String(id))) } : { $ne: null },
     date: { $gte: new Date(Date.UTC(year, 0, 1)), $lt: new Date(Date.UTC(year + 1, 0, 1)) },
-  };
+  });
 
   const [rows, categories] = await Promise.all([
     Transaction.aggregate([

@@ -27,7 +27,7 @@ import { useThemeColors } from "../../hooks/useThemeColors";
 import { useIsDesktop } from "../../hooks/useMediaQuery";
 import { getErrorMessage } from "../../lib/axios";
 import { formatMoney, fromCents, toCents } from "../../lib/money";
-import { periodRange, toISODate } from "../../lib/periods";
+import { isScheduled, periodRange, toISODate } from "../../lib/periods";
 import { Card, Eyebrow, Segmented, EmptyState, ButtonLink } from "../ui";
 import { CATEGORY_COLORS, capitalize, cx, initials } from "../ui/styles";
 import AlertMessage from "../Alert/AlertMessage";
@@ -411,7 +411,10 @@ const Dashboard = () => {
     queryFn: listCategoriesAPI,
   });
 
-  const transactions = useMemo(() => current.data || [], [current.data]);
+  const all = useMemo(() => current.data || [], [current.data]);
+  //! Lo que tiene fecha futura no cuenta todavía (ver ROADMAP: recurrentes)
+  const transactions = useMemo(() => all.filter((t) => !isScheduled(t.date)), [all]);
+  const scheduled = useMemo(() => all.filter((t) => isScheduled(t.date)), [all]);
   const totals = useMemo(() => totalsOf(transactions), [transactions]);
   const prevTotals = useMemo(() => totalsOf(previous.data || []), [previous.data]);
   const series = useMemo(() => runningNet(transactions, range.start, range.end), [transactions, range]);
@@ -438,6 +441,15 @@ const Dashboard = () => {
   const netDiff = hadPrevious ? totals.net - prevTotals.net : null;
   const maxInOut = Math.max(totals.income, totals.expense, 1);
   const recentItems = recent.data?.transactions || [];
+
+  const scheduledNote = scheduled.length > 0 && (
+    <p className="px-1 text-sm text-muted">
+      {scheduled.length === 1
+        ? "Hay 1 movimiento programado más adelante en "
+        : `Hay ${scheduled.length} movimientos programados más adelante en `}
+      {range.label}: no suman hasta que llegue su fecha.
+    </p>
+  );
 
   const periodPicker = (className) => (
     <Segmented className={className} label="Período" options={PERIODS} value={period} onChange={setPeriod} />
@@ -523,6 +535,8 @@ const Dashboard = () => {
             footer={<span className="text-xs font-semibold text-muted">Todo lo registrado hasta hoy</span>}
           />
         </section>
+
+        {scheduledNote}
 
         <div className="grid xl:grid-cols-3 gap-4">
           <MonthlyBars className="xl:col-span-2" currency={currency} colors={colors} />
@@ -613,6 +627,8 @@ const Dashboard = () => {
           </Card>
         ))}
       </section>
+
+      {scheduledNote}
 
       {incomeByKind}
 

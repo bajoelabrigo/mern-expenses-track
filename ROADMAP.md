@@ -8,11 +8,13 @@ despliega Netlify y Render) cuando está verificada.
 
 ## Arreglos pendientes
 
-- [ ] **El saldo cuenta movimientos con fecha futura.** Al marcar "Se repite",
+- [x] **El saldo contaba movimientos con fecha futura.** Al marcar "Se repite",
       la app crea de una vez todas las repeticiones con sus fechas futuras, y
-      el "Saldo en caja" del Inicio (y el balance de la API) las suma. Quien
-      registre el alquiler de todo el año se ve el saldo descontado de golpe.
-      Arreglar al hacer las recurrentes de la fase 4, o antes si estorba.
+      el "Saldo en caja" las sumaba: quien registraba el alquiler de todo el
+      año se veía el saldo descontado de golpe. También afectaba a los fondos
+      y a las constancias (una emitida en junio podía incluir diezmos de
+      diciembre). Regla nueva: **los saldos y totales cuentan hasta hoy**, y lo
+      que tiene fecha posterior aparece marcado como "Programado".
 
 ## Fase 1 — Base: espacios, roles y confianza
 

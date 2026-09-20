@@ -90,6 +90,21 @@ describe("Fondos", () => {
     assert.equal(saldoDe(await fondos(pastor, ws), "Misiones"), -120.5);
   });
 
+  test("el saldo de un fondo no cuenta lo que todavía no pasó", async () => {
+    const { pastor, ws } = await iglesia();
+    const misiones = (await crearFondo(pastor, ws, { name: "Misiones", goal: 1000 }).expect(201)).body;
+    const manana = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    await movimiento(pastor, ws, { amount: 100, fund: misiones._id, date: ayer }).expect(201);
+    await movimiento(pastor, ws, { amount: 400, fund: misiones._id, date: manana }).expect(201);
+    await pase(pastor, ws, { from: null, to: misiones._id, amount: 50, date: manana }).expect(201);
+
+    const fondo = (await fondos(pastor, ws)).find((f) => f.name === "Misiones");
+    assert.equal(fondo.balance, 100);
+    assert.equal(fondo.raised, 100, "la meta avanza con lo ya recibido");
+  });
+
   test("no se puede usar un fondo de otro espacio", async () => {
     const { pastor, ws } = await iglesia();
     const otro = await iglesia();
