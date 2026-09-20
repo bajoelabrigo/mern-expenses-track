@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import authReducer from "../redux/slice/authSlice";
 import workspaceReducer from "../redux/slice/workspaceSlice";
-import SupportCard from "../components/Layout/SupportCard";
+import SupportCard from "../components/layout/SupportCard";
 import { isAndroidApp } from "../lib/platform";
 
 const getSupportStatusAPI = vi.fn();
