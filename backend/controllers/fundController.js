@@ -9,6 +9,7 @@ const { audit, fundSnapshot } = require("../utils/audit");
 const { can } = require("../utils/permissions");
 const { buildFundReport, TRANSFER_LABEL } = require("../services/fundReportPdf");
 const { fileSlug, sendPdf } = require("../services/pdfBits");
+const { logoBytesFor } = require("../services/logoStorage");
 const {
   GENERAL_NAME,
   GENERAL_KEY,
@@ -228,7 +229,10 @@ const fundController = {
     if (error) return res.status(status).json({ message: error });
 
     const withNames = req.query.nombres === "1" && can(req.role, "donor:read");
-    const { info, report } = await buildReportData(req.workspace._id, fund, { withNames });
+    const [{ info, report }, logo] = await Promise.all([
+      buildReportData(req.workspace._id, fund, { withNames }),
+      logoBytesFor(req.workspace),
+    ]);
 
     const doc = buildFundReport({
       workspace: req.workspace,
@@ -236,6 +240,7 @@ const fundController = {
       report,
       issuedBy: req.user.username,
       withNames,
+      logo,
     });
     sendPdf(res, doc, `informe-${fileSlug(info.name)}-${new Date().getFullYear()}.pdf`);
   }),

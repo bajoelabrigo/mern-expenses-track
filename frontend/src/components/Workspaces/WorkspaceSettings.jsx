@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
 import {
   deleteWorkspaceAPI,
+  removeWorkspaceLogoAPI,
+  setWorkspaceLogoAPI,
   updateWorkspaceAPI,
 } from "../../services/workspaces/workspaceService";
 import { useWorkspace, WORKSPACES_KEY } from "../../hooks/useWorkspace";
@@ -12,6 +14,7 @@ import { getErrorMessage } from "../../lib/axios";
 import { CURRENCIES } from "../../lib/money";
 import AlertMessage from "../Alert/AlertMessage";
 import { Button, Card, Field, Input, Notice, PageHeader, Select } from "../ui";
+import LogoCard from "./LogoCard";
 
 const WorkspaceSettings = () => {
   const navigate = useNavigate();
@@ -99,6 +102,13 @@ const WorkspaceSettings = () => {
             {updateMutation.isPending ? "Guardando…" : "Guardar cambios"}
           </Button>
         </Card>
+
+        <LogoCard
+          workspace={workspace}
+          onDone={() => queryClient.invalidateQueries({ queryKey: WORKSPACES_KEY })}
+          upload={setWorkspaceLogoAPI}
+          remove={removeWorkspaceLogoAPI}
+        />
 
         {can("workspace:delete") && (
           <Card as="section" aria-labelledby="borrar-espacio" className="p-5 space-y-4">

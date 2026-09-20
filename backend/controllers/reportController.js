@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const { monthlyReport, annualReport } = require("../services/reportService");
 const { buildMonthlyReport, buildAnnualReport, MONTHS } = require("../services/reportPdf");
 const { fileSlug, sendPdf } = require("../services/pdfBits");
+const { logoBytesFor } = require("../services/logoStorage");
 
 //! Año válido para un informe. Fuera de rango no tiene sentido pedirlo.
 const parseYear = (value) => {
@@ -25,11 +26,15 @@ const reportController = {
       return res.status(400).json({ message: "Mes o año inválido" });
     }
 
-    const report = await monthlyReport(req.workspace._id, year, month, isChurch(req));
+    const [report, logo] = await Promise.all([
+      monthlyReport(req.workspace._id, year, month, isChurch(req)),
+      logoBytesFor(req.workspace),
+    ]);
     const doc = buildMonthlyReport({
       workspace: req.workspace,
       report,
       issuedBy: req.user.username,
+      logo,
     });
     const nombre = MONTHS[month - 1].toLowerCase();
     sendPdf(res, doc, `informe-${fileSlug(req.workspace.name)}-${nombre}-${year}.pdf`);
@@ -40,11 +45,15 @@ const reportController = {
     const year = parseYear(req.query.year);
     if (year === null) return res.status(400).json({ message: "Año inválido" });
 
-    const report = await annualReport(req.workspace._id, year, isChurch(req));
+    const [report, logo] = await Promise.all([
+      annualReport(req.workspace._id, year, isChurch(req)),
+      logoBytesFor(req.workspace),
+    ]);
     const doc = buildAnnualReport({
       workspace: req.workspace,
       report,
       issuedBy: req.user.username,
+      logo,
     });
     sendPdf(res, doc, `informe-${fileSlug(req.workspace.name)}-${year}.pdf`);
   }),

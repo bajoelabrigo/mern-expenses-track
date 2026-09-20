@@ -48,7 +48,7 @@ const movementList = (doc, items, currency, noteOf) => {
 };
 
 //! El informe completo (una sola hoja si cabe; si no, sigue en la siguiente)
-const buildFundReport = ({ workspace, fund, report, issuedBy, withNames }) => {
+const buildFundReport = ({ workspace, fund, report, issuedBy, withNames, logo }) => {
   const { currency, name: churchName } = workspace;
   const doc = new PDFDocument({
     size: "A4",
@@ -60,6 +60,7 @@ const buildFundReport = ({ workspace, fund, report, issuedBy, withNames }) => {
     churchName,
     kind: "Informe de actividad",
     title: fund.name.toUpperCase(),
+    logo,
   });
 
   if (fund.description) {

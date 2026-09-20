@@ -23,6 +23,19 @@ export const updateWorkspaceAPI = async ({ id, name, currency }) => {
 };
 
 //! Borrado definitivo: exige escribir el nombre exacto
+//! Logo del espacio: el que sale impreso en informes y constancias
+export const setWorkspaceLogoAPI = async ({ id, file }) => {
+  const form = new FormData();
+  form.append("logo", file);
+  const response = await axiosInstance.put(`/workspaces/${id}/logo`, form);
+  return response.data;
+};
+
+export const removeWorkspaceLogoAPI = async (id) => {
+  const response = await axiosInstance.delete(`/workspaces/${id}/logo`);
+  return response.data;
+};
+
 export const deleteWorkspaceAPI = async ({ id, confirmName }) => {
   const response = await axiosInstance.delete(`/workspaces/${id}`, {
     data: { confirmName },

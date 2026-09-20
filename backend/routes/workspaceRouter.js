@@ -3,6 +3,7 @@ const isAuthenticated = require("../middlewares/isAuth");
 const validateObjectId = require("../middlewares/validateObjectId");
 const { withWorkspace, requirePermission, HEADER } = require("../middlewares/workspace");
 const { emailLimiter } = require("../middlewares/rateLimiters");
+const { logoUpload } = require("../middlewares/logoUpload");
 const ctrl = require("../controllers/workspaceController");
 
 const router = express.Router();
@@ -22,6 +23,20 @@ const scoped = [validateObjectId(), fromParam, withWorkspace];
 
 router.get("/:id", scoped, requirePermission("tx:read"), ctrl.getOne);
 router.put("/:id", scoped, requirePermission("workspace:manage"), ctrl.update);
+//! El logo del espacio (lo que sale impreso en los informes)
+router.put(
+  "/:id/logo",
+  scoped,
+  requirePermission("workspace:manage"),
+  logoUpload,
+  ctrl.setLogo
+);
+router.delete(
+  "/:id/logo",
+  scoped,
+  requirePermission("workspace:manage"),
+  ctrl.removeLogo
+);
 router.delete("/:id", scoped, requirePermission("workspace:delete"), ctrl.remove);
 
 router.get("/:id/members", scoped, requirePermission("tx:read"), ctrl.listMembers);
