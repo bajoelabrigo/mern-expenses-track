@@ -73,4 +73,28 @@ const parseTransactionDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-module.exports = { parseStartDate, parseEndDate, getPeriodRange, parseTransactionDate };
+//! Hasta el final de hoy. Los saldos y los totales solo cuentan lo que ya
+//! pasó: un movimiento con fecha futura (una repetición creada por
+//! adelantado) todavía no es dinero que entró o salió.
+const endOfToday = () => {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  return today;
+};
+
+//! Añade a un filtro el tope de "hasta hoy", respetando el que ya tuviera
+const upToToday = (filters = {}) => {
+  const limit = endOfToday();
+  const date = { ...(filters.date || {}) };
+  date.$lte = date.$lte && date.$lte < limit ? date.$lte : limit;
+  return { ...filters, date };
+};
+
+module.exports = {
+  parseStartDate,
+  parseEndDate,
+  getPeriodRange,
+  parseTransactionDate,
+  endOfToday,
+  upToToday,
+};

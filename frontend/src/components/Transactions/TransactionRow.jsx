@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { LuPaperclip } from "react-icons/lu";
+import { LuCalendarClock, LuPaperclip } from "react-icons/lu";
 import { CategoryIcon, Money } from "../ui";
 import { capitalize } from "../ui/styles";
+import { isScheduled } from "../../lib/periods";
 
 
 //! Una fila del libro: ícono de la categoría, concepto, detalle e importe.
@@ -33,6 +34,11 @@ const TransactionRow = ({ transaction, icon, currency, href, actions }) => {
         </p>
         <p className="text-xs text-muted truncate flex items-center gap-1">
           {transaction.receipt && <LuPaperclip aria-label="Con comprobante" className="shrink-0" />}
+          {isScheduled(transaction.date) && !transaction.voided && (
+            <span className="inline-flex items-center gap-1 text-ink-2 font-semibold">
+              <LuCalendarClock aria-hidden="true" /> Programado ·
+            </span>
+          )}
           {transaction.voided
             ? `Anulado${transaction.voidReason ? `: ${transaction.voidReason}` : ""}`
             : detail}

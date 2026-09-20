@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { LuPaperclip, LuRepeat } from "react-icons/lu";
+import { LuCalendarClock, LuPaperclip, LuRepeat } from "react-icons/lu";
 import { formatMoney, fromCents } from "../../lib/money";
-import { dayLabel } from "../../lib/periods";
+import { dayLabel, isScheduled } from "../../lib/periods";
 import { groupByDay } from "./groupByDay";
 import { CategoryIcon, Money } from "../ui";
 import { capitalize, cx } from "../ui/styles";
@@ -16,6 +16,13 @@ const Status = ({ transaction }) => {
     tags.push(
       <span key="v" className="px-2 py-0.5 rounded-full bg-danger-soft text-danger" title={transaction.voidReason || undefined}>
         Anulado
+      </span>
+    );
+  }
+  if (isScheduled(transaction.date) && !transaction.voided) {
+    tags.push(
+      <span key="p" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-2 text-ink-2">
+        <LuCalendarClock aria-hidden="true" /> Programado
       </span>
     );
   }

@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Fund = require("../model/Fund");
 const Transaction = require("../model/Transaccion");
 const FundTransfer = require("../model/FundTransfer");
+const { upToToday } = require("../utils/dates");
 
 const GENERAL_NAME = "General";
 const GENERAL_KEY = "general";
@@ -31,13 +32,13 @@ const resolveFund = async (workspaceId, value, { current = null, allowArchived =
   return { fund };
 };
 
-//! Totales en centavos por fondo (clave: id del fondo o "general"). Los
-//! anulados no cuentan.
+//! Totales en centavos por fondo (clave: id del fondo o "general"). No cuentan
+//! los anulados ni lo que tiene fecha futura (todavía no pasó).
 const fundTotals = async (workspaceId) => {
   const workspace = new mongoose.Types.ObjectId(String(workspaceId));
   const [movements, transfersOut, transfersIn] = await Promise.all([
     Transaction.aggregate([
-      { $match: { workspace, voided: { $ne: true } } },
+      { $match: upToToday({ workspace, voided: { $ne: true } }) },
       {
         $group: {
           _id: { $ifNull: ["$fund", null] },
@@ -47,11 +48,11 @@ const fundTotals = async (workspaceId) => {
       },
     ]),
     FundTransfer.aggregate([
-      { $match: { workspace, voided: { $ne: true } } },
+      { $match: upToToday({ workspace, voided: { $ne: true } }) },
       { $group: { _id: { $ifNull: ["$from", null] }, cents: { $sum: "$amountCents" } } },
     ]),
     FundTransfer.aggregate([
-      { $match: { workspace, voided: { $ne: true } } },
+      { $match: upToToday({ workspace, voided: { $ne: true } }) },
       { $group: { _id: { $ifNull: ["$to", null] }, cents: { $sum: "$amountCents" } } },
     ]),
   ]);

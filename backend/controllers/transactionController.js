@@ -12,6 +12,7 @@ const {
   parseEndDate,
   getPeriodRange,
   parseTransactionDate,
+  upToToday,
 } = require("../utils/dates");
 const { toCents, fromCents } = require("../utils/money");
 const { audit, transactionSnapshot } = require("../utils/audit");
@@ -139,10 +140,11 @@ const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {
 };
 
 //! Suma ingresos y gastos (en centavos) de los movimientos que cumplen el
-//! filtro. Los anulados nunca suman, aunque el filtro los incluya.
+//! filtro. Los anulados nunca suman, aunque el filtro los incluya, y lo que
+//! tiene fecha futura tampoco: todavía no ha pasado.
 const sumTotals = async (filters) => {
   const summary = await Transaction.aggregate([
-    { $match: { ...filters, voided: { $ne: true } } },
+    { $match: { ...upToToday(filters), voided: { $ne: true } } },
     {
       $group: {
         _id: null,
@@ -739,14 +741,15 @@ const transactionController = {
       return res.status(400).json({ message: "Zona horaria inválida" });
     }
 
-    //! Rango holgado (un día a cada lado) y el año exacto se filtra ya en la zona
+    //! Rango holgado (un día a cada lado) y el año exacto se filtra ya en la zona.
+    //! Como en el resto de cifras, el mes en curso solo cuenta hasta hoy.
     const rows = await Transaction.aggregate([
       {
-        $match: {
+        $match: upToToday({
           workspace: req.workspace._id,
           voided: { $ne: true },
           date: { $gte: new Date(Date.UTC(year - 1, 11, 31)), $lt: new Date(Date.UTC(year + 1, 0, 2)) },
-        },
+        }),
       },
       {
         $addFields: {
