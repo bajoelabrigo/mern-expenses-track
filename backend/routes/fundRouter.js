@@ -18,6 +18,8 @@ fundRouter.post("/", manage, fundController.create);
 fundRouter.get("/transfers", read, fundController.listTransfers);
 fundRouter.post("/transfers", manage, fundController.createTransfer);
 fundRouter.post("/transfers/:id/void", validateObjectId(), manage, fundController.voidTransfer);
+//! El informe acepta "general" como id, así que valida el fondo por dentro
+fundRouter.get("/:id/informe", read, fundController.report);
 fundRouter.put("/:id", validateObjectId(), manage, fundController.update);
 fundRouter.delete("/:id", validateObjectId(), manage, fundController.delete);
 

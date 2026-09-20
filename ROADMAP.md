@@ -74,7 +74,12 @@ despliega Netlify y Render) cuando está verificada.
 - [ ] Presupuesto anual por ministerio, con alertas al 80 % y 100 %.
 - [ ] Rol de líder de ministerio (solo ve y solicita sobre su presupuesto).
 - [x] Campañas con meta y barra de avance (un fondo con meta).
-- [ ] Informes mensual y anual en PDF con el logo de la iglesia.
+- [x] Informe de una actividad o fondo en PDF: lo que entró (con o sin los
+      nombres de quienes dieron, a elección de quien lo emite), lo que salió
+      con la marca de qué gastos tienen recibo, lo que se pasó a otros fondos,
+      lo que quedó y las firmas de tesorería.
+- [ ] Informes mensual y anual en PDF con el logo de la iglesia (comparten las
+      piezas de `services/pdfBits.js` con el informe de actividad).
 - [ ] Enlace de solo lectura para compartir un informe con la congregación.
 
 ## Fase 4 — Núcleo personal

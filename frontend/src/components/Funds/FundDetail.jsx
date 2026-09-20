@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -8,12 +9,15 @@ import {
   LuArrowUpRight,
   LuBan,
   LuChevronLeft,
+  LuDownload,
+  LuFileText,
   LuPencil,
   LuPlus,
   LuTrash2,
 } from "react-icons/lu";
 import {
   deleteFundAPI,
+  downloadFundReportAPI,
   listTransfersAPI,
   updateFundAPI,
   voidTransferAPI,
@@ -86,6 +90,50 @@ const TransferRow = ({ transfer, thisKey, currency, onVoid }) => {
   );
 };
 
+//! Descargar el informe de la actividad. Quien puede ver aportantes elige si
+//! salen los nombres: con nombres para el consejo, sin ellos para el mural.
+const ReportPanel = ({ fundKey: key, fundName, canSeeDonors }) => {
+  const [withNames, setWithNames] = useState(false);
+
+  const download = useMutation({
+    mutationFn: () => downloadFundReportAPI({ fund: key, withNames: canSeeDonors && withNames }),
+  });
+
+  return (
+    <Card className="p-4 space-y-3">
+      <p className="text-sm text-muted">
+        Una hoja con lo que entró, en qué se gastó y cuánto quedó de {fundName}, con espacio para las
+        firmas.
+      </p>
+
+      {canSeeDonors && (
+        <label className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold text-ink-2">Incluir los nombres de quienes dieron</span>
+          <input
+            type="checkbox"
+            checked={withNames}
+            onChange={(e) => setWithNames(e.target.checked)}
+            className="h-5 w-5 accent-[var(--ink)]"
+          />
+        </label>
+      )}
+      {canSeeDonors && withNames && (
+        <Notice tone="warning">
+          Con los nombres dentro, el informe ya no se puede publicar ni pegar en el mural.
+        </Notice>
+      )}
+
+      <Button variant="accent" onClick={() => download.mutate()} disabled={download.isPending}>
+        <LuDownload aria-hidden="true" />
+        {download.isPending ? "Preparando…" : "Descargar"}
+      </Button>
+
+      {download.isError && <Notice tone="danger">{getErrorMessage(download.error)}</Notice>}
+      {download.isSuccess && <Notice tone="success">Se descargó {download.data}</Notice>}
+    </Card>
+  );
+};
+
 const Stat = ({ label, value, currency }) => (
   <div className="rounded-2xl bg-surface-2 px-4 py-3">
     <p className="text-xs font-semibold text-muted">{label}</p>
@@ -103,6 +151,7 @@ const FundDetail = () => {
   const { findFund, isLoading, isError, error } = useFunds();
   const fund = findFund(key);
   const canManage = can("fund:manage");
+  const [showReport, setShowReport] = useState(false);
 
   const transfers = useQuery({
     queryKey: [...TRANSFERS_KEY, key],
@@ -214,6 +263,9 @@ const FundDetail = () => {
             <LuArrowLeftRight aria-hidden="true" /> Mover dinero
           </ButtonLink>
         )}
+        <Button variant="secondary" onClick={() => setShowReport((v) => !v)} aria-expanded={showReport}>
+          <LuFileText aria-hidden="true" /> Informe en PDF
+        </Button>
         {canManage && !fund.general && (
           <Button
             variant="ghost"
@@ -230,6 +282,10 @@ const FundDetail = () => {
           </Button>
         )}
       </div>
+
+      {showReport && (
+        <ReportPanel fundKey={key} fundName={fund.name} canSeeDonors={can("donor:read")} />
+      )}
 
       <section aria-labelledby="movimientos-fondo">
         <div className="flex items-center justify-between mb-2 px-1">
