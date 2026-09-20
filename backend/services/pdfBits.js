@@ -26,6 +26,15 @@ const capitalize = (text) => {
 
 const contentWidth = (doc) => doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
+//! ¿Cabe algo de `needed` de alto en lo que queda de hoja? Si no, pasa de
+//! página. pdfkit solo salta solo cuando escribe "en flujo"; como las filas
+//! ponen el texto en una posición exacta (para alinear el monto a la derecha),
+//! el salto hay que pedirlo a mano o la fila se parte entre dos hojas.
+const ensureRoom = (doc, needed = 24) => {
+  const bottom = doc.page.height - doc.page.margins.bottom;
+  if (doc.y + needed > bottom) doc.addPage();
+};
+
 //! Una regla horizontal a la altura actual
 const rule = (doc, y = doc.y) => {
   doc
@@ -39,6 +48,7 @@ const rule = (doc, y = doc.y) => {
 //! Una fila de dos columnas (concepto a la izquierda, monto a la derecha).
 //! `note` es un texto gris que va debajo del concepto (la categoría, quién dio).
 const row = (doc, label, value, { bold = false, top = false, note = "" } = {}) => {
+  ensureRoom(doc, note ? 34 : 22);
   const y = doc.y;
   if (top) rule(doc, y - 4);
 
@@ -57,6 +67,30 @@ const row = (doc, label, value, { bold = false, top = false, note = "" } = {}) =
   doc.moveDown(0.6);
 };
 
+//! Una fila de tabla: el concepto a la izquierda y varias cifras a la derecha,
+//! en columnas del mismo ancho. Para la tabla mes a mes del informe anual.
+const tableRow = (doc, label, values, { bold = false, top = false, muted = false } = {}) => {
+  ensureRoom(doc, 20);
+  const y = doc.y;
+  if (top) rule(doc, y - 4);
+
+  const left = doc.page.margins.left;
+  const width = contentWidth(doc);
+  const colWidth = (width * 0.62) / values.length;
+  const labelWidth = width - colWidth * values.length - 8;
+
+  doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(muted ? MUTED : INK);
+  doc.text(label, left, y, { width: labelWidth, lineBreak: false, ellipsis: true });
+  values.forEach((value, i) => {
+    doc.text(String(value), left + labelWidth + 8 + colWidth * i, y, {
+      width: colWidth,
+      align: "right",
+      lineBreak: false,
+    });
+  });
+  doc.moveDown(0.55);
+};
+
 //! Encabezado: nombre de la iglesia, de qué es el papel y su título
 const header = (doc, { churchName, kind, title }) => {
   doc.font("Helvetica-Bold").fontSize(16).fillColor(INK).text(churchName, { align: "center" });
@@ -68,6 +102,8 @@ const header = (doc, { churchName, kind, title }) => {
 
 //! Título de una sección de la hoja
 const section = (doc, text) => {
+  //! Un título solo al pie de la hoja, con su lista en la siguiente, se lee fatal
+  ensureRoom(doc, 60);
   doc.font("Helvetica-Bold").fontSize(11).fillColor(INK).text(text, doc.page.margins.left, doc.y);
   doc.moveDown(0.5);
 };
@@ -80,6 +116,8 @@ const note = (doc, text, options = {}) => {
 
 //! Una o dos líneas de firma, repartidas a lo ancho
 const signatures = (doc, labels) => {
+  //! Las firmas y el pie van juntos o no van
+  ensureRoom(doc, 70);
   const left = doc.page.margins.left;
   const width = contentWidth(doc);
   const y = doc.y;
@@ -131,8 +169,10 @@ module.exports = {
   shortDate,
   capitalize,
   contentWidth,
+  ensureRoom,
   rule,
   row,
+  tableRow,
   header,
   section,
   note,

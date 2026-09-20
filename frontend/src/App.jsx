@@ -12,6 +12,7 @@ import NotFound from "./components/common/NotFound";
 //! cuando el usuario entra a esas pantallas.
 const RegistrationForm = lazy(() => import("./components/Users/Register"));
 const Downloads = lazy(() => import("./components/Home/Downloads"));
+const ReportsPage = lazy(() => import("./components/Reports/ReportsPage"));
 const ForgotPassword = lazy(() => import("./components/Users/ForgotPassword"));
 const ResetPassword = lazy(() => import("./components/Users/ResetPassword"));
 const UserProfile = lazy(() => import("./components/Users/UserProfile"));
@@ -138,6 +139,14 @@ const App = () => (
             element={
               <Privada>
                 <FundsPage />
+              </Privada>
+            }
+          />
+          <Route
+            path="informes"
+            element={
+              <Privada>
+                <ReportsPage />
               </Privada>
             }
           />
