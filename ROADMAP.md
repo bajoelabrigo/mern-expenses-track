@@ -78,8 +78,12 @@ despliega Netlify y Render) cuando está verificada.
       nombres de quienes dieron, a elección de quien lo emite), lo que salió
       con la marca de qué gastos tienen recibo, lo que se pasó a otros fondos,
       lo que quedó y las firmas de tesorería.
-- [ ] Informes mensual y anual en PDF con el logo de la iglesia (comparten las
-      piezas de `services/pdfBits.js` con el informe de actividad).
+- [x] Informes mensual y anual en PDF: saldo de apertura, lo que entró y en qué
+      se fue, saldo de cierre, el reparto por fondos **a esa fecha** y las
+      firmas. El anual añade la tabla mes a mes. Comparten las piezas de
+      `services/pdfBits.js` con el informe de actividad.
+- [ ] Logo de la iglesia en los informes: primero hay que poder subirlo desde
+      Ajustes del espacio (a Cloudinary, como los comprobantes).
 - [ ] Enlace de solo lectura para compartir un informe con la congregación.
 
 ## Fase 4 — Núcleo personal

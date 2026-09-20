@@ -4,6 +4,7 @@ import {
   LuLayers,
   LuPiggyBank,
   LuHeartHandshake,
+  LuFileText,
   LuReceiptText,
   LuShield,
   LuTags,
@@ -24,6 +25,7 @@ export const NAV_ITEMS = [
     //! Quién dio cuánto es cosa de la tesorería, y solo en una iglesia
     when: ({ can, workspace }) => can("donor:read") && workspace?.kind === "iglesia",
   },
+  { to: "/informes", label: "Informes", icon: LuFileText },
   { to: "/categories", label: "Categorías", icon: LuTags },
   { to: "/espacio/miembros", label: "Miembros", icon: LuUsers, primary: true },
   { to: "/espacio/historial", label: "Historial", icon: LuHistory, when: ({ can }) => can("audit:read") },

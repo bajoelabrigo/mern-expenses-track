@@ -34,11 +34,14 @@ const resolveFund = async (workspaceId, value, { current = null, allowArchived =
 
 //! Totales en centavos por fondo (clave: id del fondo o "general"). No cuentan
 //! los anulados ni lo que tiene fecha futura (todavía no pasó).
-const fundTotals = async (workspaceId) => {
+//! `until` corta antes de esa fecha: los informes de un mes o un año cerrado
+//! necesitan el reparto que había AL CERRAR, no el de hoy.
+const fundTotals = async (workspaceId, { until } = {}) => {
   const workspace = new mongoose.Types.ObjectId(String(workspaceId));
+  const hasta = until ? { date: { $lt: until } } : {};
   const [movements, transfersOut, transfersIn] = await Promise.all([
     Transaction.aggregate([
-      { $match: upToToday({ workspace, voided: { $ne: true } }) },
+      { $match: upToToday({ workspace, voided: { $ne: true }, ...hasta }) },
       {
         $group: {
           _id: { $ifNull: ["$fund", null] },
@@ -48,11 +51,11 @@ const fundTotals = async (workspaceId) => {
       },
     ]),
     FundTransfer.aggregate([
-      { $match: upToToday({ workspace, voided: { $ne: true } }) },
+      { $match: upToToday({ workspace, voided: { $ne: true }, ...hasta }) },
       { $group: { _id: { $ifNull: ["$from", null] }, cents: { $sum: "$amountCents" } } },
     ]),
     FundTransfer.aggregate([
-      { $match: upToToday({ workspace, voided: { $ne: true } }) },
+      { $match: upToToday({ workspace, voided: { $ne: true }, ...hasta }) },
       { $group: { _id: { $ifNull: ["$to", null] }, cents: { $sum: "$amountCents" } } },
     ]),
   ]);

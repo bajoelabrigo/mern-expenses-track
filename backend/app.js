@@ -15,6 +15,7 @@ const workspaceRouter = require("./routes/workspaceRouter");
 const invitationRouter = require("./routes/invitationRouter");
 const fundRouter = require("./routes/fundRouter");
 const donorRouter = require("./routes/donorRouter");
+const reportRouter = require("./routes/reportRouter");
 const { CORS_ORIGINS, SERVE_FRONTEND, isProduction } = require("./config/env");
 
 const app = express();
@@ -71,6 +72,7 @@ app.use("/api/v1/workspaces", workspaceRouter);
 app.use("/api/v1/invitations", invitationRouter);
 app.use("/api/v1/funds", fundRouter);
 app.use("/api/v1/donors", donorRouter);
+app.use("/api/v1/reports", reportRouter);
 
 //! Servir el frontend compilado solo si se activa explícitamente
 if (SERVE_FRONTEND) {
