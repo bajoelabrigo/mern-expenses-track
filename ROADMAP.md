@@ -68,7 +68,11 @@ despliega Netlify y Render) cuando está verificada.
       tesorero y contador (la API lo oculta al auditor y a los lectores).
 - [x] Constancias de donación anuales en PDF (por persona o todas de un año;
       total en cifras y en letras, por tipo de aporte y por mes).
-- [ ] Conteo de ofrenda del culto con doble firma.
+- [x] Conteo de ofrenda del culto con doble firma: hoja con los billetes y
+      monedas de cada moneda (suma sola), y el movimiento **no entra al libro**
+      hasta que una segunda persona lo firma. Quien contó no puede firmar su
+      propio conteo. Un conteo pendiente se descarta con motivo; uno ya
+      asentado se corrige anulando su movimiento.
 - [x] Contabilidad por fondos (general, misiones, construcción, benevolencia):
       saldo por fondo, pases entre fondos (anulables) y fondos archivados.
 - [ ] Presupuesto anual por ministerio, con alertas al 80 % y 100 %.

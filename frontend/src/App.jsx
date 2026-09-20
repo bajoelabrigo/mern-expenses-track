@@ -13,6 +13,7 @@ import NotFound from "./components/common/NotFound";
 const RegistrationForm = lazy(() => import("./components/Users/Register"));
 const Downloads = lazy(() => import("./components/Home/Downloads"));
 const ReportsPage = lazy(() => import("./components/Reports/ReportsPage"));
+const CountsPage = lazy(() => import("./components/Counts/CountsPage"));
 const SupportPage = lazy(() => import("./components/Support/SupportPage"));
 const ForgotPassword = lazy(() => import("./components/Users/ForgotPassword"));
 const ResetPassword = lazy(() => import("./components/Users/ResetPassword"));
@@ -140,6 +141,14 @@ const App = () => (
             element={
               <Privada>
                 <FundsPage />
+              </Privada>
+            }
+          />
+          <Route
+            path="conteos"
+            element={
+              <Privada>
+                <CountsPage />
               </Privada>
             }
           />

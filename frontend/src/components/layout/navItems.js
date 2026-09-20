@@ -3,6 +3,7 @@ import {
   LuHouse,
   LuLayers,
   LuPiggyBank,
+  LuHandCoins,
   LuHeartHandshake,
   LuFileText,
   LuReceiptText,
@@ -24,6 +25,13 @@ export const NAV_ITEMS = [
     icon: LuHeartHandshake,
     //! Quién dio cuánto es cosa de la tesorería, y solo en una iglesia
     when: ({ can, workspace }) => can("donor:read") && workspace?.kind === "iglesia",
+  },
+  {
+    to: "/conteos",
+    label: "Conteo de ofrenda",
+    icon: LuHandCoins,
+    //! Contar la ofrenda entre dos solo tiene sentido en una iglesia
+    when: ({ workspace }) => workspace?.kind === "iglesia",
   },
   { to: "/informes", label: "Informes", icon: LuFileText },
   { to: "/categories", label: "Categorías", icon: LuTags },
