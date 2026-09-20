@@ -1,4 +1,5 @@
 import { axiosInstance } from "../../lib/axios";
+import { downloadPdf } from "../../lib/downloadPdf";
 
 //! Fondos del espacio con su saldo; el primero siempre es "General" (_id null)
 export const listFundsAPI = async () => {
@@ -34,6 +35,14 @@ export const createTransferAPI = async ({ from, to, amount, date, note }) => {
   const response = await axiosInstance.post("/funds/transfers", { from, to, amount, date, note });
   return response.data;
 };
+
+//! Informe de la actividad en PDF. `withNames`: incluir a quién se le debe
+//! cada aporte (el servidor lo ignora si quien lo pide no puede ver aportantes).
+export const downloadFundReportAPI = ({ fund, withNames }) =>
+  downloadPdf(`/funds/${fund}/informe`, {
+    params: withNames ? { nombres: "1" } : {},
+    fallbackName: "informe.pdf",
+  });
 
 export const voidTransferAPI = async ({ id, reason }) => {
   const response = await axiosInstance.post(`/funds/transfers/${id}/void`, { reason });

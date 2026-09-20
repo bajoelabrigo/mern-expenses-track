@@ -222,6 +222,148 @@ describe("Fondos", () => {
     assert.equal(audit.find((e) => e.action === "fund.transfer").after.to, "Misiones");
   });
 
+  test("el informe de una actividad cuadra lo que entró, lo que salió y lo que quedó", async () => {
+    const { pastor, ws } = await iglesia();
+    const actividad = (await crearFondo(pastor, ws, {
+      name: "Día de Acción de Gracias",
+      goal: 1000,
+    }).expect(201)).body;
+
+    //! Lo recaudado, una compra con recibo y otra sin él
+    await movimiento(pastor, ws, { amount: 600, fund: actividad._id, description: "Ofrenda del almuerzo" }).expect(201);
+    await movimiento(pastor, ws, {
+      type: "expense",
+      category: "alimentos",
+      amount: 250.5,
+      fund: actividad._id,
+      description: "Pollo y verduras",
+    }).expect(201);
+    await movimiento(pastor, ws, {
+      type: "expense",
+      category: "alimentos",
+      amount: 49.5,
+      fund: actividad._id,
+      description: "Gaseosas",
+    }).expect(201);
+    //! Un apoyo que vino del fondo General
+    await pase(pastor, ws, { from: null, to: actividad._id, amount: 100, note: "Apoyo de la iglesia" }).expect(201);
+    //! Y al final el sobrante se devuelve al General
+    await pase(pastor, ws, { from: actividad._id, to: null, amount: 200, note: "Sobrante" }).expect(201);
+
+    const { buildReportData } = require("../controllers/fundController");
+    const Fund = require("../model/Fund");
+    const fondo = await Fund.findById(actividad._id);
+    const { info, report } = await buildReportData(ws, fondo, { withNames: false });
+
+    assert.equal(info.name, "Día de Acción de Gracias");
+    assert.equal(info.goal, 1000);
+    assert.equal(report.raised, 700, "600 de ofrenda más el pase de 100");
+    assert.equal(report.spent, 300);
+    assert.equal(report.movedOut, 200);
+    assert.equal(report.balance, 200);
+    assert.equal(report.expenses.length, 2);
+    assert.equal(report.withReceipt, 0, "ninguna compra tiene comprobante todavía");
+    //! El pase recibido aparece en la lista de lo que entró
+    assert.ok(report.income.some((i) => i.concept.includes("Pase recibido")));
+  });
+
+  test("los nombres de quienes dieron solo salen si se piden y se pueden ver", async () => {
+    const { pastor, ws } = await iglesia();
+    const fondo = (await crearFondo(pastor, ws, { name: "Almuerzo" }).expect(201)).body;
+    const aportante = (await as("post", "/api/v1/donors", pastor, ws).send({ name: "Marta Quispe" }).expect(201)).body;
+    await movimiento(pastor, ws, { amount: 50, fund: fondo._id, donor: aportante._id }).expect(201);
+
+    const { buildReportData } = require("../controllers/fundController");
+    const Fund = require("../model/Fund");
+    const doc = await Fund.findById(fondo._id);
+
+    const sinNombres = await buildReportData(ws, doc, { withNames: false });
+    assert.equal(sinNombres.report.income[0].donor, "");
+
+    const conNombres = await buildReportData(ws, doc, { withNames: true });
+    assert.equal(conNombres.report.income[0].donor, "Marta Quispe");
+
+    //! Un auditor no puede ver los nombres ni pidiéndolos en la URL
+    const auditor = await createUser();
+    await invitarYAceptar(pastor, ws, auditor, "auditor");
+    const pdf = await as("get", `/api/v1/funds/${fondo._id}/informe?nombres=1`, auditor, ws)
+      .buffer()
+      .parse((res, cb) => {
+        const chunks = [];
+        res.on("data", (c) => chunks.push(Buffer.from(c)));
+        res.on("end", () => cb(null, Buffer.concat(chunks)));
+      })
+      .expect(200);
+    //! El PDF se genera igual, pero con la sección marcada como sin nombres
+    assert.match(pdf.headers["content-type"], /application\/pdf/);
+    assert.ok(pdf.body.toString("latin1").startsWith("%PDF"));
+  });
+
+  test("el informe se descarga en PDF, también el del fondo General", async () => {
+    const { pastor, ws } = await iglesia();
+    const fondo = (await crearFondo(pastor, ws, { name: "Acción de Gracias" }).expect(201)).body;
+    await movimiento(pastor, ws, { amount: 120, fund: fondo._id }).expect(201);
+    await movimiento(pastor, ws, { amount: 40 }).expect(201);
+
+    const pdf = (url) =>
+      as("get", url, pastor, ws)
+        .buffer()
+        .parse((res, cb) => {
+          const chunks = [];
+          res.on("data", (c) => chunks.push(Buffer.from(c)));
+          res.on("end", () => cb(null, Buffer.concat(chunks)));
+        });
+
+    const uno = await pdf(`/api/v1/funds/${fondo._id}/informe`).expect(200);
+    assert.match(uno.headers["content-type"], /application\/pdf/);
+    assert.match(uno.headers["content-disposition"], /informe-accion-de-gracias-\d{4}\.pdf/);
+    assert.ok(uno.body.toString("latin1").startsWith("%PDF"));
+
+    //! "general" vale como id: es el fondo de todo lo que no tiene otro
+    const general = await pdf("/api/v1/funds/general/informe").expect(200);
+    assert.match(general.headers["content-disposition"], /informe-general-\d{4}\.pdf/);
+
+    //! Un fondo que no existe no revienta
+    await as("get", "/api/v1/funds/noesunid/informe", pastor, ws).expect(400);
+  });
+
+  test("el informe no cuenta lo anulado ni lo que todavía no pasó", async () => {
+    const { pastor, ws } = await iglesia();
+    const fondo = (await crearFondo(pastor, ws, { name: "Almuerzo" }).expect(201)).body;
+    const manana = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    await movimiento(pastor, ws, { amount: 100, fund: fondo._id, date: ayer }).expect(201);
+    await movimiento(pastor, ws, { amount: 999, fund: fondo._id, date: manana }).expect(201);
+    const anulado = (await movimiento(pastor, ws, { amount: 500, fund: fondo._id, date: ayer }).expect(201)).body[0];
+    await as("post", `/api/v1/transactions/${anulado._id}/void`, pastor, ws)
+      .send({ reason: "duplicado" })
+      .expect(200);
+
+    const { buildReportData } = require("../controllers/fundController");
+    const Fund = require("../model/Fund");
+    const { report } = await buildReportData(ws, await Fund.findById(fondo._id), { withNames: false });
+
+    assert.equal(report.raised, 100);
+    assert.equal(report.income.length, 1);
+  });
+
+  test("la línea del periodo no repite el mes ni el año", () => {
+    const { periodLine } = require("../services/fundReportPdf");
+    const dia = (iso) => ({ date: new Date(`${iso}T12:00:00Z`) });
+
+    assert.equal(periodLine([]), "Sin movimientos registrados");
+    assert.equal(periodLine([dia("2026-09-05")]), "5 de septiembre de 2026");
+    assert.equal(
+      periodLine([dia("2026-09-05"), dia("2026-09-16")]),
+      "Del 5 al 16 de septiembre de 2026"
+    );
+    assert.equal(
+      periodLine([dia("2026-08-30"), dia("2026-09-16")]),
+      "Del 30 de agosto de 2026 al 16 de septiembre de 2026"
+    );
+  });
+
   test("borrar el espacio borra sus fondos y pases", async () => {
     const { pastor, ws } = await iglesia();
     await crearFondo(pastor, ws, { name: "Misiones" }).expect(201);

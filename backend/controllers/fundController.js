@@ -4,8 +4,11 @@ const Fund = require("../model/Fund");
 const FundTransfer = require("../model/FundTransfer");
 const Transaction = require("../model/Transaccion");
 const { toCents, fromCents } = require("../utils/money");
-const { parseTransactionDate } = require("../utils/dates");
+const { parseTransactionDate, upToToday } = require("../utils/dates");
 const { audit, fundSnapshot } = require("../utils/audit");
+const { can } = require("../utils/permissions");
+const { buildFundReport, TRANSFER_LABEL } = require("../services/fundReportPdf");
+const { fileSlug, sendPdf } = require("../services/pdfBits");
 const {
   GENERAL_NAME,
   GENERAL_KEY,
@@ -74,6 +77,75 @@ const withBalance = (base, t = { income: 0, expense: 0, transfersIn: 0, transfer
 };
 
 const duplicateName = (err) => err && err.code === 11000;
+
+//! Datos del informe de un fondo: sus movimientos ordenados por fecha, los
+//! pases recibidos como una entrada más, y los totales. Solo cuenta lo que ya
+//! pasó y lo que no está anulado, como el resto de cifras de la app.
+const buildReportData = async (workspaceId, fund, { withNames }) => {
+  const fundFilter = fund ? fund._id : null;
+  const [movements, transfersIn, transfersOut] = await Promise.all([
+    Transaction.find(upToToday({ workspace: workspaceId, fund: fundFilter, voided: { $ne: true } }))
+      .sort({ date: 1 })
+      .populate("donor", "name"),
+    FundTransfer.find(upToToday({ workspace: workspaceId, to: fundFilter, voided: { $ne: true } }))
+      .sort({ date: 1 })
+      .populate("from", "name"),
+    FundTransfer.find(upToToday({ workspace: workspaceId, from: fundFilter, voided: { $ne: true } })),
+  ]);
+
+  const income = movements
+    .filter((t) => t.type === "income")
+    .map((t) => ({
+      date: t.date,
+      concept: t.description || t.category,
+      category: t.category,
+      donor: withNames && t.donor ? t.donor.name : "",
+      amount: fromCents(t.amountCents),
+    }));
+
+  //! Un pase recibido también es dinero que llegó a la actividad
+  transfersIn.forEach((t) => {
+    income.push({
+      date: t.date,
+      concept: `${TRANSFER_LABEL} de ${t.from ? t.from.name : GENERAL_NAME}`,
+      category: t.note || "",
+      donor: "",
+      amount: fromCents(t.amountCents),
+    });
+  });
+  income.sort((a, b) => a.date - b.date);
+
+  const expenses = movements
+    .filter((t) => t.type === "expense")
+    .map((t) => ({
+      date: t.date,
+      concept: t.description || t.category,
+      category: t.category,
+      receipt: Boolean(t.receipt),
+      amount: fromCents(t.amountCents),
+    }));
+
+  const sum = (list) => list.reduce((total, item) => total + item.amount, 0);
+  const movedOutCents = transfersOut.reduce((total, t) => total + t.amountCents, 0);
+  const raised = sum(income);
+  const spent = sum(expenses);
+  const movedOut = fromCents(movedOutCents);
+
+  return {
+    info: fund
+      ? { name: fund.name, description: fund.description, goal: fromCents(fund.goalCents || 0) || null }
+      : { name: GENERAL_NAME, description: "Todo lo que no está en otro fondo", goal: null },
+    report: {
+      income,
+      expenses,
+      raised,
+      spent,
+      movedOut,
+      balance: Number((raised - spent - movedOut).toFixed(2)),
+      withReceipt: expenses.filter((e) => e.receipt).length,
+    },
+  };
+};
 
 const fundController = {
   //! Fondos del espacio con su saldo. El primero es siempre "General".
@@ -145,6 +217,27 @@ const fundController = {
 
     const totals = await fundTotals(req.workspace._id);
     res.status(200).json(withBalance({ ...fund.toJSON(), general: false }, totals.get(String(fund._id))));
+  }),
+
+  //! Informe de la actividad en PDF: lo que entró, en qué se gastó y qué quedó.
+  //! Con ?nombres=1 sale quién dio cada aporte (solo si tiene permiso de verlo).
+  report: asyncHandler(async (req, res) => {
+    const { fund, error, status } = await resolveFund(req.workspace._id, req.params.id, {
+      allowArchived: true,
+    });
+    if (error) return res.status(status).json({ message: error });
+
+    const withNames = req.query.nombres === "1" && can(req.role, "donor:read");
+    const { info, report } = await buildReportData(req.workspace._id, fund, { withNames });
+
+    const doc = buildFundReport({
+      workspace: req.workspace,
+      fund: info,
+      report,
+      issuedBy: req.user.username,
+      withNames,
+    });
+    sendPdf(res, doc, `informe-${fileSlug(info.name)}-${new Date().getFullYear()}.pdf`);
   }),
 
   //! Solo se borra un fondo que nunca se usó; si tiene historia, se archiva
@@ -297,3 +390,5 @@ const fundController = {
 };
 
 module.exports = fundController;
+//! Se exporta para poder comprobar en las pruebas lo que dirá el informe
+module.exports.buildReportData = buildReportData;
