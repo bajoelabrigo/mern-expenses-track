@@ -110,6 +110,16 @@ module.exports = {
   CLOUDINARY_CLOUD_NAME: leer("CLOUDINARY_CLOUD_NAME") || "",
   CLOUDINARY_API_KEY: leer("CLOUDINARY_API_KEY") || "",
   CLOUDINARY_API_SECRET: leer("CLOUDINARY_API_SECRET") || "",
+  //! Socios de la app: aportes voluntarios con PayPal para sostener el
+  //! servicio. Sin estas variables la sección de socios responde 503 y no se
+  //! muestra. PAYPAL_MODE: "live" para cobrar de verdad; cualquier otra cosa
+  //! usa el entorno de pruebas (sandbox).
+  PAYPAL_CLIENT_ID: leer("PAYPAL_CLIENT_ID") || "",
+  PAYPAL_CLIENT_SECRET: leer("PAYPAL_CLIENT_SECRET") || "",
+  PAYPAL_MODE: leer("PAYPAL_MODE") || "sandbox",
+  //! Id del webhook que se crea en el panel de PayPal; sin él no se puede
+  //! comprobar que un aviso viene de verdad de PayPal y se rechaza.
+  PAYPAL_WEBHOOK_ID: leer("PAYPAL_WEBHOOK_ID") || "",
   SMTP_HOST: leer("SMTP_HOST") || "",
   SMTP_PORT: Number(leer("SMTP_PORT")) || 587,
   SMTP_USER: leer("SMTP_USER") || "",
