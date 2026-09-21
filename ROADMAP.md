@@ -176,8 +176,16 @@ despliega Netlify y Render) cuando está verificada.
       puede ocultar, y el Perfil la vuelve a mostrar. En un espacio ya armado no
       aparece: no queda nada que pedirle.
 - [ ] Landing page y alta guiada para una iglesia nueva (la guía de dentro ya está).
-- [ ] Soporte: centro de ayuda (cómo registrar, roles, fondos, constancias) y
-      un botón de "reportar problema" desde la app.
+- [x] **Ayuda paso a paso** (`/ayuda`): siete temas por tarea —entrar, preparar
+      el espacio, registrar la ofrenda, registrar un gasto con la boleta, el
+      conteo entre dos, ver cómo va y corregir un error—, con capturas de las
+      pantallas de verdad. Es una página **pública**, así que se manda por
+      WhatsApp y se abre sin cuenta, y a la vez está en el menú de la app. Arriba
+      de todo van las tres cosas que hay que saber y un «puedes estar tranquila»
+      que quita el miedo a romper algo.
+- [ ] Soporte: centro de ayuda más completo (roles, fondos, constancias,
+      ministerios), buscador dentro de la ayuda y un botón de "reportar
+      problema" que abra WhatsApp con el mensaje escrito (falta el número).
 - [ ] Verificación de correo y 2FA para tesoreros.
 - [ ] Exportación completa de datos, términos y privacidad.
 - [ ] Infraestructura: plan de pago en Render (sin arranque en frío) y copias

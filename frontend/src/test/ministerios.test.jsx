@@ -276,9 +276,9 @@ describe("Ministerios", () => {
     //! En un espacio personal no hay ministerios
     expect(visibleNavItems(paraNav(EN_PERSONAL)).some((i) => i.to === "/ministerios")).toBe(false);
 
-    //! El líder no ve el libro: le queda su ministerio y poco más
+    //! El líder no ve el libro: le queda su ministerio, la ayuda y poco más
     const delLider = visibleNavItems(paraNav(LIDER));
-    expect(delLider.map((i) => i.to)).toEqual(["/ministerios", "/espacios", "/profile"]);
+    expect(delLider.map((i) => i.to)).toEqual(["/ministerios", "/ayuda", "/espacios", "/profile"]);
     //! Y por eso su ministerio va en la barra de abajo, a mano
     expect(delLider.find((i) => i.to === "/ministerios").primary).toBe(true);
     expect(delTesorero.find((i) => i.to === "/ministerios").primary).toBe(false);

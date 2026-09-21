@@ -53,6 +53,7 @@ const DonorDetail = lazy(() => import("./components/Donors/DonorDetail"));
 const DonorEditor = lazy(() => import("./components/Donors/DonorEditor"));
 const AdminUsersList = lazy(() => import("./components/Admin/AdminUsersList"));
 const AvisosPage = lazy(() => import("./components/Notificaciones/AvisosPage"));
+const AyudaPage = lazy(() => import("./components/Ayuda/AyudaPage"));
 
 const Cargando = () => (
   <p className="text-center text-muted py-10">Cargando...</p>
@@ -79,6 +80,9 @@ const App = () => (
         <Route path="/" element={<Layout />}>
           <Route index element={<HeroSection />} />
           <Route path="descargas" element={<Downloads />} />
+          {/* Cómo se usa la app. Pública a propósito: el enlace se manda por
+              WhatsApp y tiene que abrir sin cuenta. */}
+          <Route path="ayuda" element={<AyudaPage />} />
           {/* Las cuentas que la iglesia comparte: sin sesión, a propósito */}
           <Route path="cuentas/:token" element={<PublicReport />} />
           <Route path="login" element={<LoginForm />} />

@@ -22,6 +22,10 @@ const BUTTON_SIZES = {
   lg: "h-13 px-6 text-base",
 };
 
+//! OJO al ocultar un botón con la clase `hidden`: en la versión de Tailwind del
+//! proyecto, `display:none` se emite ANTES que `inline-flex` (que va aquí en la
+//! base), así que el botón se sigue viendo. Para eso está `useIsDesktop()` o
+//! envolver el botón en un contenedor con `hidden lg:block`.
 export const buttonClass = ({ variant = "primary", size = "md", block, className } = {}) =>
   cx(
     "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition",

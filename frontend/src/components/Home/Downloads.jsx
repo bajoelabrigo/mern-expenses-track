@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { LuDownload, LuMonitor } from "react-icons/lu";
 import { FaAndroid, FaApple } from "react-icons/fa6";
 import { ButtonLink, Card } from "../ui";
@@ -149,6 +150,13 @@ const Downloads = () => (
           Ya tengo cuenta
         </ButtonLink>
       </div>
+      <p className="mt-5 text-sm text-muted">
+        ¿Es para tu tesorera y no sabe por dónde empezar?{" "}
+        <Link to="/ayuda" className="font-semibold text-ink underline underline-offset-4">
+          Mándale la ayuda paso a paso
+        </Link>
+        .
+      </p>
     </section>
   </div>
 );

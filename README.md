@@ -100,7 +100,9 @@ demasiado corto: es intencional, evita desplegar con una configuración insegura
 | `npm run build`                 | Instala dependencias y compila el frontend.    |
 | `npm start`                     | Arranca la API en modo producción.             |
 | `node backend/scripts/dev-memoria.js` | API contra un MongoDB en memoria, para probar en local sin tocar la base real. |
+| `npm run datos-ejemplo`         | Llena esa base en memoria con una iglesia de ejemplo (equipo, personas, nueve meses de movimientos). |
 | `node backend/scripts/migrar-espacios.js` | Migración a espacios (simulación; con `--aplicar` escribe). |
+| `node frontend/scripts/generar-iconos.mjs` | Rehace los iconos de la web y del APK desde el logo maestro. |
 
 ## Pruebas
 
@@ -128,8 +130,9 @@ backend/
   utils/            # fechas, dinero (centavos), permisos, auditoría, correo
   tests/            # pruebas de integración (node:test + supertest)
 frontend/
-  public/           # iconos (generados), service worker de avisos y el APK
-  scripts/          # generador de iconos desde el logo maestro
+  public/           # iconos (generados), service worker de avisos, capturas de
+                    # la ayuda y el APK
+  scripts/          # generador de iconos y cómo rehacer las capturas de la ayuda
   src/components/   # UI por dominio
   src/services/     # llamadas a la API
   src/lib/axios.js  # instancia con token y espacio, manejo de 401 y errores

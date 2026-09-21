@@ -60,6 +60,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
+        //! Las capturas de la ayuda (165 KB) NO se guardan en el teléfono al
+        //! instalar: se bajan solo si alguien abre esa página. Son para leer una
+        //! vez, no para tenerlas siempre.
+        globIgnores: ["**/ayuda/*.png"],
         //! Los avisos al teléfono (recibir el push y abrir la pantalla al
         //! tocarlo) viven en public/push-sw.js: se le pegan al service worker
         //! generado, que si no no tendría esos dos manejadores.

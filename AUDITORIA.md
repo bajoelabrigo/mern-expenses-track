@@ -254,10 +254,19 @@ abandonan es **cómo salga el primer uso**, no una campaña. Tres ideas concreta
 1. **Guía de primeros pasos** (checklist en el Inicio). ✅ **Hecha el 21 de
    septiembre** (el detalle está en la Tanda 2, sección 6). Los pasos que
    quedaron —registrar el primer movimiento, sumar al equipo, crear un fondo,
-   cargar a las personas— salen del estado real del espacio y del rol: las
-   categorías ya vienen creadas de fábrica y el enlace de la congregación es cosa
-   del propietario, así que pedirlos como "paso" sería pedir algo que ya está
-   hecho o que no le toca a quien mira.
+   cargar a las personas— salen del estado real del espacio y del rol: el enlace
+   de la congregación es cosa del propietario, así que pedirlo como "paso" sería
+   pedir algo que no le toca a quien mira.
+
+   **Corrección (22 de septiembre).** Aquí decía que las categorías "ya vienen
+   creadas de fábrica". Es falso y lo comprobé al armar la ayuda: **la app no
+   crea ninguna categoría**. Un espacio nuevo arranca vacío, y hay que ir a
+   Categorías y tocar «Agregarlas» para que aparezcan Diezmos, Ofrendas,
+   Primicias y Ofrenda especial (`POST /categories/church-defaults`, que existe
+   desde antes pero nadie descubre solo). Sin ese paso, quien entra a registrar
+   un ingreso se encuentra con "Aún no hay categorías de ingreso" y no puede
+   anotar nada. Es la primera fricción real de un espacio nuevo y por eso la
+   ayuda la explica como tema propio.
 2. **Ofrecer el conteo con doble firma en el momento natural**: al registrar un
    ingreso de una categoría de ofrendas, preguntar "¿es la ofrenda del culto?
    Hazlo con doble firma". Hoy hay que ir a otra pantalla y, en el primer

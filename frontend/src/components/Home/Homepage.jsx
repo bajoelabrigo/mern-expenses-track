@@ -142,11 +142,16 @@ const Homepage = () => (
       </div>
     </section>
 
-    <footer className="py-8 border-t border-line text-sm text-muted flex flex-wrap justify-between gap-2">
+    <footer className="py-8 border-t border-line text-sm text-muted flex flex-wrap justify-between gap-x-6 gap-y-2">
       <span>Control de Gastos</span>
-      <Link to="/descargas" className="hover:text-ink">
-        Instálala en tu celular
-      </Link>
+      <span className="flex flex-wrap gap-x-6 gap-y-2">
+        <Link to="/ayuda" className="font-semibold text-ink-2 hover:text-ink">
+          Cómo se usa, paso a paso
+        </Link>
+        <Link to="/descargas" className="hover:text-ink">
+          Instálala en tu celular
+        </Link>
+      </span>
     </footer>
   </div>
 );
