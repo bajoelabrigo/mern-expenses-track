@@ -4,6 +4,8 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
+    "dev:memoria": "node scripts/dev-memoria.js",
+    "datos-ejemplo": "node scripts/datos-ejemplo.js",
     "start": "node server.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js"
   },

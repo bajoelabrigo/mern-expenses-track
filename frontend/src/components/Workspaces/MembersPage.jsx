@@ -225,6 +225,15 @@ const MembersPage = () => {
           <AlertMessage type="error" message={getErrorMessage(mutationError.error)} />
         )}
 
+        {/*! Al resolver una solicitud, la sección desaparece: sin este aviso no
+            quedaría ninguna señal de qué pasó ni en qué espacio entró la persona */}
+        {approveMutation.isSuccess && (
+          <Notice tone="success">{approveMutation.data.message}.</Notice>
+        )}
+        {rejectMutation.isSuccess && (
+          <Notice tone="warning">{rejectMutation.data.message}.</Notice>
+        )}
+
         {canManage && (
           <section aria-labelledby="agregar">
             <SectionTitle>

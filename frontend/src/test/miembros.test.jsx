@@ -225,7 +225,10 @@ describe("Miembros: solicitudes para entrar", () => {
   });
 
   it("la tesorería ve quién pide entrar, con su mensaje, y lo aprueba con un rol", async () => {
-    approveJoinRequestAPI.mockResolvedValue({ message: "ana ya tiene acceso", role: "contador" });
+    approveJoinRequestAPI.mockResolvedValue({
+      message: 'ana ya tiene acceso a "Iglesia Betel" como Contador',
+      role: "contador",
+    });
 
     renderCon(<MembersPage />);
 
@@ -243,6 +246,11 @@ describe("Miembros: solicitudes para entrar", () => {
       requestId: "sol1",
       role: "contador",
     });
+
+    //! Y queda dicho qué pasó y EN QUÉ espacio entró (la sección desaparece)
+    expect(
+      await screen.findByText(/ana ya tiene acceso a "Iglesia Betel" como Contador/)
+    ).toBeInTheDocument();
   });
 
   it("se puede rechazar sin dar acceso", async () => {
@@ -253,5 +261,6 @@ describe("Miembros: solicitudes para entrar", () => {
 
     await waitFor(() => expect(rejectJoinRequestAPI).toHaveBeenCalled());
     expect(rejectJoinRequestAPI.mock.calls[0][0]).toEqual({ id: IGLESIA._id, requestId: "sol1" });
+    expect(await screen.findByText("Solicitud rechazada.")).toBeInTheDocument();
   });
 });

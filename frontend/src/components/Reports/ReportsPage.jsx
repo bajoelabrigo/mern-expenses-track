@@ -188,13 +188,15 @@ const ReportsPage = () => {
                 {pagosQuery.data.payments === 1 ? "pago" : "pagos"} a{" "}
                 {pagosQuery.data.people.length}{" "}
                 {pagosQuery.data.people.length === 1 ? "persona" : "personas"}
-                {pagosQuery.data.expenseTotal > 0 && (
+                {/* El punto va dentro de una rama o de la otra, nunca en las dos */}
+                {pagosQuery.data.expenseTotal > 0 ? (
                   <>
                     : el <strong className="text-ink">{pagosQuery.data.share}%</strong> de todo el
                     gasto del año.
                   </>
+                ) : (
+                  "."
                 )}
-                .
               </p>
 
               {pagosQuery.data.byKind.length > 0 && (

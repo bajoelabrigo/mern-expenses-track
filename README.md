@@ -41,6 +41,24 @@ Genera un `JWT_SECRET` seguro con:
 node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 ```
 
+### Probar sin tocar la base real
+
+Para revisar la app con datos que se parecen a los de una iglesia (equipo con
+roles, personas que aportan y que cobran, movimientos de nueve meses, una
+solicitud para entrar y una invitación pendiente) sin ensuciar la base de
+verdad. La base vive **en memoria**: se pierde al parar.
+
+```bash
+npm run dev:memoria      # API + MongoDB en memoria (http://localhost:8000)
+npm run datos-ejemplo    # la llena con datos de ejemplo (en otra terminal)
+cd frontend && npm run dev   # la app (http://localhost:5173)
+```
+
+Se entra con `pastor@demo.test` / `Demo12345` (propietario: ve todo). También hay
+`tesorera@demo.test`, `contador@demo.test` y `auditor@demo.test`, con la misma
+clave, para comprobar qué ve cada rol. El frontend en desarrollo habla con
+`http://localhost:8000/api/v1` sin configurar nada.
+
 ## Variables de entorno
 
 ### backend/.env
