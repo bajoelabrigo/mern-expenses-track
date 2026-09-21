@@ -106,6 +106,16 @@
     color: var(--ink);
     background: transparent;
   }
+  /* La lista que se abre en un <select> la pinta el navegador, no la app. Si el
+     teléfono está en claro —y la app abre en oscuro, que es lo que hace por
+     defecto— esa lista sale con fondo claro, y el texto, que en modo oscuro es
+     claro, no se lee: los nombres desaparecen. Se fijan aquí el fondo y el
+     color de cada opción para que la lista siga al tema de la APP. */
+  select option,
+  select optgroup {
+    background-color: var(--surface);
+    color: var(--ink);
+  }
   ::placeholder {
     color: var(--muted);
   }

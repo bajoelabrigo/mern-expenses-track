@@ -87,4 +87,17 @@ describe("tema claro / oscuro", () => {
     expect(theme()).toBe("light");
     expect(applyTheme("dark")).toBe("dark");
   });
+
+  it("la lista de los desplegables se lee en los dos temas", () => {
+    //! El navegador pinta esa lista: sin fondo y color propios, en modo oscuro
+    //! los nombres salen claros sobre el fondo claro del sistema (no se leen)
+    const css = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
+    const bloque = css.match(/select option,[\s\S]{0,160}?\}/);
+    expect(bloque?.[0]).toMatch(/background-color:\s*var\(--surface\)/);
+    expect(bloque?.[0]).toMatch(/color:\s*var\(--ink\)/);
+
+    //! Y cada tema declara cómo pintar los controles nativos (barras, listas…)
+    expect(css).toMatch(/color-scheme:\s*light/);
+    expect(css).toMatch(/\[data-theme="dark"\][\s\S]*?color-scheme:\s*dark/);
+  });
 });
