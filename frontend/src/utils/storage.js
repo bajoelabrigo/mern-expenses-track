@@ -35,6 +35,21 @@ export const clearStoredAuth = () => {
   }
 };
 
+//! Borra SOLO los datos guardados de la API, sin cerrar la sesión.
+//!
+//! Es lo que necesita el botón "Recargar" cuando la app se rompe: si lo que
+//! falló fue una respuesta que quedó guardada y no era lo que se esperaba
+//! (una página de error con 200, por ejemplo), recargar sin borrarla vuelve a
+//! romperse igual, una y otra vez, sin manera de salir para quien no sabe
+//! vaciar los datos del sitio.
+export const clearStoredData = () => {
+  try {
+    localStorage.removeItem(QUERY_CACHE_KEY);
+  } catch {
+    //! Sin almacenamiento no hay nada guardado que borrar
+  }
+};
+
 //! Devuelve { token, user } o null si no hay sesión válida.
 export const getStoredAuth = () => {
   try {

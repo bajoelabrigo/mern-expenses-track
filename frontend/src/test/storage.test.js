@@ -3,6 +3,7 @@ import {
   getStoredAuth,
   setStoredAuth,
   clearStoredAuth,
+  clearStoredData,
   getStoredToken,
   isTokenExpired,
 } from "../utils/storage";
@@ -60,6 +61,19 @@ describe("almacenamiento de la sesión", () => {
     clearStoredAuth();
 
     expect(getStoredAuth()).toBeNull();
+  });
+
+  it("clearStoredData borra los datos de la API pero deja la sesión", () => {
+    //! Es lo que hace "Recargar" cuando la app se rompe: si lo que quedó mal
+    //! guardado es una respuesta, hay que tirarla, pero no echar a nadie.
+    const auth = { token: fakeToken(enUnaHora), user: { id: "1", username: "pastor" } };
+    setStoredAuth(auth);
+    localStorage.setItem("cg-cache", JSON.stringify({ clientState: { queries: [] } }));
+
+    clearStoredData();
+
+    expect(localStorage.getItem("cg-cache")).toBeNull();
+    expect(getStoredAuth()).toEqual(auth);
   });
 
   it("isTokenExpired reconoce tokens vencidos y vigentes", () => {
