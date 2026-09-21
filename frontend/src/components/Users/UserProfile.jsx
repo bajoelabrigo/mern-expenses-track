@@ -1,6 +1,9 @@
 import { useSelector } from "react-redux";
-import { LuLogOut } from "react-icons/lu";
+import { useNavigate } from "react-router-dom";
+import { LuListChecks, LuLogOut } from "react-icons/lu";
 import { useLogout } from "../../hooks/useLogout";
+import { useWorkspace } from "../../hooks/useWorkspace";
+import { showGuide } from "../../lib/welcomeGuide";
 import ThemeToggle from "../layout/ThemeToggle";
 import { Button, Card } from "../ui";
 import { initials } from "../ui/styles";
@@ -15,6 +18,37 @@ const Section = ({ id, title, children }) => (
     <Card className="p-5">{children}</Card>
   </section>
 );
+
+//! Volver a ver la guía de primeros pasos del Inicio: se apaga sola al
+//! terminarla, y también cuando la oculta quien la está viendo.
+const GuideSection = () => {
+  const navigate = useNavigate();
+  const user = useSelector((state) => state.auth.user);
+  const { workspace, can } = useWorkspace();
+
+  //! A quien no registra movimientos la guía no le habla, así que no se le
+  //! ofrece: sería un botón que no hace nada.
+  if (!workspace || !can("tx:write")) return null;
+
+  return (
+    <Section id="primeros-pasos" title="Primeros pasos">
+      <p className="text-sm text-ink-2">
+        La guía de primeros pasos está en el Inicio y se apaga sola cuando terminas los pasos que
+        te tocan en «{workspace.name}».
+      </p>
+      <Button
+        variant="secondary"
+        className="mt-4"
+        onClick={() => {
+          showGuide(workspace._id, user?.id || user?._id);
+          navigate("/dashboard");
+        }}
+      >
+        <LuListChecks aria-hidden="true" /> Volver a mostrarla
+      </Button>
+    </Section>
+  );
+};
 
 //! Mi cuenta: datos, contraseña, apariencia y salir, todo en una pantalla
 const UserProfile = () => {
@@ -49,6 +83,8 @@ const UserProfile = () => {
       <Section id="apariencia" title="Apariencia">
         <ThemeToggle />
       </Section>
+
+      <GuideSection />
 
       <Button variant="danger-ghost" block onClick={logout}>
         <LuLogOut aria-hidden="true" /> Salir

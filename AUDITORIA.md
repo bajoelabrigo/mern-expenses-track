@@ -251,10 +251,13 @@ pena decirlo porque una de ellas era un aviso de dinero:
 Las funciones son nuevas (1 a 3 días): lo que decida si se adoptan o se
 abandonan es **cómo salga el primer uso**, no una campaña. Tres ideas concretas:
 
-1. **Guía de primeros pasos para una iglesia** (checklist en el Inicio): crear
-   las categorías, invitar al equipo, hacer el primer conteo de ofrenda, publicar
-   el enlace de la congregación. Se apaga cuando está hecha. Con tres tesoreras
-   recién incorporadas, esto vale el doble.
+1. **Guía de primeros pasos** (checklist en el Inicio). ✅ **Hecha el 21 de
+   septiembre** (el detalle está en la Tanda 2, sección 6). Los pasos que
+   quedaron —registrar el primer movimiento, sumar al equipo, crear un fondo,
+   cargar a las personas— salen del estado real del espacio y del rol: las
+   categorías ya vienen creadas de fábrica y el enlace de la congregación es cosa
+   del propietario, así que pedirlos como "paso" sería pedir algo que ya está
+   hecho o que no le toca a quien mira.
 2. **Ofrecer el conteo con doble firma en el momento natural**: al registrar un
    ingreso de una categoría de ofrendas, preguntar "¿es la ofrenda del culto?
    Hazlo con doble firma". Hoy hay que ir a otra pantalla y, en el primer
@@ -329,6 +332,34 @@ y verificados con el navegador cuando tocaba:
 de ofrenda ofrecido en el flujo de registro, pedir comprobante en gastos grandes,
 y recordatorios por correo. Con el equipo recién incorporado, el objetivo es que
 las tesoreras anoten sin ayuda la primera semana.
+
+**Tanda 2 — guía de primeros pasos: hecha (21 de septiembre).** Va arriba en el
+Inicio y solo la ve quien registra movimientos (`tx:write`): a un lector o a un
+auditor no hay nada que pedirle. Los pasos dependen del espacio y del rol:
+
+| Paso | Cuándo se pide | Cuándo está hecho |
+|---|---|---|
+| Registra el primer movimiento | siempre | hay algún movimiento |
+| Suma a tu equipo | `members:manage` | hay más de un miembro |
+| Crea tu primer fondo | `fund:manage` | existe un fondo además del General |
+| Carga a las personas | iglesia y `donor:read` | hay algún aportante |
+
+Se marca sola con datos que el Inicio ya trae (movimientos, fondos, personas) más
+la lista de miembros, que solo se pide si el paso aplica: cuando la guía no se ve
+no cuesta ninguna consulta. Se apaga al terminar los pasos, se puede ocultar a
+mano, y el Perfil la vuelve a mostrar (el estado guardado distingue "la oculté" de
+"la terminé", para que pedirla de nuevo funcione incluso en un espacio ya
+armado). Guardado por espacio y por persona: en la computadora compartida de la
+iglesia cada quien tiene la suya.
+
+Verificado en el navegador con el demo local: 3 de 4 en la iglesia sembrada (solo
+faltaba el fondo), 0 de 3 en un espacio personal (sin el paso de aportantes),
+desaparece al crear el fondo que faltaba, aguanta la recarga, y vuelve desde el
+Perfil con un "Ya está todo listo". Claro y oscuro revisados. Pruebas:
+`guiaBienvenida.test.jsx` (13) y `guiaEnInicio.test.jsx` (2).
+
+Quedan pendientes de la tanda el conteo ofrecido al registrar, el comprobante en
+los gastos grandes y los recordatorios por correo.
 
 **Tanda 3 — producto:** cierre mensual + conciliación, importación del extracto,
 y aprobación de gastos. Antes de empezar, partir `transactionController.js` y

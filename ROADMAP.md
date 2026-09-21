@@ -155,7 +155,13 @@ despliega Netlify y Render) cuando está verificada.
       la llena con una iglesia de ejemplo (equipo con roles, personas que aportan
       y que cobran, nueve meses de movimientos, una solicitud para entrar y una
       invitación pendiente).
-- [ ] Landing page y alta guiada para una iglesia nueva.
+- [x] **Guía de primeros pasos** en el Inicio: los pasos que le faltan al espacio
+      —registrar el primer movimiento, sumar al equipo, crear un fondo, cargar a
+      las personas— según su tipo y el rol de quien mira, cada uno con su atajo.
+      Se marca sola con lo que el Inicio ya sabe, se apaga al terminarlos, se
+      puede ocultar, y el Perfil la vuelve a mostrar. En un espacio ya armado no
+      aparece: no queda nada que pedirle.
+- [ ] Landing page y alta guiada para una iglesia nueva (la guía de dentro ya está).
 - [ ] Soporte: centro de ayuda (cómo registrar, roles, fondos, constancias) y
       un botón de "reportar problema" desde la app.
 - [ ] Verificación de correo y 2FA para tesoreros.

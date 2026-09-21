@@ -37,6 +37,7 @@ import TransactionRow from "../Transactions/TransactionRow";
 import TransactionsTable from "../Transactions/TransactionsTable";
 import FundsSummaryCard from "../Funds/FundsSummaryCard";
 import IncomeByKindCard from "./IncomeByKindCard";
+import WelcomeGuide from "./WelcomeGuide";
 import { useFunds } from "../../hooks/useFunds";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, LinearScale, LineElement, PointElement, Tooltip);
@@ -441,6 +442,10 @@ const Dashboard = () => {
   const netDiff = hadPrevious ? totals.net - prevTotals.net : null;
   const maxInOut = Math.max(totals.income, totals.expense, 1);
   const recentItems = recent.data?.transactions || [];
+  //! La guía de primeros pasos necesita saber si hay algún movimiento, y
+  //! `recent` es el único listado sin período. Mientras no conteste, `null`:
+  //! mejor que no se pinte a que diga que no hay nada cuando sí lo hay.
+  const hayMovimientos = recent.isSuccess ? recentItems.length > 0 : null;
 
   const scheduledNote = scheduled.length > 0 && (
     <p className="px-1 text-sm text-muted">
@@ -504,6 +509,7 @@ const Dashboard = () => {
         </header>
 
         <PendingTransactions />
+        <WelcomeGuide hasMovimientos={hayMovimientos} />
         {current.isError && <AlertMessage type="error" message={getErrorMessage(current.error)} />}
 
         <section aria-label={`Resumen de ${range.label}`} className="grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -584,6 +590,8 @@ const Dashboard = () => {
       </header>
 
       <PendingTransactions />
+
+      <WelcomeGuide hasMovimientos={hayMovimientos} />
 
       {current.isError && <AlertMessage type="error" message={getErrorMessage(current.error)} />}
 
