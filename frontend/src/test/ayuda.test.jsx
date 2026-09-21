@@ -75,6 +75,20 @@ describe("La ayuda, paso a paso", () => {
     );
   });
 
+  it("quien se traba le escribe a Jorge por WhatsApp, con el mensaje empezado", () => {
+    renderAyuda();
+
+    expect(screen.getByText(/Escríbele a Jorge por WhatsApp/)).toBeInTheDocument();
+
+    const href = screen.getByRole("link", { name: /Escribirle a Jorge/ }).getAttribute("href");
+    expect(href.startsWith("https://wa.me/51968796029?text=")).toBe(true);
+
+    //! El mensaje va empezado y abierto, para que solo cuente qué le pasó
+    const texto = decodeURIComponent(href.split("text=")[1]);
+    expect(texto).toContain("Hola Jorge");
+    expect(texto).toMatch(/Me trabé con: $/);
+  });
+
   it("el índice lleva a cada tema", () => {
     renderAyuda();
 

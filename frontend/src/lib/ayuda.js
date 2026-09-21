@@ -7,12 +7,22 @@
 //! real: esta página es pública y el enlace se reenvía. El maestro para rehacerlas
 //! cuando cambie la pantalla está en scripts/capturas-ayuda.md.
 
-//! A dónde escribe quien se traba. El número va con código de país, sin "+" ni
-//! espacios (Perú: 51987654321). Vacío = ese botón no se muestra.
+//! Quién atiende las dudas. El nombre de pila va a propósito: la ayuda se lee
+//! mejor cuando del otro lado hay una persona y no un "soporte técnico".
 export const CONTACTO = {
-  whatsapp: "",
+  nombre: "Jorge",
+  //! WhatsApp con código de país, sin "+" ni espacios (Perú: 51987654321).
+  //! OJO: esto es PÚBLICO, va en el código de la página y del repositorio — que
+  //! es justo lo que se busca, para que cualquiera pueda escribir. No pongas
+  //! aquí un número que no quieras que se vea. Vacío = no se muestra el botón.
+  whatsapp: "51968796029",
   correo: "",
 };
+
+//! El mensaje ya empezado, para que solo tenga que contar qué le pasó. La frase
+//! queda abierta a propósito ("Me trabé con: ") para que la complete.
+export const TEXTO_DE_AYUDA = (nombre) =>
+  `Hola${nombre ? ` ${nombre}` : ""}, te escribo por la app de las cuentas de la iglesia. Me trabé con: `;
 
 //! Lo que hay que saber aunque no se lea nada más. Va arriba, en tres líneas.
 export const LO_ESENCIAL = [

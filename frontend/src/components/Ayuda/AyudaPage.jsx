@@ -10,6 +10,7 @@ import {
   CONTACTO,
   LO_ESENCIAL,
   TEMAS,
+  TEXTO_DE_AYUDA,
   TEXTO_PARA_COMPARTIR,
   TRANQUILA,
 } from "../../lib/ayuda";
@@ -190,18 +191,23 @@ const AyudaPage = () => {
         {hayContacto ? (
           <>
             <p className="mt-1 text-[15px] leading-relaxed text-ink-2">
-              Escribe y te ayudamos. Si puedes, manda una captura de lo que ves: se resuelve mucho
-              más rápido.
+              {CONTACTO.nombre
+                ? `Escríbele a ${CONTACTO.nombre} por WhatsApp.`
+                : "Escribe por WhatsApp."}{" "}
+              Si puedes, manda una captura de lo que ves: se resuelve mucho más rápido.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               {CONTACTO.whatsapp && (
                 <a
-                  href={`https://wa.me/${CONTACTO.whatsapp}`}
+                  href={`https://wa.me/${CONTACTO.whatsapp}?text=${encodeURIComponent(
+                    TEXTO_DE_AYUDA(CONTACTO.nombre)
+                  )}`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-accent-ink transition hover:brightness-95"
                 >
-                  <LuMessageCircle aria-hidden="true" /> Escribir por WhatsApp
+                  <LuMessageCircle aria-hidden="true" />
+                  {CONTACTO.nombre ? `Escribirle a ${CONTACTO.nombre}` : "Escribir por WhatsApp"}
                 </a>
               )}
               {CONTACTO.correo && (

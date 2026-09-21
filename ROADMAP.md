@@ -183,9 +183,12 @@ despliega Netlify y Render) cuando está verificada.
       WhatsApp y se abre sin cuenta, y a la vez está en el menú de la app. Arriba
       de todo van las tres cosas que hay que saber y un «puedes estar tranquila»
       que quita el miedo a romper algo.
+- [x] **Contacto de ayuda**: al final de `/ayuda`, el bloque «¿Te trabaste?»
+      abre WhatsApp con el mensaje ya empezado («Hola Jorge, … Me trabé con: »)
+      para que solo tenga que contar qué le pasó.
 - [ ] Soporte: centro de ayuda más completo (roles, fondos, constancias,
-      ministerios), buscador dentro de la ayuda y un botón de "reportar
-      problema" que abra WhatsApp con el mensaje escrito (falta el número).
+      ministerios), buscador dentro de la ayuda y un botón de "reportar un
+      problema" en la propia pantalla donde se trabó (hoy hay que entrar a Ayuda).
 - [ ] Verificación de correo y 2FA para tesoreros.
 - [ ] Exportación completa de datos, términos y privacidad.
 - [ ] Infraestructura: plan de pago en Render (sin arranque en frío) y copias
