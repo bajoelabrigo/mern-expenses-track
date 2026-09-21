@@ -364,9 +364,37 @@ petición tarda cerca de un minuto. La app lo mitiga así:
 - si el login tarda más de 4 segundos, se avisa en pantalla de que el servidor
   está despertando en lugar de dejar el botón bloqueado sin explicación.
 
-Para eliminar la espera del todo hay que evitar que el servicio se duerma: un
-ping externo cada 10-14 minutos (cron-job.org, UptimeRobot) contra `/health`, o
-pasar el servicio a un plan de pago.
+**Para que no se duerma** (gratis, sin cambiar de hosting): un ping cada 10
+minutos contra `https://<servicio>.onrender.com/health`. Vale cualquier monitor
+gratuito, por ejemplo cron-job.org o UptimeRobot:
+
+1. Crear la cuenta.
+2. Un trabajo nuevo: método GET, URL
+   `https://mern-expenses-track.onrender.com/health`, cada 10 minutos.
+3. A los pocos días, mirar en Render (Settings → Usage) que el consumo entre en
+   las 750 horas de instancia al mes que incluye el plan gratuito. Un servicio
+   despierto todo el mes son unas 730, así que da para uno... y para ninguno más:
+   un segundo servicio gratuito despierto se saldría del tope.
+
+**Lo que no conviene para este caso:**
+
+- **Serverless** (Vercel, Cloudflare Workers): habría que rehacer la API.
+  Mongoose no corre en Workers, el plan gratuito de Vercel es solo para uso
+  personal (`fair use`), y su tope de 4,5 MB por petición no aguanta un
+  comprobante de 8 MB. Además, los límites de peticiones en memoria (rate limit)
+  no sirven en un runtime que se reinicia en cada invocación.
+- **Una máquina virtual gratuita** (Oracle Cloud Always Free, Google e2-micro):
+  es lo único gratis y siempre despierto de verdad, pero hay que administrarla
+  entera (sistema, HTTPS, despliegues, copias) y Oracle retira las instancias
+  que pasan la semana sin consumir CPU — justo el perfil de una API que se usa
+  dos veces por semana. Tampoco tiene el despliegue automático desde `main`.
+- **Fly.io y compañía**: el plan gratuito que tenían ya no existe
+  ([fly.io/docs/about/discontinued-plans](https://fly.io/docs/about/discontinued-plans/)),
+  y Koyeb también duerme los servicios gratuitos.
+
+La alternativa sin trucos es el plan de pago más barato de Render (unos 7
+USD/mes): el mismo servicio y la misma configuración, sin dormirse y sin
+depender de que el ping siga funcionando.
 
 ## Licencia
 
