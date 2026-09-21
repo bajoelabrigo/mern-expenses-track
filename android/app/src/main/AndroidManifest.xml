@@ -22,13 +22,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.controldegastos.app">
 
-    
-
-    
-
-    
-
-    
+    <!-- Avisos de la app (Android 13 y siguientes). La delegacion de
+         notificaciones de la TWA las muestra con la identidad de la app; si el
+         permiso no esta concedido, Chrome las muestra por su cuenta. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name="Application"

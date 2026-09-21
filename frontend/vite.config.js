@@ -21,7 +21,7 @@ export default defineConfig({
       //! recargar (UpdatePrompt): recargar sola podría perder un formulario a
       //! medio llenar.
       registerType: "prompt",
-      includeAssets: ["favicon.ico", "icon.svg", "apple-touch-icon-180x180.png"],
+      includeAssets: ["favicon.ico", "pwa-192x192.png", "apple-touch-icon-180x180.png"],
       manifest: {
         name: "Control de Gastos",
         short_name: "Gastos",

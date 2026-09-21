@@ -11,7 +11,7 @@
   "navigationDividerColor": "#1A1A1A",
   "navigationDividerColorDark": "#1A1A1A",
   "backgroundColor": "#0E0E0E",
-  "enableNotifications": false,
+  "enableNotifications": true,
   "startUrl": "/dashboard",
   "iconUrl": "https://controldegastosiglesia.netlify.app/pwa-512x512.png",
   "maskableIconUrl": "https://controldegastosiglesia.netlify.app/maskable-icon-512x512.png",
@@ -20,8 +20,8 @@
     "path": "C:/Users/bajoe/android-keys/control-gastos.keystore",
     "alias": "controldegastos"
   },
-  "appVersionName": "1.2.0",
-  "appVersionCode": 3,
+  "appVersionName": "1.3.0",
+  "appVersionCode": 4,
   "shortcuts": [
     {
       "name": "Agregar movimiento",
@@ -50,5 +50,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.2.0"
+  "appVersion": "1.3.0"
 }

@@ -2,11 +2,11 @@
 //! (ver android/README.md) hay que copiar el .apk a public/descargas/ y
 //! actualizar esto: es lo único que la página necesita saber.
 export const APP_RELEASE = {
-  version: "1.2.0",
-  file: "/descargas/control-de-gastos-1.2.0.apk",
-  size: "949 KB",
+  version: "1.3.0",
+  file: "/descargas/control-de-gastos-1.3.0.apk",
+  size: "1,8 MB",
   //! Fecha de la compilación, para que se vea que está al día
-  date: "2026-09-20",
+  date: "2026-09-21",
   //! Cuando esté publicada en Google Play, aquí va su enlace y la página
   //! ofrece ese botón en vez del archivo suelto
   playStore: "",

@@ -15,6 +15,8 @@
 -->
 <resources>
     <color name="shortcut_background">#F5F5F5</color>
-    <!-- Fondo del icono adaptable: el ámbar del icono, para que no asome un borde blanco -->
-    <color name="icon_background">#E5A33B</color>
+    <!-- Fondo del icono adaptable. El icono nuevo ya viene a sangre (cubre todo
+         el cuadrado), así que este color no llega a verse: queda como red de
+         seguridad, en el azul oscuro del propio logo. -->
+    <color name="icon_background">#001458</color>
 </resources>
