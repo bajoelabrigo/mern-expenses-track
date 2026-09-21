@@ -39,7 +39,7 @@ Luego, con la ventana del navegador en 390 × 844:
 |---|---|
 | `ayuda-1-entrar` | La pantalla de entrar, vacía |
 | `ayuda-2-inicio` | El Inicio del mes, sin la guía de primeros pasos (se oculta antes) |
-| `ayuda-3-categorias` | Categorías **con** el aviso «Faltan categorías de iglesia» (antes de tocar «Agregarlas») |
+| `ayuda-3-categorias` | Categorías con la lista puesta **y** el aviso «Faltan categorías de iglesia» (se consigue borrando una de ingreso, p. ej. primicias) |
 | `ayuda-4-registrar` | Registrar: Ingreso, categoría Ofrendas, S/ 485.50 |
 | `ayuda-5-gasto` | Registrar: Gasto, categoría Servicios, S/ 185.30, con nota |
 | `ayuda-6-conteo` | La hoja del conteo con billetes puestos y la suma |

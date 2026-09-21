@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { LuChevronRight, LuPlus, LuTrash2 } from "react-icons/lu";
 import {
-  addChurchDefaultsAPI,
+  addDefaultCategoriesAPI,
   deleteCategoryAPI,
   listCategoriesAPI,
 } from "../../services/category/categoryService";
@@ -47,13 +47,19 @@ const CategoriesList = () => {
     },
   });
 
-  //! Categorías base de iglesia (Diezmos, Ofrendas, Primicias, Ofrenda especial)
+  //! Las categorías de fábrica que le falten a este espacio. Dos casos:
+  //! - Un espacio sin ninguna (los que se crearon antes de que las pusiéramos
+  //!   solas al crearlo): se le ofrecen todas.
+  //! - Una iglesia a la que le borraron alguna de las de ingreso: esas, que son
+  //!   las que hacen que los informes separen diezmos de ofrendas.
   const addDefaults = useMutation({
-    mutationFn: addChurchDefaultsAPI,
+    mutationFn: addDefaultCategoriesAPI,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["list-categories"] }),
   });
-  const missing = isChurch && canWrite && !isLoading && !isError ? missingChurchKinds(categories) : [];
-  const missingText = missing.map((k) => k.plural).join(", ").replace(/, ([^,]*)$/, " y $1");
+  const sinNinguna = !isLoading && !isError && categories.length === 0;
+  const faltanIngresos = isChurch && !isLoading && !isError ? missingChurchKinds(categories) : [];
+  const faltanDefaults = canWrite && (sinNinguna || faltanIngresos.length > 0);
+  const missingText = faltanIngresos.map((k) => k.plural).join(", ").replace(/, ([^,]*)$/, " y $1");
 
   const handleDelete = async (id, nombre) => {
     //! Borrar una categoría reasigna sus transacciones: conviene confirmar
@@ -89,21 +95,25 @@ const CategoriesList = () => {
         {isDeleteError && <AlertMessage type="error" message={getErrorMessage(deleteError)} />}
         {addDefaults.isError && <AlertMessage type="error" message={getErrorMessage(addDefaults.error)} />}
 
-        {missing.length > 0 && (
+        {faltanDefaults && (
           <Card className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
-              <p className="font-bold text-ink">Faltan categorías de iglesia</p>
+              <p className="font-bold text-ink">
+                {sinNinguna ? "Sin categorías para empezar" : "Faltan categorías de iglesia"}
+              </p>
               <p className="mt-1 text-sm text-ink-2">
-                {missingText}. Con ellas, los informes separan cada tipo de ingreso.
+                {sinNinguna
+                  ? "Ponle las de siempre y anota desde ya. Después borras o cambias las que no uses."
+                  : `${missingText}. Con ellas, los informes separan cada tipo de ingreso.`}
               </p>
             </div>
             <Button onClick={() => addDefaults.mutate()} disabled={addDefaults.isPending}>
-              {addDefaults.isPending ? "Agregando…" : "Agregarlas"}
+              {addDefaults.isPending ? "Agregando…" : "Ponerlas"}
             </Button>
           </Card>
         )}
 
-        {!isLoading && !isError && categories.length === 0 && (
+        {!isLoading && !isError && categories.length === 0 && !faltanDefaults && (
           <EmptyState
             title="Todavía no hay categorías"
             action={canWrite && <ButtonLink to="/add-category">Crear la primera</ButtonLink>}

@@ -176,6 +176,12 @@ despliega Netlify y Render) cuando está verificada.
       puede ocultar, y el Perfil la vuelve a mostrar. En un espacio ya armado no
       aparece: no queda nada que pedirle.
 - [ ] Landing page y alta guiada para una iglesia nueva (la guía de dentro ya está).
+- [x] **Categorías de fábrica**: un espacio nuevo nace con las que necesita para
+      anotar desde el primer minuto —en una iglesia, las cuatro de ingreso con su
+      tipo más seis de gasto; en el espacio personal, cinco de casa— en vez de
+      vacío, que obligaba a descubrir un botón escondido antes de poder registrar
+      la primera ofrenda. Se renombran y se borran, y el botón de Categorías
+      repone las que falten (también en los espacios que ya existían vacíos).
 - [x] **Ayuda paso a paso** (`/ayuda`): once temas por tarea —siete del día a
       día y cuatro para más adelante—, con capturas de las pantallas de verdad.
       Es una página **pública**, así que se manda por WhatsApp y se abre sin

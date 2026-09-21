@@ -40,9 +40,9 @@ export const getCategoryByIdAPI = async (id) => {
   return response.data;
 };
 
-//! Agrega las categorías de ingreso de iglesia que falten (Diezmos, Ofrendas,
-//! Primicias, Ofrenda especial). Devuelve { added }.
-export const addChurchDefaultsAPI = async () => {
-  const response = await axiosInstance.post("/categories/church-defaults");
+//! Pone las categorías de fábrica que le falten a este espacio (las mismas con
+//! las que arranca uno nuevo). Devuelve { added }.
+export const addDefaultCategoriesAPI = async () => {
+  const response = await axiosInstance.post("/categories/defaults");
   return response.data;
 };

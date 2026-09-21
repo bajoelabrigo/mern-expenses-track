@@ -1,6 +1,7 @@
 const Workspace = require("../model/Workspace");
 const Membership = require("../model/Membership");
 const User = require("../model/User");
+const { crearCategoriasPorDefecto } = require("../utils/defaultCategories");
 
 //! Crea un espacio y hace propietario a quien lo crea. Si el alta de la
 //! membresía falla se borra el espacio: un espacio sin propietario no lo puede
@@ -23,6 +24,11 @@ const createWorkspace = async ({ name, kind, currency, owner }) => {
     await workspace.deleteOne();
     throw err;
   }
+
+  //! Y las categorías de siempre, para que se pueda anotar desde el primer
+  //! minuto. No se registran en el historial una por una: forman parte del alta
+  //! del espacio, no son un cambio que alguien haya hecho después.
+  await crearCategoriasPorDefecto(workspace);
 
   return workspace;
 };

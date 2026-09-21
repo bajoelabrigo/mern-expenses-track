@@ -373,12 +373,21 @@ los gastos grandes y los recordatorios por correo.
 **Fuera de la tanda, tres cosas que salieron al escribir la ayuda** (22 de
 septiembre):
 
-1. **La app no crea ninguna categoría.** Un espacio nuevo arranca vacío: para
-   poder registrar un ingreso hay que ir a Categorías y tocar «Agregarlas». El
-   botón existe desde antes (`POST /categories/church-defaults`) pero nadie lo
-   descubre solo, y sin él la primera ofrenda no se puede anotar. Corregida la
-   afirmación contraria que había en este documento; la ayuda lo explica como
-   tema propio. **Pendiente de decidir:** crearlas solas al abrir una iglesia.
+1. **La app no creaba ninguna categoría.** Un espacio nuevo arrancaba vacío: para
+   poder registrar un ingreso había que ir a Categorías y tocar un botón que
+   nadie descubre el primer día, y hasta entonces el formulario pedía elegir una
+   categoría que no existía. Corregida también la afirmación contraria que había
+   en este documento.
+
+   **Arreglado (23 de septiembre).** Ahora un espacio nace con las suyas: una
+   iglesia con Diezmos, Ofrendas, Primicias y Ofrenda especial (con su tipo, que
+   es lo que separa los informes) más Servicios, Alquiler, Honorarios,
+   Mantenimiento, Actividades y Ayuda social; y el espacio personal con comida,
+   transporte, casa, servicios y salud. Son un punto de partida, no una
+   imposición: se renombran y se borran, y si se borra una de ingreso el aviso
+   para reponerla vuelve a salir. El botón de Categorías sirve además para los
+   espacios que ya existían vacíos (los personales de los cinco usuarios, por
+   ejemplo).
 2. **Una cookie vieja tumbaba la sesión.** El servidor usaba la cookie *en vez
    de* la cabecera, así que una cookie huérfana (de antes de la migración de
    septiembre, apuntando a una cuenta que ya no existe) rechazaba una petición

@@ -90,17 +90,17 @@ export const TEMAS = [
   {
     id: "categorias",
     grupo: "basico",
-    titulo: "Preparar el espacio (una sola vez)",
-    resumen: "Si al ir a registrar un ingreso no ves ninguna categoría, es esto.",
+    titulo: "Las categorías",
+    resumen: "Tu espacio ya viene con las de siempre. Esto es por si borras alguna o quieres las tuyas.",
     pasos: [
-      "Toca «Más» abajo, a la derecha, y entra a Categorías.",
-      "Si ves el aviso «Faltan categorías de iglesia», toca «Agregarlas».",
-      "Se crean solas las cuatro de siempre: Diezmos, Ofrendas, Primicias y Ofrenda especial. Con ellas, los informes separan cada tipo de ingreso.",
-      "Si tu iglesia usa otras (por ejemplo «Ofrenda de misiones»), créalas con el botón «Nueva».",
+      "Un espacio nuevo arranca con las de ingreso (Diezmos, Ofrendas, Primicias y Ofrenda especial) y las de gasto (Servicios, Alquiler, Honorarios, Mantenimiento, Actividades y Ayuda social).",
+      "Para verlas todas, toca «Más» abajo a la derecha y entra a Categorías.",
+      "Si borras alguna de las de ingreso, sale el aviso «Faltan categorías de iglesia»: toca «Ponerlas» y vuelven.",
+      "Para las que use tu iglesia y no estén (por ejemplo «Ofrenda de misiones»), toca «Nueva» y créala.",
     ],
-    ojo: "Esto se hace una vez por iglesia. Si ya están, no vuelve a aparecer el aviso.",
+    ojo: "Se pueden renombrar: si tu iglesia dice «Ofrenda dominical», cámbiale el nombre y los movimientos se van con ella.",
     imagenes: [
-      { src: "/ayuda/ayuda-3-categorias.png", alt: "Pantalla de Categorías con el aviso «Faltan categorías de iglesia» y el botón Agregarlas." },
+      { src: "/ayuda/ayuda-3-categorias.png", alt: "Pantalla de Categorías con la lista de ingresos y gastos, y el aviso «Faltan categorías de iglesia» con el botón Ponerlas." },
     ],
   },
   {

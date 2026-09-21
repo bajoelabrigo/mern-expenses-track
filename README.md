@@ -234,6 +234,7 @@ reembolso, otro). Quién dio o recibió cuánto es dato de la tesorería
 | Método | Ruta                       | Descripción                       |
 | ------ | -------------------------- | --------------------------------- |
 | POST   | `/categories/create`       | Crear categoría.                  |
+| POST   | `/categories/defaults`     | Poner las categorías de fábrica que le falten al espacio (un espacio nuevo ya nace con ellas). |
 | GET    | `/categories/lists`        | Listar las del espacio.           |
 | GET    | `/categories/:id`          | Ver una categoría.                |
 | PUT    | `/categories/update/:id`   | Editar (arrastra transacciones).  |

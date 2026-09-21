@@ -99,15 +99,18 @@ describe("Espacios, roles e invitaciones", () => {
 
     await invitarYAceptar(pastor, espacio, tesorera, "tesorero");
 
+    //! Una categoría propia del espacio, además de las de fábrica
     await as("post", "/api/v1/categories/create", pastor, espacio)
-      .send({ name: "diezmos", type: "income" })
+      .send({ name: "pactos", type: "income" })
       .expect(201);
-    await crearMovimiento(tesorera, espacio, { amount: 300, category: "diezmos" }).expect(201);
+    await crearMovimiento(tesorera, espacio, { amount: 300, category: "pactos" }).expect(201);
 
     const cats = await as("get", "/api/v1/categories/lists", tesorera, espacio).expect(200);
     const lista = await as("get", "/api/v1/transactions/lists", pastor, espacio).expect(200);
 
-    assert.deepEqual(cats.body.map((c) => c.name), ["diezmos"]);
+    //! La tesorera ve las mismas categorías que el pastor, la de fábrica y la suya
+    assert.ok(cats.body.some((c) => c.name === "pactos"));
+    assert.ok(cats.body.some((c) => c.name === "diezmos"));
     assert.equal(lista.body.total, 1);
     assert.equal(lista.body.transactions[0].createdBy.username, tesorera.user.username);
   });

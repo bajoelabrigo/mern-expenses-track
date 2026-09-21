@@ -2,11 +2,8 @@ const asyncHandler = require("express-async-handler");
 const Category = require("../model/Category");
 const Transaction = require("../model/Transaccion");
 const { audit, categorySnapshot } = require("../utils/audit");
-const {
-  INCOME_KINDS,
-  CHURCH_INCOME_CATEGORIES,
-  effectiveIncomeKind,
-} = require("../utils/incomeKinds");
+const { crearCategoriasPorDefecto } = require("../utils/defaultCategories");
+const { INCOME_KINDS, effectiveIncomeKind } = require("../utils/incomeKinds");
 
 const TYPES = ["income", "expense"];
 const DEFAULT_CATEGORY = "uncategorized";
@@ -193,28 +190,19 @@ const categoryController = {
     });
   }),
 
-  //! Agrega las categorías de ingreso de iglesia que falten (Diezmos,
-  //! Ofrendas, Primicias, Ofrenda especial). Una ya está si hay alguna
-  //! categoría de ese tipo, se llame como se llame: no se duplica "Diezmo".
-  addChurchDefaults: asyncHandler(async (req, res) => {
-    const existing = await Category.find({ workspace: req.workspace._id });
-    const kinds = new Set(existing.map(effectiveIncomeKind).filter(Boolean));
-    const names = new Set(existing.map((c) => c.name));
+  //! Agrega las categorías de siempre que falten en este espacio (las mismas con
+  //! las que arranca uno nuevo). Se puede llamar las veces que haga falta: no
+  //! duplica nada. Es lo que hace el botón de Categorías cuando falta alguna.
+  addDefaults: asyncHandler(async (req, res) => {
+    const added = await crearCategoriasPorDefecto(req.workspace);
 
-    const missing = CHURCH_INCOME_CATEGORIES.filter(
-      (c) => !kinds.has(c.incomeKind) && !names.has(c.name)
-    );
-
-    const added = [];
-    for (const base of missing) {
-      const category = await Category.create({ ...base, type: "income", workspace: req.workspace._id });
-      added.push(category);
+    for (const category of added) {
       await audit(req, {
         action: "category.create",
         entity: "category",
         entityId: category._id,
         after: categorySnapshot(category),
-        note: "Categoría base de iglesia",
+        note: "Categoría de fábrica",
       });
     }
 
