@@ -8,11 +8,14 @@ import {
 } from "react-icons/lu";
 import {
   CONTACTO,
+  GRUPOS,
   LO_ESENCIAL,
   TEMAS,
-  TEXTO_DE_AYUDA,
+  TEMAS_AVANZADOS,
+  TEMAS_BASICOS,
   TEXTO_PARA_COMPARTIR,
   TRANQUILA,
+  enlaceDeAyuda,
 } from "../../lib/ayuda";
 import { Button, Card, Eyebrow, Notice } from "../ui";
 
@@ -87,6 +90,58 @@ const Paso = ({ n, children }) => (
   </li>
 );
 
+//! Un tema: sus pasos, su aviso y sus capturas
+const Tema = ({ tema, numero }) => (
+  <section id={tema.id} className="mt-10 scroll-mt-24">
+    <Eyebrow>Tema {numero}</Eyebrow>
+    <h2 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight text-ink">
+      {tema.titulo}
+    </h2>
+    <p className="mt-2 text-[15px] leading-relaxed text-muted">{tema.resumen}</p>
+
+    <ol className="mt-4 space-y-3">
+      {tema.pasos.map((paso, n) => (
+        <Paso key={paso} n={n + 1}>
+          {paso}
+        </Paso>
+      ))}
+    </ol>
+
+    {tema.ojo && (
+      <Notice tone="warning" className="mt-4">
+        <span className="inline-flex gap-2">
+          <LuTriangleAlert aria-hidden="true" className="mt-0.5 shrink-0" />
+          <span>{tema.ojo}</span>
+        </span>
+      </Notice>
+    )}
+
+    <Capturas imagenes={tema.imagenes} />
+  </section>
+);
+
+//! El índice de un grupo
+const Indice = ({ grupo }) => (
+  <div>
+    <Eyebrow>{GRUPOS[grupo].titulo}</Eyebrow>
+    <p className="mt-1 text-sm text-muted">{GRUPOS[grupo].intro}</p>
+    <ol className="mt-3 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">
+      {TEMAS.filter((tema) => (tema.grupo === "avanzado") === (grupo === "avanzado")).map((tema) => (
+        <li key={tema.id}>
+          <a
+            href={`#${tema.id}`}
+            className="flex items-center gap-3 px-4 py-3 text-[15px] font-semibold text-ink transition hover:bg-surface-2"
+          >
+            <span className="tabular text-muted">{TEMAS.indexOf(tema) + 1}</span>
+            <span className="flex-1">{tema.titulo}</span>
+            <LuArrowRight aria-hidden="true" className="text-muted" />
+          </a>
+        </li>
+      ))}
+    </ol>
+  </div>
+);
+
 //! /ayuda — cómo se usa la app, paso a paso. Es pública a propósito: el enlace
 //! se manda por WhatsApp y tiene que abrir sin cuenta.
 const AyudaPage = () => {
@@ -100,8 +155,9 @@ const AyudaPage = () => {
           Cómo se usa, paso a paso
         </h1>
         <p className="mt-3 text-lg leading-relaxed text-ink-2">
-          Siete cosas y ya. Cada una con una captura de la pantalla, para que la reconozcas en tu
-          teléfono. Si solo vas a leer algo, lee lo de abajo.
+          Siete cosas para el día a día y cuatro más para cuando haga falta. Cada una con una
+          captura de la pantalla, para que la reconozcas en tu teléfono. Si solo vas a leer algo,
+          lee lo de abajo.
         </p>
         <Compartir />
       </header>
@@ -137,51 +193,23 @@ const AyudaPage = () => {
         </ul>
       </Card>
 
-      <nav aria-label="Temas" className="mt-8">
-        <Eyebrow>Los siete temas</Eyebrow>
-        <ol className="mt-3 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-card">
-          {TEMAS.map((tema, i) => (
-            <li key={tema.id}>
-              <a
-                href={`#${tema.id}`}
-                className="flex items-center gap-3 px-4 py-3 text-[15px] font-semibold text-ink transition hover:bg-surface-2"
-              >
-                <span className="tabular text-muted">{i + 1}</span>
-                <span className="flex-1">{tema.titulo}</span>
-                <LuArrowRight aria-hidden="true" className="text-muted" />
-              </a>
-            </li>
-          ))}
-        </ol>
+      <nav aria-label="Temas" className="mt-8 space-y-6">
+        <Indice grupo="basico" />
+        <Indice grupo="avanzado" />
       </nav>
 
-      {TEMAS.map((tema, i) => (
-        <section key={tema.id} id={tema.id} className="mt-10 scroll-mt-24">
-          <Eyebrow>Tema {i + 1}</Eyebrow>
-          <h2 className="mt-1 text-[24px] leading-tight font-extrabold tracking-tight text-ink">
-            {tema.titulo}
-          </h2>
-          <p className="mt-2 text-[15px] leading-relaxed text-muted">{tema.resumen}</p>
+      {TEMAS_BASICOS.map((tema) => (
+        <Tema key={tema.id} tema={tema} numero={TEMAS.indexOf(tema) + 1} />
+      ))}
 
-          <ol className="mt-4 space-y-3">
-            {tema.pasos.map((paso, n) => (
-              <Paso key={paso} n={n + 1}>
-                {paso}
-              </Paso>
-            ))}
-          </ol>
+      {/* El corte entre lo del día a día y lo que viene después */}
+      <div className="mt-16 border-t border-line pt-10">
+        <Eyebrow>{GRUPOS.avanzado.titulo}</Eyebrow>
+        <p className="mt-2 text-lg leading-relaxed text-ink-2">{GRUPOS.avanzado.intro}</p>
+      </div>
 
-          {tema.ojo && (
-            <Notice tone="warning" className="mt-4">
-              <span className="inline-flex gap-2">
-                <LuTriangleAlert aria-hidden="true" className="mt-0.5 shrink-0" />
-                <span>{tema.ojo}</span>
-              </span>
-            </Notice>
-          )}
-
-          <Capturas imagenes={tema.imagenes} />
-        </section>
+      {TEMAS_AVANZADOS.map((tema) => (
+        <Tema key={tema.id} tema={tema} numero={TEMAS.indexOf(tema) + 1} />
       ))}
 
       <Card as="section" aria-labelledby="trabaste" className="mt-12 p-5 sm:p-6">
@@ -199,9 +227,7 @@ const AyudaPage = () => {
             <div className="mt-4 flex flex-wrap gap-3">
               {CONTACTO.whatsapp && (
                 <a
-                  href={`https://wa.me/${CONTACTO.whatsapp}?text=${encodeURIComponent(
-                    TEXTO_DE_AYUDA(CONTACTO.nombre)
-                  )}`}
+                  href={enlaceDeAyuda()}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-[15px] font-semibold text-accent-ink transition hover:brightness-95"

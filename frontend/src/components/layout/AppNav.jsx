@@ -11,6 +11,7 @@ import ThemeToggle from "./ThemeToggle";
 import SupportCard from "./SupportCard";
 import WorkspacePicker from "./WorkspacePicker";
 import { AvisosContador } from "../Notificaciones/AvisosBell";
+import AyudaBoton from "../Ayuda/AyudaBoton";
 import { buttonClass } from "../ui/styles";
 
 const useNavContext = () => {
@@ -57,6 +58,7 @@ export const Sidebar = () => {
 
       <div className="flex flex-col gap-3 shrink-0">
         <SupportCard />
+        <AyudaBoton className="w-full" />
         <ThemeToggle />
         <button
           type="button"
@@ -187,6 +189,17 @@ const MoreSheet = ({ onClose, ctx }) => {
           </button>
         </div>
 
+        {/* Alguien que se trabó no sabe qué sección buscar: el atajo va arriba,
+            con el nombre de la pantalla en la que está metido. */}
+        <div className="mb-3 rounded-card bg-surface shadow-card p-4">
+          <p className="text-[15px] font-semibold text-ink">¿No te sale algo?</p>
+          <p className="mt-0.5 text-xs text-muted">
+            Escríbele y te contesta quien lleva las cuentas contigo. Se le manda en qué pantalla
+            estás.
+          </p>
+          <AyudaBoton className="mt-3" />
+        </div>
+
         <nav aria-label="Más secciones" className="bg-surface rounded-card shadow-card divide-y divide-line overflow-hidden">
           {items.map(({ to, label, icon: Icon }) => (
             <NavLink
@@ -203,7 +216,6 @@ const MoreSheet = ({ onClose, ctx }) => {
         <div className="mt-4">
           <SupportCard onNavigate={onClose} />
         </div>
-
         <div className="mt-4 bg-surface rounded-card shadow-card p-3">
           <p className="text-xs font-semibold text-muted mb-2 px-1">Tema</p>
           <ThemeToggle />

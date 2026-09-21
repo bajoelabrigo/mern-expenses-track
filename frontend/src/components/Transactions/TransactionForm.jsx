@@ -14,6 +14,7 @@ import { addToOutbox, newClientId } from "../../lib/outbox";
 import { formatMoney, formatTypedAmount } from "../../lib/money";
 import { PAYMENT_KINDS } from "../../lib/paymentKinds";
 import { toISODate } from "../../lib/periods";
+import AyudaBoton from "../Ayuda/AyudaBoton";
 import { pressKey } from "../../lib/keypad";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useFunds } from "../../hooks/useFunds";
@@ -242,7 +243,7 @@ const TransactionForm = ({ transaction, children }) => {
 
   return (
     <div className="max-w-md mx-auto space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <Link
           to={editing ? "/movimientos" : "/dashboard"}
           aria-label={editing ? "Volver" : "Cancelar"}
@@ -257,6 +258,9 @@ const TransactionForm = ({ transaction, children }) => {
           onChange={setType}
           className="flex-1"
         />
+        {/* Esta pantalla ocupa todo el ancho y no tiene barra de abajo: si
+            alguien se traba acá, el atajo tiene que estar acá. */}
+        <AyudaBoton compacto donde={editing ? "Corregir un movimiento" : "Registrar un movimiento"} />
       </div>
 
       {/* Monto */}

@@ -19,10 +19,40 @@ export const CONTACTO = {
   correo: "",
 };
 
-//! El mensaje ya empezado, para que solo tenga que contar qué le pasó. La frase
-//! queda abierta a propósito ("Me trabé con: ") para que la complete.
-export const TEXTO_DE_AYUDA = (nombre) =>
-  `Hola${nombre ? ` ${nombre}` : ""}, te escribo por la app de las cuentas de la iglesia. Me trabé con: `;
+//! El mensaje ya empezado, para que solo tenga que contar qué le pasó. Si se
+//! sabe en qué pantalla se trabó, va en el mensaje: del otro lado se enteran por
+//! dónde va sin preguntar. La frase queda abierta a propósito ("con: ").
+export const TEXTO_DE_AYUDA = ({ nombre = "", donde = "" } = {}) =>
+  `Hola${nombre ? ` ${nombre}` : ""}, te escribo por la app de las cuentas de la iglesia.` +
+  (donde ? ` Me trabé en «${donde}» con: ` : " Me trabé con: ");
+
+//! Cómo se llama cada pantalla para el mensaje. Por prefijo, porque las de
+//! detalle llevan un id detrás (/update-transactions/123).
+const PANTALLAS = [
+  ["/add-transaction", "Registrar un movimiento"],
+  ["/update-transactions", "Corregir un movimiento"],
+  ["/movimientos", "Movimientos"],
+  ["/conteos", "El conteo de la ofrenda"],
+  ["/aportantes", "Personas"],
+  ["/fondos", "Fondos"],
+  ["/ministerios", "Ministerios"],
+  ["/informes", "Informes"],
+  ["/categories", "Categorías"],
+  ["/espacio/miembros", "Miembros"],
+  ["/avisos", "Avisos"],
+  ["/ayuda", "La ayuda"],
+  ["/dashboard", "El Inicio"],
+];
+
+export const pantallaDe = (ruta = "") =>
+  (PANTALLAS.find(([prefijo]) => String(ruta).startsWith(prefijo)) || [])[1] || "la app";
+
+//! El enlace de WhatsApp con el mensaje ya escrito. Uno solo para toda la app:
+//! si cambia el texto, cambia en los tres sitios donde hay botón.
+export const enlaceDeAyuda = ({ donde = "", nombre = CONTACTO.nombre } = {}) =>
+  `https://wa.me/${CONTACTO.whatsapp}?text=${encodeURIComponent(
+    TEXTO_DE_AYUDA({ nombre, donde })
+  )}`;
 
 //! Lo que hay que saber aunque no se lea nada más. Va arriba, en tres líneas.
 export const LO_ESENCIAL = [
@@ -43,6 +73,7 @@ export const TRANQUILA = [
 export const TEMAS = [
   {
     id: "entrar",
+    grupo: "basico",
     titulo: "Entrar por primera vez",
     resumen: "Con tu correo y tu contraseña. Y el detalle que confunde a casi todos.",
     pasos: [
@@ -58,6 +89,7 @@ export const TEMAS = [
   },
   {
     id: "categorias",
+    grupo: "basico",
     titulo: "Preparar el espacio (una sola vez)",
     resumen: "Si al ir a registrar un ingreso no ves ninguna categoría, es esto.",
     pasos: [
@@ -73,6 +105,7 @@ export const TEMAS = [
   },
   {
     id: "ofrenda",
+    grupo: "basico",
     titulo: "Registrar la ofrenda del domingo",
     resumen: "El botón amarillo del centro es el que registra todo.",
     pasos: [
@@ -90,6 +123,7 @@ export const TEMAS = [
   },
   {
     id: "gasto",
+    grupo: "basico",
     titulo: "Registrar un gasto",
     resumen: "Igual, pero con la foto de la boleta y a quién se le pagó.",
     pasos: [
@@ -108,6 +142,7 @@ export const TEMAS = [
   },
   {
     id: "conteo",
+    grupo: "basico",
     titulo: "El conteo de la ofrenda, entre dos",
     resumen: "Lo que hace que las cuentas de la iglesia sean creíbles: nadie firma su propio conteo.",
     pasos: [
@@ -123,6 +158,7 @@ export const TEMAS = [
   },
   {
     id: "ver",
+    grupo: "basico",
     titulo: "Ver cómo va el mes y quién dio",
     resumen: "Tres pantallas: el resumen, el detalle y las personas.",
     pasos: [
@@ -138,6 +174,7 @@ export const TEMAS = [
   },
   {
     id: "corregir",
+    grupo: "basico",
     titulo: "Corregir un error, sin miedo",
     resumen: "Un error no se borra: se anula, con el motivo, y queda a la vista.",
     pasos: [
@@ -151,7 +188,91 @@ export const TEMAS = [
       { src: "/ayuda/ayuda-8-anulado.png", alt: "Un movimiento anulado, con el aviso «Este movimiento está anulado: Se registró dos veces. No suma en los totales»." },
     ],
   },
+
+  //! ── Para más adelante: no hacen falta la primera semana ──
+  {
+    id: "fondos",
+    grupo: "avanzado",
+    titulo: "Fondos: apartar la plata por destino",
+    resumen: "Un fondo es una caja aparte dentro de la misma cuenta. Sirve para saber cuánto hay para misiones y cuánto para la obra.",
+    pasos: [
+      "Entra a «Fondos» (en «Más»). Arriba está el General: ahí cae todo lo que no tenga otro fondo.",
+      "Toca «Nuevo» para crear uno: Misiones, Construcción del templo, Ayuda social. Ponle un ícono y, si quieren juntar una cifra, una meta.",
+      "Al registrar un movimiento puedes elegir a qué fondo va. El saldo de cada uno se calcula solo.",
+      "Para pasar dinero de un fondo a otro, «Mover». El pase queda en el historial con su nombre y se puede anular.",
+    ],
+    ojo: "El General no se puede borrar: es donde cae lo que no tiene destino. Un fondo que ya no se usa se archiva, y deja de ofrecerse al registrar.",
+    imagenes: [
+      { src: "/ayuda/ayuda-10-fondos.png", alt: "Pantalla de Fondos con el General arriba, su saldo y los botones de nuevo fondo y mover." },
+    ],
+  },
+  {
+    id: "personas",
+    grupo: "avanzado",
+    titulo: "Personas: quién dio y a quién se le pagó",
+    resumen: "La misma ficha sirve para el que da y para el que cobra. Y de ahí salen las constancias de fin de año.",
+    pasos: [
+      "En «Personas» está cada uno con lo que dio en el año y lo que se le pagó.",
+      "Al registrar un ingreso, elige «Aportante». En un gasto, «Se le pagó a» y el motivo: honorarios, jornal, servicio, reembolso.",
+      "A fin de año, «Constancias de aportes» saca un PDF por persona, para entregar. «Constancias de pagos» hace lo mismo con lo que se les pagó.",
+      "También está el informe de cuánto del gasto del año se fue en pagos a personas.",
+    ],
+    ojo: "Quién dio cuánto es dato de la tesorería: el auditor y el lector ven los movimientos, pero no los nombres de los aportantes.",
+    imagenes: [
+      { src: "/ayuda/ayuda-9-personas.png", alt: "Pantalla de Personas con el total recibido, lo pagado y la lista con lo que dio cada uno." },
+    ],
+  },
+  {
+    id: "roles",
+    grupo: "avanzado",
+    titulo: "Quién puede hacer qué",
+    resumen: "Cada uno entra con su correo y su rol. No todos pueden tocar todo, y eso es lo que hace creíble el libro.",
+    pasos: [
+      "Propietario: todo, incluidos los ajustes del espacio y borrar de verdad un movimiento.",
+      "Tesorero: registra y corrige movimientos, maneja fondos e invita al equipo.",
+      "Contador: registra y corrige movimientos y categorías, y ve a las personas.",
+      "Auditor y lector: solo miran. El auditor además ve el historial de cambios, que es lo que le da sentido a su rol.",
+      "Cada alta, cada cambio de rol y cada anulación queda en el historial con el nombre de quien lo hizo.",
+    ],
+    ojo: "El líder de un ministerio no ve el libro de la iglesia: entra solo a su presupuesto. Es a propósito.",
+    imagenes: [
+      { src: "/ayuda/ayuda-11-miembros.png", alt: "Pantalla de Miembros con el equipo, el rol de cada uno y el botón para agregar a alguien." },
+    ],
+  },
+  {
+    id: "ministerios",
+    grupo: "avanzado",
+    titulo: "Ministerios y su plan del año",
+    resumen: "Ponerle un presupuesto a cada ministerio y ver cuánto se ha ido. Avisa, no bloquea: quién autoriza pasarse lo decide la iglesia.",
+    pasos: [
+      "En «Ministerios» se crea cada uno con su plan del año.",
+      "Al registrar un gasto se elige a qué ministerio se carga.",
+      "La pantalla muestra cuánto lleva gastado cada uno y avisa al 80 % y al 100 %.",
+      "El líder del ministerio entra con su propia cuenta y ve solo el suyo: su plan y en qué se ha ido.",
+    ],
+    imagenes: [
+      { src: "/ayuda/ayuda-12-ministerios.png", alt: "Pantalla de Ministerios con el plan del año de cada uno y la barra de lo gastado." },
+    ],
+  },
 ];
+
+//! Los temas partidos en dos, que es como se leen: primero lo del día a día y
+//! después lo que hace falta cuando la iglesia ya va en serio.
+export const TEMAS_BASICOS = TEMAS.filter((tema) => tema.grupo !== "avanzado");
+export const TEMAS_AVANZADOS = TEMAS.filter((tema) => tema.grupo === "avanzado");
+
+//! Qué se dice al empezar cada grupo
+export const GRUPOS = {
+  basico: {
+    titulo: "Lo del día a día",
+    intro: "Con estos siete se lleva la iglesia entera.",
+  },
+  avanzado: {
+    titulo: "Cuando ya sepas lo de arriba",
+    intro:
+      "No hacen falta la primera semana. Están aquí para cuando toque separar la plata por destino, entregar constancias o repartir presupuestos.",
+  },
+};
 
 //! El texto que se manda por WhatsApp. Corto, porque nadie lee un mensaje largo.
 export const TEXTO_PARA_COMPARTIR = (url) =>

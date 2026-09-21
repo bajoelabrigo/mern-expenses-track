@@ -9,6 +9,9 @@ verdad, no maquetas: si la app cambia, se vuelven a hacer. Esto es cómo.
   (`npm run dev:memoria` + `npm run datos-ejemplo`), nunca contra la iglesia
   real: la página es pública y el enlace se reenvía por WhatsApp. La iglesia del
   demo se renombra a «Iglesia Ejemplo» para que se note que son ejemplos.
+  Ojo: la API **prefiere la cookie** sobre el token del encabezado, así que si el
+  navegador tiene una cookie vieja de `localhost:8000` la sesión se cae aunque el
+  token sea bueno. Se limpian las cookies antes de empezar.
 - **En móvil y en oscuro** (390 × 844). En móvil porque es donde las van a leer,
   y en oscuro porque es como abre la app.
 - **Contra la app compilada**, no contra el servidor de desarrollo: en
@@ -46,6 +49,14 @@ Luego, con la ventana del navegador en 390 × 844:
 | `ayuda-7-movimientos` | La lista de movimientos, con el buscador y los filtros |
 | `ayuda-8-anulado` | Un movimiento ya anulado, con su aviso y el motivo |
 | `ayuda-9-personas` | Personas, con lo recibido y lo pagado en el año |
+| `ayuda-10-fondos` | Fondos, con el General y tres fondos más (uno con meta) |
+| `ayuda-11-miembros` | Miembros, con los cuatro roles de la lista |
+| `ayuda-12-ministerios` | Ministerios, con el plan del año de cada uno |
+
+Los tres últimos necesitan datos que el demo no trae: hay que crear tres fondos
+—Misiones con meta de 5 000, Construcción del templo con 20 000, Ayuda social—
+y tres ministerios (Alabanza 8 000, Jóvenes 5 000, Escuela dominical 3 000).
+Se hacen por la API en un minuto, con la sesión del pastor.
 
 Al final hay que comprimirlas: sin paleta, las nueve pesan unos 470 KB; con
 paleta (256 colores y tramado) quedan en 165 KB y se leen igual. Y no entran en

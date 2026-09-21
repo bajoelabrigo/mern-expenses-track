@@ -176,19 +176,21 @@ despliega Netlify y Render) cuando está verificada.
       puede ocultar, y el Perfil la vuelve a mostrar. En un espacio ya armado no
       aparece: no queda nada que pedirle.
 - [ ] Landing page y alta guiada para una iglesia nueva (la guía de dentro ya está).
-- [x] **Ayuda paso a paso** (`/ayuda`): siete temas por tarea —entrar, preparar
-      el espacio, registrar la ofrenda, registrar un gasto con la boleta, el
-      conteo entre dos, ver cómo va y corregir un error—, con capturas de las
-      pantallas de verdad. Es una página **pública**, así que se manda por
-      WhatsApp y se abre sin cuenta, y a la vez está en el menú de la app. Arriba
-      de todo van las tres cosas que hay que saber y un «puedes estar tranquila»
-      que quita el miedo a romper algo.
-- [x] **Contacto de ayuda**: al final de `/ayuda`, el bloque «¿Te trabaste?»
-      abre WhatsApp con el mensaje ya empezado («Hola Jorge, … Me trabé con: »)
-      para que solo tenga que contar qué le pasó.
-- [ ] Soporte: centro de ayuda más completo (roles, fondos, constancias,
-      ministerios), buscador dentro de la ayuda y un botón de "reportar un
-      problema" en la propia pantalla donde se trabó (hoy hay que entrar a Ayuda).
+- [x] **Ayuda paso a paso** (`/ayuda`): once temas por tarea —siete del día a
+      día y cuatro para más adelante—, con capturas de las pantallas de verdad.
+      Es una página **pública**, así que se manda por WhatsApp y se abre sin
+      cuenta, y a la vez está en el menú de la app. Arriba de todo van las tres
+      cosas que hay que saber y un «puedes estar tranquila» que quita el miedo a
+      romper algo.
+- [x] **¿Te trabaste?** dentro de la app: en el menú y en la pantalla de
+      registrar, con el nombre de la pantalla en el mensaje («Me trabé en
+      ‹Registrar un movimiento› con: »), para que quien contesta sepa por dónde
+      va sin preguntar.
+- [x] **Contacto de ayuda**: el botón abre WhatsApp con el mensaje ya empezado
+      («Hola Jorge, … Me trabé con: »), para que solo tenga que contar qué le
+      pasó.
+- [ ] Soporte: buscador dentro de la ayuda y temas más finos (comprobantes,
+      enlace de la congregación, informes en PDF).
 - [ ] Verificación de correo y 2FA para tesoreros.
 - [ ] Exportación completa de datos, términos y privacidad.
 - [ ] Infraestructura: plan de pago en Render (sin arranque en frío) y copias
