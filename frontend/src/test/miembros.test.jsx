@@ -31,6 +31,9 @@ const listMembersAPI = vi.fn();
 const listInvitationsAPI = vi.fn();
 const addMemberAPI = vi.fn();
 const createInvitationAPI = vi.fn();
+const listJoinRequestsAPI = vi.fn();
+const approveJoinRequestAPI = vi.fn();
+const rejectJoinRequestAPI = vi.fn();
 
 vi.mock("../services/workspaces/workspaceService", () => ({
   listWorkspacesAPI: (...a) => listWorkspacesAPI(...a),
@@ -38,6 +41,9 @@ vi.mock("../services/workspaces/workspaceService", () => ({
   listInvitationsAPI: (...a) => listInvitationsAPI(...a),
   addMemberAPI: (...a) => addMemberAPI(...a),
   createInvitationAPI: (...a) => createInvitationAPI(...a),
+  listJoinRequestsAPI: (...a) => listJoinRequestsAPI(...a),
+  approveJoinRequestAPI: (...a) => approveJoinRequestAPI(...a),
+  rejectJoinRequestAPI: (...a) => rejectJoinRequestAPI(...a),
   updateMemberRoleAPI: vi.fn(),
   removeMemberAPI: vi.fn(),
   revokeInvitationAPI: vi.fn(),
@@ -96,9 +102,13 @@ describe("Miembros: agregar a alguien que ya tiene cuenta", () => {
       listInvitationsAPI,
       addMemberAPI,
       createInvitationAPI,
+      listJoinRequestsAPI,
+      approveJoinRequestAPI,
+      rejectJoinRequestAPI,
     ].forEach((m) => m.mockReset());
     listMembersAPI.mockResolvedValue([PASTOR]);
     listInvitationsAPI.mockResolvedValue([]);
+    listJoinRequestsAPI.mockResolvedValue([]);
   });
 
   it("lo agrega directo, con su rol, y avisa que ya tiene acceso", async () => {
@@ -187,5 +197,61 @@ describe("Miembros: agregar a alguien que ya tiene cuenta", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo agregar. Inténtalo de nuevo.");
     //! El correo se queda escrito para poder reintentar sin volver a teclearlo
     expect(screen.getByLabelText("Correo")).toHaveValue("ana@test.com");
+  });
+});
+
+describe("Miembros: solicitudes para entrar", () => {
+  const SOLICITUD = {
+    _id: "sol1",
+    userId: "u-ana",
+    username: "ana",
+    email: "ana@test.com",
+    message: "Soy la tesorera del ministerio",
+    createdAt: "2026-09-21T10:00:00.000Z",
+  };
+
+  beforeEach(() => {
+    [
+      listWorkspacesAPI,
+      listMembersAPI,
+      listInvitationsAPI,
+      listJoinRequestsAPI,
+      approveJoinRequestAPI,
+      rejectJoinRequestAPI,
+    ].forEach((m) => m.mockReset());
+    listMembersAPI.mockResolvedValue([PASTOR]);
+    listInvitationsAPI.mockResolvedValue([]);
+    listJoinRequestsAPI.mockResolvedValue([SOLICITUD]);
+  });
+
+  it("la tesorería ve quién pide entrar, con su mensaje, y lo aprueba con un rol", async () => {
+    approveJoinRequestAPI.mockResolvedValue({ message: "ana ya tiene acceso", role: "contador" });
+
+    renderCon(<MembersPage />);
+
+    //! Quien pide entrar NO entra solo: hay que aprobarlo
+    expect(await screen.findByText(/Solicitudes para entrar · 1/)).toBeInTheDocument();
+    expect(screen.getByText(/Soy la tesorera del ministerio/)).toBeInTheDocument();
+
+    //! Con el rol elegido (por defecto, el más prudente: lector)
+    fireEvent.change(screen.getByLabelText("Entra como"), { target: { value: "contador" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aprobar" }));
+
+    await waitFor(() => expect(approveJoinRequestAPI).toHaveBeenCalled());
+    expect(approveJoinRequestAPI.mock.calls[0][0]).toEqual({
+      id: IGLESIA._id,
+      requestId: "sol1",
+      role: "contador",
+    });
+  });
+
+  it("se puede rechazar sin dar acceso", async () => {
+    rejectJoinRequestAPI.mockResolvedValue({ message: "Solicitud rechazada" });
+
+    renderCon(<MembersPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Rechazar" }));
+
+    await waitFor(() => expect(rejectJoinRequestAPI).toHaveBeenCalled());
+    expect(rejectJoinRequestAPI.mock.calls[0][0]).toEqual({ id: IGLESIA._id, requestId: "sol1" });
   });
 });

@@ -24,6 +24,12 @@ despliega Netlify y Render) cuando está verificada.
 - [x] **Roles por espacio**: propietario, tesorero, contador, auditor (solo
       lectura) y lector.
 - [x] **Invitaciones** por enlace (se puede mandar por WhatsApp) y por correo.
+- [x] **Entrar a una iglesia que ya existe**: el registro avisa si ese nombre ya
+      está tomado (y ofrece entrar por el enlace de invitación en vez de crear
+      una iglesia gemela), y quien ya tiene cuenta puede **pedir entrar** a una
+      iglesia desde "Mis espacios". Entra solo si un propietario o tesorero lo
+      aprueba, eligiendo el rol: escribir el nombre de una iglesia nunca da
+      acceso a sus cuentas.
 - [x] **Montos en centavos** (enteros) y **moneda por espacio**. La API sigue
       hablando en unidades (`150.50`); la conversión vive en un solo sitio.
 - [x] **Anular en vez de borrar**: un movimiento anulado se sigue viendo,

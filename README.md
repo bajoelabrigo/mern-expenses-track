@@ -161,6 +161,14 @@ predeterminado del usuario. Pedir un espacio del que no se es miembro responde
 | GET    | `/workspaces/:id/invitations`                 | `members:manage`    |
 | POST   | `/workspaces/:id/invitations`                 | `members:manage` (devuelve el enlace) |
 | DELETE | `/workspaces/:id/invitations/:invitationId`   | `members:manage`    |
+| GET    | `/workspaces/buscar?nombre=`                  | sesión (reconocer la iglesia a la que quiere entrar) |
+| GET    | `/workspaces/mis-solicitudes`                 | sesión (las que uno pidió) |
+| POST   | `/workspaces/:id/solicitudes`                 | sesión: pide entrar, NO da acceso |
+| DELETE | `/workspaces/solicitudes/:requestId`          | quien la pidió, para retirarla |
+| GET    | `/workspaces/:id/solicitudes`                 | `members:manage` (por aprobar) |
+| POST   | `/workspaces/:id/solicitudes/:requestId/aprobar` | `members:manage` (con el rol elegido) |
+| POST   | `/workspaces/:id/solicitudes/:requestId/rechazar` | `members:manage`  |
+| GET    | `/publico/iglesias/existe?nombre=`            | pública: solo dice si el nombre está tomado (aviso del registro) |
 | GET    | `/workspaces/:id/audit`                       | `audit:read`        |
 | GET    | `/invitations/:token`                         | pública (vista previa) |
 | POST   | `/invitations/:token/accept`                  | sesión con el correo invitado |

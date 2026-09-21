@@ -19,7 +19,7 @@ const {
   listUserWorkspaces,
   repairDefaultWorkspace,
 } = require("../services/workspaceService");
-const { ROLES, permissionsFor, canAssignRole, can } = require("../utils/permissions");
+const { ROLES, ROLE_LABELS, permissionsFor, canAssignRole, can } = require("../utils/permissions");
 const { CURRENCIES } = require("../utils/money");
 const { audit } = require("../utils/audit");
 const { sendMail, simpleEmail } = require("../utils/mailer");
@@ -30,14 +30,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const KINDS = ["personal", "iglesia"];
 const MAX_AUDIT_LIMIT = 100;
-
-const ROLE_LABELS = {
-  propietario: "propietario",
-  tesorero: "tesorero",
-  contador: "contador",
-  auditor: "auditor (solo lectura)",
-  lector: "lector (solo lectura)",
-};
 
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");

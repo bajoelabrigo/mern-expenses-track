@@ -5,6 +5,7 @@ const { withWorkspace, requirePermission, HEADER } = require("../middlewares/wor
 const { emailLimiter } = require("../middlewares/rateLimiters");
 const { logoUpload } = require("../middlewares/logoUpload");
 const ctrl = require("../controllers/workspaceController");
+const joinCtrl = require("../controllers/joinRequestController");
 const publicLink = require("../controllers/publicReportController");
 
 const router = express.Router();
@@ -13,6 +14,25 @@ router.use(isAuthenticated);
 
 router.get("/", ctrl.listMine);
 router.post("/", ctrl.create);
+
+//! Solicitudes para entrar a un espacio que ya existe. Estas rutas van ANTES de
+//! /:id para que "buscar", "mis-solicitudes" y "solicitudes" no se lean como un id.
+router.get("/buscar", joinCtrl.search);
+router.get("/mis-solicitudes", joinCtrl.listMine);
+router.delete(
+  "/solicitudes/:requestId",
+  validateObjectId("requestId"),
+  joinCtrl.withdraw
+);
+//! Pedir entrar lo hace alguien que NO es miembro (es justo lo contrario), así
+//! que va sin withWorkspace: el controlador busca el espacio por el id de la URL.
+//! Lleva el límite de correos porque avisa a la tesorería del espacio.
+router.post(
+  "/:id/solicitudes",
+  validateObjectId(),
+  emailLimiter,
+  joinCtrl.create
+);
 
 //! En /workspaces/:id el espacio viene en la URL: se pasa al mismo middleware
 //! que usan las demás rutas (que lo leen de la cabecera).
@@ -89,6 +109,28 @@ router.delete(
   validateObjectId("invitationId"),
   requirePermission("members:manage"),
   ctrl.revokeInvitation
+);
+
+//! Solicitudes para entrar: las ve y las resuelve quien gestiona miembros
+router.get(
+  "/:id/solicitudes",
+  scoped,
+  requirePermission("members:manage"),
+  joinCtrl.listForWorkspace
+);
+router.post(
+  "/:id/solicitudes/:requestId/aprobar",
+  scoped,
+  validateObjectId("requestId"),
+  requirePermission("members:manage"),
+  joinCtrl.approve
+);
+router.post(
+  "/:id/solicitudes/:requestId/rechazar",
+  scoped,
+  validateObjectId("requestId"),
+  requirePermission("members:manage"),
+  joinCtrl.reject
 );
 
 router.get("/:id/audit", scoped, requirePermission("audit:read"), ctrl.listAudit);

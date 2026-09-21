@@ -1,12 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { registerAPI } from "../../services/users/userService";
+import { churchExistsAPI } from "../../services/workspaces/workspaceService";
 import { getErrorMessage } from "../../lib/axios";
+import { tokenDeInvitacion } from "../../lib/invitationLink";
 import AlertMessage from "../Alert/AlertMessage";
-import { Button, Field, Input, Select } from "../ui";
+import { Button, Field, Input, Notice, Select } from "../ui";
 import AuthShell from "./AuthShell";
 import { CURRENCIES } from "../../lib/money";
 
@@ -42,6 +44,11 @@ const RegistrationForm = () => {
   //! Quien llega desde una invitación ya tiene espacio al que unirse
   const invitado = Boolean(location.state?.invited);
 
+  const [enlaceInvitacion, setEnlaceInvitacion] = useState("");
+  const [pedirEnlace, setPedirEnlace] = useState(false);
+  //! El nombre se comprueba con retraso: sin escribir letra a letra
+  const [nombreIgl, setNombreIgl] = useState("");
+
   const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
     mutationFn: registerAPI,
     mutationKey: ["register"],
@@ -73,10 +80,26 @@ const RegistrationForm = () => {
     },
   });
 
+  //! ¿Ese nombre de iglesia ya existe? Se pregunta con retraso (media tecla
+  //! después) y solo si se está creando una iglesia.
+  useEffect(() => {
+    const t = setTimeout(() => setNombreIgl(formik.values.iglesia.trim()), 500);
+    return () => clearTimeout(t);
+  }, [formik.values.iglesia]);
+
+  const { data: nombreTomado } = useQuery({
+    queryKey: ["iglesia-existe", nombreIgl],
+    queryFn: () => churchExistsAPI(nombreIgl),
+    enabled: formik.values.llevaIglesia && nombreIgl.length >= 3,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const tokenPegado = tokenDeInvitacion(enlaceInvitacion);
+
   //! Redirige al login tras un registro exitoso (con limpieza del temporizador)
   useEffect(() => {
     if (!isSuccess) return undefined;
-
     //! Se conserva a dónde volver (p. ej. la invitación), el espacio y el correo
     const timeout = setTimeout(
       () =>
@@ -128,14 +151,63 @@ const RegistrationForm = () => {
           />
           <span className="text-sm">
             <span className="font-semibold text-ink">Llevaré las cuentas de una iglesia</span>
-            <span className="block text-muted">Además tendrás un espacio para tus finanzas personales.</span>
+            <span className="block text-muted">
+              Esto CREA un espacio nuevo para esa iglesia. Si tu iglesia ya está en la app, no la
+              crees otra vez: pide que te agreguen desde Miembros.
+            </span>
           </span>
         </label>
 
         {formik.values.llevaIglesia && (
-          <Field label="Nombre de la iglesia o ministerio" htmlFor="iglesia" error={formik.touched.iglesia && formik.errors.iglesia}>
+          <Field
+            label="Nombre de la iglesia o ministerio"
+            htmlFor="iglesia"
+            error={formik.touched.iglesia && formik.errors.iglesia}
+          >
             <Input id="iglesia" {...formik.getFieldProps("iglesia")} />
           </Field>
+        )}
+
+        {formik.values.llevaIglesia && nombreTomado?.existe && (
+          <Notice tone="warning">
+            <p>
+              Ya existe {nombreTomado.cuantas === 1 ? "una iglesia" : `${nombreTomado.cuantas} iglesias`}{" "}
+              con ese nombre en la app. Si vas a llevar las cuentas de una de ellas,{" "}
+              <strong className="text-ink">no crees otra</strong>: entra por su enlace de invitación.
+            </p>
+            <p className="mt-1 text-xs">
+              Si es una iglesia distinta, ponle otro nombre para no confundirlas.
+            </p>
+            {pedirEnlace ? (
+              <div className="mt-3 space-y-2">
+                <Input
+                  aria-label="Enlace de invitación"
+                  value={enlaceInvitacion}
+                  onChange={(e) => setEnlaceInvitacion(e.target.value)}
+                  placeholder="https://…/invitacion/…"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={!tokenPegado}
+                  onClick={() => navigate(`/invitacion/${tokenPegado}`)}
+                >
+                  {tokenPegado ? "Continuar con la invitación" : "Pega el enlace completo"}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="mt-3"
+                onClick={() => setPedirEnlace(true)}
+              >
+                Ya me invitaron: pegar el enlace
+              </Button>
+            )}
+          </Notice>
         )}
 
         <Field label="Moneda" htmlFor="currency">

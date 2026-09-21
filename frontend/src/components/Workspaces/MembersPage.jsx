@@ -4,9 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LuCheck, LuCopy, LuMessageCircle } from "react-icons/lu";
 import {
   addMemberAPI,
+  approveJoinRequestAPI,
   createInvitationAPI,
   listInvitationsAPI,
+  listJoinRequestsAPI,
   listMembersAPI,
+  rejectJoinRequestAPI,
   removeMemberAPI,
   revokeInvitationAPI,
   updateMemberRoleAPI,
@@ -93,6 +96,8 @@ const MembersPage = () => {
   //! Miembro agregado hace un momento, y correo que todavía no tiene cuenta
   const [added, setAdded] = useState(null);
   const [sinCuenta, setSinCuenta] = useState(null);
+  //! Rol elegido para cada solicitud de ingreso (por defecto, el más prudente)
+  const [rolesSolicitud, setRolesSolicitud] = useState({});
 
   const membersQuery = useQuery({
     queryKey: ["members", id],
@@ -106,9 +111,18 @@ const MembersPage = () => {
     enabled: Boolean(id && canManage),
   });
 
+  //! Solicitudes para entrar: alguien que ya tiene cuenta pide unirse a este
+  //! espacio y espera aprobación (no ve nada hasta que se le apruebe)
+  const requestsQuery = useQuery({
+    queryKey: ["join-requests", id],
+    queryFn: () => listJoinRequestsAPI(id),
+    enabled: Boolean(id && canManage),
+  });
+
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["members", id] });
     queryClient.invalidateQueries({ queryKey: ["invitations", id] });
+    queryClient.invalidateQueries({ queryKey: ["join-requests", id] });
   };
 
   //! Alta directa: si la persona ya tiene cuenta entra al instante, sin
@@ -143,6 +157,8 @@ const MembersPage = () => {
   const roleMutation = useMutation({ mutationFn: updateMemberRoleAPI, onSuccess: refresh });
   const removeMutation = useMutation({ mutationFn: removeMemberAPI });
   const revokeMutation = useMutation({ mutationFn: revokeInvitationAPI, onSuccess: refresh });
+  const approveMutation = useMutation({ mutationFn: approveJoinRequestAPI, onSuccess: refresh });
+  const rejectMutation = useMutation({ mutationFn: rejectJoinRequestAPI, onSuccess: refresh });
 
   //! El "no tiene cuenta" no es un fallo: se explica en su propio aviso, con la
   //! salida (invitarle), así que no se pinta además como error.
@@ -152,6 +168,8 @@ const MembersPage = () => {
     roleMutation,
     removeMutation,
     revokeMutation,
+    approveMutation,
+    rejectMutation,
   ].find((m) => m.isError && m.error?.response?.data?.code !== "USER_NOT_FOUND");
 
   if (!workspace) return <AlertMessage type="loading" message="Cargando espacio..." />;
@@ -192,6 +210,7 @@ const MembersPage = () => {
 
   const members = membersQuery.data || [];
   const invitations = invitationsQuery.data || [];
+  const requests = requestsQuery.data || [];
   const roles = assignableRoles(myRole, workspace.kind);
   //! El último propietario no puede irse (el backend responde 409): no se le
   //! ofrece el botón en vez de dejarle chocar con el error
@@ -352,6 +371,72 @@ const MembersPage = () => {
             </ListGroup>
           )}
         </section>
+
+        {canManage && requests.length > 0 && (
+          <section aria-labelledby="solicitudes">
+            <SectionTitle>
+              <span id="solicitudes">Solicitudes para entrar · {requests.length}</span>
+            </SectionTitle>
+            <ListGroup>
+              {requests.map((s) => {
+                const rol = rolesSolicitud[s._id] || "lector";
+                return (
+                  <div key={s._id} className="px-4 py-3 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <span
+                        aria-hidden="true"
+                        className="h-11 w-11 shrink-0 rounded-full bg-surface-2 grid place-items-center text-sm font-bold text-ink-2"
+                      >
+                        {initials(s.username)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-ink truncate">{s.username}</p>
+                        <p className="text-sm text-muted truncate">{s.email}</p>
+                        {s.message && <p className="mt-1 text-sm text-ink-2">“{s.message}”</p>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 pl-14">
+                      <label htmlFor={`rol-${s._id}`} className="text-sm text-muted">
+                        Entra como
+                      </label>
+                      <select
+                        id={`rol-${s._id}`}
+                        value={rol}
+                        onChange={(e) =>
+                          setRolesSolicitud({ ...rolesSolicitud, [s._id]: e.target.value })
+                        }
+                        className="h-9 pl-3 pr-2 text-sm font-semibold rounded-full bg-surface-2 text-ink border-0 focus:outline-none focus:ring-2 focus:ring-ink"
+                      >
+                        {roles.map((r) => (
+                          <option key={r} value={r}>
+                            {ROLE_LABELS[r]}
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        size="sm"
+                        disabled={approveMutation.isPending}
+                        onClick={() =>
+                          approveMutation.mutate({ id, requestId: s._id, role: rol })
+                        }
+                      >
+                        Aprobar
+                      </Button>
+                      <Button
+                        variant="danger-ghost"
+                        size="sm"
+                        disabled={rejectMutation.isPending}
+                        onClick={() => rejectMutation.mutate({ id, requestId: s._id })}
+                      >
+                        Rechazar
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </ListGroup>
+          </section>
+        )}
 
         {canManage && invitations.length > 0 && (
           <section aria-labelledby="pendientes">

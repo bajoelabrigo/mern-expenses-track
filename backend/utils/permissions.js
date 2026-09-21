@@ -6,6 +6,17 @@
 //! el libro de la iglesia, solo su propio presupuesto y lo que se le cargó.
 const ROLES = ["propietario", "tesorero", "contador", "auditor", "lector", "lider"];
 
+//! Cómo se nombra cada rol en los correos y los mensajes del servidor. Lo que ve
+//! la interfaz vive en el frontend (lib/roles.js).
+const ROLE_LABELS = {
+  propietario: "propietario",
+  tesorero: "tesorero",
+  contador: "contador",
+  auditor: "auditor (solo lectura)",
+  lector: "lector (solo lectura)",
+  lider: "líder de ministerio",
+};
+
 const PERMISSIONS = {
   //! Ver movimientos, categorías y balances
   "tx:read": ["propietario", "tesorero", "contador", "auditor", "lector"],
@@ -36,7 +47,6 @@ const PERMISSIONS = {
 
 const can = (role, permission) =>
   Boolean(PERMISSIONS[permission] && PERMISSIONS[permission].includes(role));
-
 const permissionsFor = (role) =>
   Object.keys(PERMISSIONS).filter((permission) => can(role, permission));
 
@@ -50,4 +60,4 @@ const canAssignRole = (actorRole, targetRole) => {
   return false;
 };
 
-module.exports = { ROLES, PERMISSIONS, can, permissionsFor, canAssignRole };
+module.exports = { ROLES, ROLE_LABELS, PERMISSIONS, can, permissionsFor, canAssignRole };

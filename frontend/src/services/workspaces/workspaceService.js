@@ -100,6 +100,57 @@ export const listAuditAPI = async ({ id, page = 1, limit = 30, entityId }) => {
   return response.data;
 };
 
+//! ── Solicitudes para entrar a una iglesia que ya existe ──
+//! Escribir el nombre no da acceso: se pide entrar y alguien de dentro aprueba.
+
+//! Lo usa el registro: avisa si ese nombre de iglesia ya está tomado
+export const churchExistsAPI = async (nombre) => {
+  const response = await axiosInstance.get("/publico/iglesias/existe", {
+    params: { nombre },
+  });
+  return response.data;
+};
+
+export const searchChurchesAPI = async (nombre) => {
+  const response = await axiosInstance.get("/workspaces/buscar", { params: { nombre } });
+  return response.data;
+};
+
+export const requestJoinAPI = async ({ id, message = "" }) => {
+  const response = await axiosInstance.post(`/workspaces/${id}/solicitudes`, { message });
+  return response.data;
+};
+
+export const listMyJoinRequestsAPI = async () => {
+  const response = await axiosInstance.get("/workspaces/mis-solicitudes");
+  return response.data;
+};
+
+export const withdrawJoinRequestAPI = async (requestId) => {
+  const response = await axiosInstance.delete(`/workspaces/solicitudes/${requestId}`);
+  return response.data;
+};
+
+export const listJoinRequestsAPI = async (id) => {
+  const response = await axiosInstance.get(`/workspaces/${id}/solicitudes`);
+  return response.data;
+};
+
+export const approveJoinRequestAPI = async ({ id, requestId, role }) => {
+  const response = await axiosInstance.post(
+    `/workspaces/${id}/solicitudes/${requestId}/aprobar`,
+    { role }
+  );
+  return response.data;
+};
+
+export const rejectJoinRequestAPI = async ({ id, requestId }) => {
+  const response = await axiosInstance.post(
+    `/workspaces/${id}/solicitudes/${requestId}/rechazar`
+  );
+  return response.data;
+};
+
 //! Invitación por token (la vista previa no exige sesión)
 export const previewInvitationAPI = async (token) => {
   const response = await axiosInstance.get(`/invitations/${token}`);
