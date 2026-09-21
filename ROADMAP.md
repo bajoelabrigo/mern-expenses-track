@@ -50,7 +50,8 @@ despliega Netlify y Render) cuando está verificada.
 ## Rediseño visual (entre las fases 2 y 3)
 
 - [x] Paleta nueva (fondo greige, tarjetas blancas, ámbar para registrar) con
-      modo claro, oscuro y según el sistema; fuente Manrope.
+      modo claro, oscuro y según el sistema; fuente Manrope. La app abre en
+      oscuro mientras no se elija otra cosa.
 - [x] Móvil: barra inferior con "+" central, Inicio simplificado, registrar con
       teclado propio, movimientos con búsqueda y filtros.
 - [x] Computadora: barra lateral, Inicio con cifras, barras por mes, dona y

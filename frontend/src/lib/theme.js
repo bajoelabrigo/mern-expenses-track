@@ -5,11 +5,16 @@ import { useEffect, useState } from "react";
 const KEY = "cg-theme";
 const COLORS = { light: "#ecebe6", dark: "#0e0e0e" };
 
+//! Quien no ha elegido nada abre la app en oscuro, mire lo que mire su
+//! teléfono. "Sistema" sigue estando, pero hay que pedirlo. El mismo valor
+//! está repetido en el script de index.html, que es quien pinta primero.
+export const DEFAULT_MODE = "dark";
+
 export const getThemeMode = () => {
   try {
-    return localStorage.getItem(KEY) || "system";
+    return localStorage.getItem(KEY) || DEFAULT_MODE;
   } catch {
-    return "system";
+    return DEFAULT_MODE;
   }
 };
 

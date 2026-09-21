@@ -3,8 +3,11 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
-//! Colores de la app (también en index.html y en el icono)
-const THEME_COLOR = "#ecebe6";
+//! Color de la app instalada: la barra del sistema y el fondo de su pantalla
+//! de carga. Es el oscuro, que es como abre la app mientras no se elija otra
+//! cosa (src/lib/theme.js). El manifest no puede seguir al tema elegido: se
+//! lee al instalar. También está en index.html y en el icono.
+const THEME_COLOR = "#0e0e0e";
 
 // https://vite.dev/config/
 export default defineConfig({

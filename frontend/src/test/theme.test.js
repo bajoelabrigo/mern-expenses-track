@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { applyTheme, getThemeMode, watchSystemTheme } from "../lib/theme";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { DEFAULT_MODE, applyTheme, getThemeMode, watchSystemTheme } from "../lib/theme";
 
 //! matchMedia no existe en jsdom: se simula uno que se puede cambiar
 const fakeMedia = () => {
@@ -26,17 +28,37 @@ describe("tema claro / oscuro", () => {
     document.documentElement.removeAttribute("data-theme");
   });
 
-  it("sin preferencia guardada sigue al teléfono, también si cambia con la app abierta", () => {
+  it("sin preferencia guardada la app abre en oscuro, aunque el teléfono esté en claro", () => {
     const sistema = fakeMedia();
-    expect(getThemeMode()).toBe("system");
+    expect(getThemeMode()).toBe("dark");
+
+    watchSystemTheme();
+    expect(theme()).toBe("dark");
+    //! La barra de Android también
+    expect(document.querySelector('meta[name="theme-color"]').content).toBe("#0e0e0e");
+
+    //! Y no se mueve porque el teléfono cambie: eso solo pasa en "Sistema"
+    sistema.setDark(false);
+    expect(theme()).toBe("dark");
+  });
+
+  it("el mismo valor por defecto que el script de index.html", () => {
+    //! index.html pinta antes que la app: si los dos no dicen lo mismo, se ve
+    //! un destello del tema equivocado al abrir
+    const html = readFileSync(resolve(process.cwd(), "index.html"), "utf8");
+    const guion = html.match(/localStorage\.getItem\("cg-theme"\) \|\| "(\w+)"/);
+    expect(guion?.[1]).toBe(DEFAULT_MODE);
+  });
+
+  it("en \"Sistema\" sigue al teléfono, también si cambia con la app abierta", () => {
+    const sistema = fakeMedia();
+    localStorage.setItem("cg-theme", "system");
 
     watchSystemTheme();
     expect(theme()).toBe("light");
 
     sistema.setDark(true);
     expect(theme()).toBe("dark");
-    //! La barra de Android también cambia
-    expect(document.querySelector('meta[name="theme-color"]').content).toBe("#0e0e0e");
 
     sistema.setDark(false);
     expect(theme()).toBe("light");
@@ -44,6 +66,7 @@ describe("tema claro / oscuro", () => {
 
   it("al volver a la app se vuelve a mirar el tema del teléfono", () => {
     const sistema = fakeMedia();
+    localStorage.setItem("cg-theme", "system");
     watchSystemTheme();
 
     //! Cambió mientras la app estaba en segundo plano (no llega el aviso)
