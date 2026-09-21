@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { LuEllipsis, LuLogOut, LuPlus, LuX } from "react-icons/lu";
-import { FaChurch } from "react-icons/fa6";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useLogout } from "../../hooks/useLogout";
 import { useAvisos } from "../../hooks/useAvisos";
 import { visibleNavItems } from "./navItems";
+import AppLogo from "./AppLogo";
 import ThemeToggle from "./ThemeToggle";
 import SupportCard from "./SupportCard";
 import WorkspacePicker from "./WorkspacePicker";
@@ -34,7 +34,7 @@ export const Sidebar = () => {
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col gap-5 px-4 py-5 border-r border-line bg-bg">
       <div className="flex items-center gap-2 px-2 shrink-0">
-        <FaChurch aria-hidden="true" className="text-accent text-2xl" />
+        <AppLogo size="md" />
         <span className="font-extrabold tracking-tight">Control de Gastos</span>
       </div>
 
