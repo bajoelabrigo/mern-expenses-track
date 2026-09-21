@@ -370,7 +370,7 @@ Perfil con un "Ya está todo listo". Claro y oscuro revisados. Pruebas:
 Quedan pendientes de la tanda el conteo ofrecido al registrar, el comprobante en
 los gastos grandes y los recordatorios por correo.
 
-**Fuera de la tanda, dos cosas que salieron al escribir la ayuda** (22 de
+**Fuera de la tanda, tres cosas que salieron al escribir la ayuda** (22 de
 septiembre):
 
 1. **La app no crea ninguna categoría.** Un espacio nuevo arranca vacío: para
@@ -386,6 +386,19 @@ septiembre):
    evitarlo hasta que caducara la cookie. Ahora se prueban las dos, en orden, y
    vale la primera que sirva (`middlewares/isAuth.js`). Tres pruebas de
    `tests/auth.test.js` fallan sin el arreglo.
+3. **"Recargar" no recargaba nada.** El aviso de "algo salió mal" invitaba a
+   recargar, pero si lo que se había roto eran los datos guardados en el
+   navegador —una respuesta que no era la esperada y quedó en la caché—, cada
+   recarga volvía a romperse igual: la app quedaba inservible para siempre en ese
+   teléfono, sin más salida que vaciar los datos del sitio, que es justo lo que
+   no sabe hacer quien no es técnico. Ahora el botón tira esos datos (la sesión
+   no) y la app los vuelve a pedir (`components/common/ErrorBoundary.jsx`).
+
+   Este último salió de un error mío al preparar las capturas de la ayuda
+   (compilé la app apuntando a su propia dirección, el servidor contestó con la
+   página HTML y esa respuesta quedó guardada como si fuera la lista de
+   espacios), pero el fallo de fondo —quedarse atascado sin salida— era real y
+   no dependía de mi error.
 
 **Tanda 3 — producto:** cierre mensual + conciliación, importación del extracto,
 y aprobación de gastos. Antes de empezar, partir `transactionController.js` y
