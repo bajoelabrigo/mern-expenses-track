@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { LuChevronLeft, LuChevronRight, LuDownload, LuFileText } from "react-icons/lu";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { LuChevronLeft, LuChevronRight, LuDownload, LuFileText, LuUserCheck } from "react-icons/lu";
 import {
   downloadAnnualReportAPI,
   downloadMonthlyReportAPI,
 } from "../../services/reports/reportService";
+import { getPaymentsReportAPI } from "../../services/donors/donorService";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { getErrorMessage } from "../../lib/axios";
+import { formatMoney } from "../../lib/money";
 import { Button, Card, Notice, PageHeader, Segmented } from "../ui";
 import { cx } from "../ui/styles";
 
@@ -48,10 +50,19 @@ const YearPicker = ({ year, onChange, max = THIS_YEAR }) => (
 
 //! /informes — descargar el informe de un mes o de un año
 const ReportsPage = () => {
-  const { workspace } = useWorkspace();
+  const { workspace, currency, can } = useWorkspace();
   const [kind, setKind] = useState("mensual");
   const [year, setYear] = useState(THIS_YEAR);
   const [month, setMonth] = useState(THIS_MONTH);
+
+  //! Pagos a personas del año: cuánto se llevó la tesorería en remuneraciones.
+  //! Solo para quien ve personas y solo en una iglesia (es donde las hay).
+  const verPagos = can("donor:read") && workspace?.kind === "iglesia";
+  const pagosQuery = useQuery({
+    queryKey: ["pagos-report", workspace?._id, year],
+    queryFn: () => getPaymentsReportAPI({ year }),
+    enabled: verPagos,
+  });
 
   //! Un mes que todavía no ha llegado no se puede pedir
   const isFuture = (m) => year === THIS_YEAR && m > THIS_MONTH;
@@ -150,6 +161,82 @@ const ReportsPage = () => {
         {download.isError && <Notice tone="danger">{getErrorMessage(download.error)}</Notice>}
         {download.isSuccess && <Notice tone="success">Se descargó {download.data}</Notice>}
       </Card>
+
+      {verPagos && (
+        <Card className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <span className="h-10 w-10 rounded-xl bg-surface-2 text-ink grid place-items-center">
+                <LuUserCheck aria-hidden="true" />
+              </span>
+              <h2 className="mt-3 font-extrabold text-ink">Pagos a personas en {year}</h2>
+            </div>
+            <YearPicker year={year} onChange={setYear} />
+          </div>
+
+          {pagosQuery.isError && (
+            <p className="mt-2 text-sm text-muted">{getErrorMessage(pagosQuery.error)}</p>
+          )}
+
+          {pagosQuery.data && (
+            <>
+              <p className="mt-3 text-[28px] leading-none font-extrabold tracking-tight tabular text-ink">
+                {formatMoney(pagosQuery.data.total, currency)}
+              </p>
+              <p className="mt-1.5 text-sm text-ink-2 leading-relaxed">
+                En {pagosQuery.data.payments}{" "}
+                {pagosQuery.data.payments === 1 ? "pago" : "pagos"} a{" "}
+                {pagosQuery.data.people.length}{" "}
+                {pagosQuery.data.people.length === 1 ? "persona" : "personas"}
+                {pagosQuery.data.expenseTotal > 0 && (
+                  <>
+                    : el <strong className="text-ink">{pagosQuery.data.share}%</strong> de todo el
+                    gasto del año.
+                  </>
+                )}
+                .
+              </p>
+
+              {pagosQuery.data.byKind.length > 0 && (
+                <ul className="mt-4 divide-y divide-line border-t border-line">
+                  {pagosQuery.data.byKind.map((k) => (
+                    <li key={k.kind} className="flex justify-between gap-3 py-2">
+                      <span className="text-sm text-muted">{k.label}</span>
+                      <span className="text-sm font-semibold tabular text-ink">
+                        {formatMoney(k.amount, currency)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {pagosQuery.data.people.length > 0 && (
+                <ul className="mt-4 divide-y divide-line border-t border-line">
+                  {pagosQuery.data.people.map((p) => (
+                    <li key={p._id} className="flex justify-between gap-3 py-2">
+                      <span className="text-sm font-semibold text-ink truncate">
+                        {p.name}
+                        {p.member && (
+                          <span className="ml-2 text-xs font-normal text-muted">miembro</span>
+                        )}
+                      </span>
+                      <span className="text-sm font-semibold tabular text-ink whitespace-nowrap">
+                        {formatMoney(p.amount, currency)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {pagosQuery.data.total === 0 && (
+                <p className="mt-2 text-sm text-muted">
+                  Todavía no hay gastos con &quot;se le pagó a&quot; en {year}.
+                </p>
+              )}
+            </>
+          )}
+        </Card>
+      )}
 
       <Card className="p-5">
         <span className="h-10 w-10 rounded-xl bg-surface-2 text-ink grid place-items-center">

@@ -1,9 +1,9 @@
 import { axiosInstance } from "../../lib/axios";
 import { downloadPdf } from "../../lib/downloadPdf";
 
-//! Aportantes con lo que dio cada uno en el año. Solo responde a quien puede
-//! verlos (propietario, tesorero y contador); a los demás el servidor
-//! responde 403.
+//! Personas del espacio: lo que dieron y lo que se les pagó en el año. Solo
+//! responde a quien puede verlas (propietario, tesorero y contador); a los
+//! demás el servidor responde 403.
 export const listDonorsAPI = async ({ year } = {}) => {
   const response = await axiosInstance.get("/donors", { params: { year } });
   return response.data;
@@ -36,3 +36,22 @@ export const downloadStatementAPI = ({ id, year }) =>
 
 export const downloadStatementsAPI = ({ year }) =>
   downloadPdf("/donors/constancias", { params: { year }, fallbackName: `constancias-${year}.pdf` });
+
+//! Lo que la iglesia le pagó a la persona en el año (con "Recibí conforme")
+export const downloadPaymentStatementAPI = ({ id, year }) =>
+  downloadPdf(`/donors/${id}/constancia-pagos`, {
+    params: { year },
+    fallbackName: `constancia-pagos-${year}.pdf`,
+  });
+
+export const downloadPaymentStatementsAPI = ({ year }) =>
+  downloadPdf("/donors/constancias-pagos", {
+    params: { year },
+    fallbackName: `constancias-pagos-${year}.pdf`,
+  });
+
+//! Informe de pagos a personas del año (para la pantalla de Informes)
+export const getPaymentsReportAPI = async ({ year } = {}) => {
+  const response = await axiosInstance.get("/donors/pagos", { params: { year } });
+  return response.data;
+};

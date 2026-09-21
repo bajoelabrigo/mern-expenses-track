@@ -16,6 +16,8 @@ const TransactionRow = ({ transaction, icon, currency, href, actions }) => {
     fundLabel,
     //! El nombre solo llega a quien puede verlo (lo filtra la API)
     transaction.donor?.name,
+    //! A quién se le pagó, cuando es un gasto con persona
+    transaction.payee?.name ? `pagado a ${transaction.payee.name}` : null,
     transaction.createdBy?.username ? `por ${transaction.createdBy.username}` : null,
   ]
     .filter(Boolean)

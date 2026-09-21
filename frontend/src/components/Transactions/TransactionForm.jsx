@@ -12,6 +12,7 @@ import {
 import { getErrorMessage, isNetworkError } from "../../lib/axios";
 import { addToOutbox, newClientId } from "../../lib/outbox";
 import { formatMoney, formatTypedAmount } from "../../lib/money";
+import { PAYMENT_KINDS } from "../../lib/paymentKinds";
 import { toISODate } from "../../lib/periods";
 import { pressKey } from "../../lib/keypad";
 import { useWorkspace } from "../../hooks/useWorkspace";
@@ -67,10 +68,19 @@ const TransactionForm = ({ transaction, children }) => {
   const { funds, hasFunds } = useFunds();
   //! Aportante: a nombre de quién entró (diezmo, ofrenda de alguien)
   const [donor, setDonor] = useState(() => transaction?.donor || "");
+  //! A quién se le pagó: la hermana que cocinó, el predicador invitado… Misma
+  //! ficha que el aportante, pero en un gasto. `paymentKind` dice por qué.
+  const [payee, setPayee] = useState(() => transaction?.payee || "");
+  const [paymentKind, setPaymentKind] = useState(() => transaction?.paymentKind || "");
   const { donors, activeDonors, canSee: canSeeDonors } = useDonors();
   const donorOptions = donors.filter((d) => !d.archived || d._id === transaction?.donor);
   const showDonor = canSeeDonors && can("donor:write") && type === "income" &&
     (activeDonors.length > 0 || Boolean(donor));
+  //! Para pagar se ofrecen las mismas personas (una hermana puede ofrendar y
+  //! además trabajar); al editar, también la archivada que ya tenía
+  const payeeOptions = donors.filter((d) => !d.archived || d._id === transaction?.payee);
+  const showPayee = canSeeDonors && can("donor:write") && type === "expense" &&
+    (activeDonors.length > 0 || Boolean(payee));
   //! Al registrar solo los activos; al editar, también el archivado que ya tenía
   const fundOptions = funds.filter((f) => !f.archived || (f._id && f._id === transaction?.fund));
   const showFund = funds.length > 0 && (hasFunds || fund !== "general");
@@ -206,6 +216,13 @@ const TransactionForm = ({ transaction, children }) => {
       category: selectedCategory,
       fund: fund === "general" ? null : fund,
       ...(canSeeDonors ? { donor: type === "income" && donor ? donor : null } : {}),
+      ...(canSeeDonors
+        ? {
+            payee: type === "expense" && payee ? payee : null,
+            //! El concepto solo acompaña a un pago
+            paymentKind: type === "expense" && payee && paymentKind ? paymentKind : null,
+          }
+        : {}),
       ...(canSeeMinistries
         ? { ministry: type === "expense" && selectedMinistry ? selectedMinistry : null }
         : {}),
@@ -344,6 +361,47 @@ const TransactionForm = ({ transaction, children }) => {
                   <option key={d._id} value={d._id}>
                     {d.name}
                     {d.archived ? " (archivado)" : ""}
+                  </option>
+                ))}
+              </select>
+              <LuChevronDown aria-hidden="true" className="pointer-events-none absolute right-0 text-muted" />
+            </span>
+          </label>
+        )}
+        {showPayee && (
+          <label className="flex items-center justify-between gap-3 px-4 h-13">
+            <span className="text-sm font-semibold text-ink-2">Se le pagó a</span>
+            <span className="relative min-w-0 flex items-center">
+              <select
+                value={payee}
+                onChange={(e) => setPayee(e.target.value)}
+                className="appearance-none bg-transparent text-sm text-right font-semibold pr-6 min-w-0 truncate focus:outline-none"
+              >
+                <option value="">A nadie en concreto</option>
+                {payeeOptions.map((d) => (
+                  <option key={d._id} value={d._id}>
+                    {d.name}
+                    {d.archived ? " (archivado)" : ""}
+                  </option>
+                ))}
+              </select>
+              <LuChevronDown aria-hidden="true" className="pointer-events-none absolute right-0 text-muted" />
+            </span>
+          </label>
+        )}
+        {showPayee && payee && (
+          <label className="flex items-center justify-between gap-3 px-4 h-13">
+            <span className="text-sm font-semibold text-ink-2">Por qué se le pagó</span>
+            <span className="relative min-w-0 flex items-center">
+              <select
+                value={paymentKind}
+                onChange={(e) => setPaymentKind(e.target.value)}
+                className="appearance-none bg-transparent text-sm text-right font-semibold pr-6 min-w-0 truncate focus:outline-none"
+              >
+                <option value="">Sin especificar</option>
+                {PAYMENT_KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
                   </option>
                 ))}
               </select>

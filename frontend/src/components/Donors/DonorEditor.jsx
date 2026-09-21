@@ -25,6 +25,7 @@ const DonorForm = ({ donor }) => {
     phone: donor?.phone || "",
     email: donor?.email || "",
     notes: donor?.notes || "",
+    member: Boolean(donor?.member),
   });
   const [touched, setTouched] = useState(false);
   const set = (field) => (e) => setValues((v) => ({ ...v, [field]: e.target.value }));
@@ -72,6 +73,22 @@ const DonorForm = ({ donor }) => {
           </Field>
         ))}
 
+        <label className="flex items-start gap-3 rounded-xl bg-surface-2 p-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={values.member}
+            onChange={(e) => setValues((v) => ({ ...v, member: e.target.checked }))}
+            className="mt-0.5 h-5 w-5 accent-[var(--ink)]"
+          />
+          <span className="text-sm">
+            <span className="font-semibold text-ink">Es miembro de la congregación</span>
+            <span className="block text-muted">
+              Sirve para los informes: separa lo que se le pagó a los hermanos de lo que se le pagó
+              a proveedores de fuera.
+            </span>
+          </span>
+        </label>
+
         <Field label="Notas" htmlFor="donor-notes" hint="Opcional, para la tesorería.">
           <Textarea
             id="donor-notes"
@@ -84,7 +101,7 @@ const DonorForm = ({ donor }) => {
       </Card>
 
       <Button type="submit" size="lg" block disabled={mutation.isPending}>
-        {mutation.isPending ? "Guardando…" : editing ? "Guardar cambios" : "Agregar aportante"}
+        {mutation.isPending ? "Guardando…" : editing ? "Guardar cambios" : "Agregar persona"}
       </Button>
     </form>
   );
@@ -108,8 +125,12 @@ const DonorEditor = () => {
   return (
     <div className="max-w-md mx-auto">
       <PageHeader
-        title={donor ? "Editar aportante" : "Nuevo aportante"}
-        subtitle={donor ? donor.name : "Sus datos solo los ve la tesorería."}
+        title={donor ? "Editar persona" : "Nueva persona"}
+        subtitle={
+          donor
+            ? donor.name
+            : "Quien aporta y quien recibe un pago son la misma ficha. Solo la ve la tesorería."
+        }
       />
       <DonorForm key={donor?._id || "nuevo"} donor={donor} />
     </div>

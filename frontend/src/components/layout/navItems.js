@@ -45,9 +45,10 @@ export const NAV_ITEMS = [
   },
   {
     to: "/aportantes",
-    label: "Aportantes",
+    label: "Personas",
     icon: LuHeartHandshake,
-    //! Quién dio cuánto es cosa de la tesorería, y solo en una iglesia
+    //! Quién dio y quién recibió cuánto es cosa de la tesorería, y solo en una
+    //! iglesia
     when: ({ can, workspace }) => can("donor:read") && workspace?.kind === "iglesia",
   },
   {

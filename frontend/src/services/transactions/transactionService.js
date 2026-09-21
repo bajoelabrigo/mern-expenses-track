@@ -16,6 +16,8 @@ export const addTransactionAPI = async (
     clientId,
     fund,
     donor,
+    payee,
+    paymentKind,
     ministry,
   },
   { workspaceId } = {}
@@ -34,6 +36,8 @@ export const addTransactionAPI = async (
       clientId,
       fund,
       donor,
+      payee,
+      paymentKind,
       ministry,
     },
     workspaceId ? { headers: { "X-Workspace-Id": workspaceId } } : undefined
@@ -50,6 +54,8 @@ export const updateTransactionAPI = async ({
   description,
   fund,
   donor,
+  payee,
+  paymentKind,
   ministry,
   id,
 }) => {
@@ -61,6 +67,8 @@ export const updateTransactionAPI = async ({
     description,
     fund,
     donor,
+    payee,
+    paymentKind,
     ministry,
   });
   return response.data;
@@ -97,12 +105,14 @@ export const listTransationsAPI = async ({
   recurrent,
   fund,
   donor,
+  payee,
 }) => {
   const response = await axiosInstance.get("/transactions/lists", {
     params: {
       q: q || undefined,
       fund: fund || undefined,
       donor: donor || undefined,
+      payee: payee || undefined,
       recurrent: recurrent ? "true" : undefined,
       category,
       type,
@@ -173,6 +183,7 @@ export const exportTransactionExcelAPI = async ({
   includeVoided,
   fund,
   donor,
+  payee,
 } = {}) => {
   //! Los mismos filtros que el listado: el Excel es lo que se ve en pantalla
   const response = await axiosInstance.get("/transactions/export/excel", {
@@ -186,6 +197,7 @@ export const exportTransactionExcelAPI = async ({
       includeVoided: includeVoided ? "true" : undefined,
       fund: fund || undefined,
       donor: donor || undefined,
+      payee: payee || undefined,
     },
     responseType: "blob",
   });

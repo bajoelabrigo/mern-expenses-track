@@ -12,6 +12,7 @@ import {
 } from "react-icons/lu";
 import {
   deleteDonorAPI,
+  downloadPaymentStatementAPI,
   downloadStatementAPI,
   getDonorAPI,
   updateDonorAPI,
@@ -53,6 +54,11 @@ const DonorDetail = () => {
     queryKey: ["list-transactions", "donor", id],
     queryFn: () => listTransationsAPI({ donor: id, page: 1, limit: 20 }),
   });
+  //! Y lo que la iglesia le pagó
+  const pagos = useQuery({
+    queryKey: ["list-transactions", "payee", id],
+    queryFn: () => listTransationsAPI({ payee: id, page: 1, limit: 20 }),
+  });
   const { data: categories = [] } = useQuery({ queryKey: ["list-categories"], queryFn: listCategoriesAPI });
   const iconOf = (name) => categories.find((c) => c.name === name)?.icon;
 
@@ -61,6 +67,7 @@ const DonorDetail = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: DONORS_KEY }),
   });
   const statement = useMutation({ mutationFn: downloadStatementAPI });
+  const paymentStatement = useMutation({ mutationFn: downloadPaymentStatementAPI });
   const remove = useMutation({
     mutationFn: deleteDonorAPI,
     onSuccess: () => {
@@ -76,10 +83,33 @@ const DonorDetail = () => {
   }
 
   const donor = donorQuery.data;
-  const mutationError = [archive, remove, statement].find((m) => m.isError);
+  const mutationError = [archive, remove, statement, paymentStatement].find((m) => m.isError);
   const handleDelete = () => {
-    if (window.confirm(`¿Borrar a ${donor.name}? Nunca se le registró un aporte.`)) remove.mutate(donor._id);
+    if (
+      window.confirm(
+        `¿Borrar a ${donor.name}? Nunca se le registró un aporte ni un pago.`
+      )
+    ) {
+      remove.mutate(donor._id);
+    }
   };
+
+  const listaMovimientos = (consulta, vacio) =>
+    consulta.data?.transactions?.length ? (
+      <Card as="ul" className="divide-y divide-line overflow-hidden">
+        {consulta.data.transactions.map((t) => (
+          <TransactionRow
+            key={t._id}
+            transaction={t}
+            icon={iconOf(t.category)}
+            currency={currency}
+            href={`/update-transactions/${t._id}`}
+          />
+        ))}
+      </Card>
+    ) : (
+      !consulta.isLoading && <p className="px-1 text-sm text-muted">{vacio}</p>
+    );
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -87,12 +117,18 @@ const DonorDetail = () => {
         to="/aportantes"
         className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink mb-4"
       >
-        <LuChevronLeft aria-hidden="true" /> Aportantes
+        <LuChevronLeft aria-hidden="true" /> Personas
       </Link>
 
       <PageHeader
         title={donor.name}
-        subtitle={donor.archived ? "Archivado" : "Aportante"}
+        subtitle={
+          donor.archived
+            ? "Archivado"
+            : donor.member
+            ? "Miembro de la congregación"
+            : "Persona"
+        }
         action={
           canWrite && (
             <ButtonLink to={`/aportantes/${donor._id}/editar`} variant="secondary" size="sm">
@@ -113,7 +149,7 @@ const DonorDetail = () => {
 
         <Card className="p-5">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-muted">Dio en {year}</p>
+            <p className="text-sm font-semibold text-muted">Movimiento en {year}</p>
             <div className="flex items-center gap-1 rounded-full bg-surface-2 p-1 shrink-0">
               <button
                 type="button"
@@ -145,24 +181,40 @@ const DonorDetail = () => {
             >
               {initials(donor.name)}
             </span>
-            <div className="min-w-0">
-              <p className="text-[32px] leading-none font-extrabold tracking-tight tabular text-ink">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-muted">Aportó</p>
+              <p className="text-[30px] leading-none font-extrabold tracking-tight tabular text-ink">
                 {formatMoney(donor.given, currency)}
               </p>
               <p className="mt-1 text-sm text-muted">
-                {donor.gifts} {donor.gifts === 1 ? "aporte" : "aportes"} · {formatMoney(donor.givenAllTime, currency)} en total
+                {donor.gifts} {donor.gifts === 1 ? "aporte" : "aportes"} ·{" "}
+                {formatMoney(donor.givenAllTime, currency)} en total
               </p>
             </div>
           </div>
 
-          {(donor.document || donor.phone || donor.email || donor.notes) && (
-            <dl className="mt-4 divide-y divide-line border-t border-line">
-              <Dato label="Documento" value={donor.document} />
-              <Dato label="Teléfono" value={donor.phone} />
-              <Dato label="Correo" value={donor.email} />
-              <Dato label="Notas" value={donor.notes} />
-            </dl>
-          )}
+          {/* Lo que la iglesia le pagó: el otro lado de la misma ficha */}
+          <div className="mt-4 border-t border-line pt-3">
+            <p className="text-xs font-semibold text-muted">Se le pagó</p>
+            <p className="text-[30px] leading-none font-extrabold tracking-tight tabular text-ink">
+              {formatMoney(donor.paid, currency)}
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              {donor.payments} {donor.payments === 1 ? "pago" : "pagos"} ·{" "}
+              {formatMoney(donor.paidAllTime, currency)} en total
+            </p>
+          </div>
+
+          <dl className="mt-4 divide-y divide-line border-t border-line">
+            <Dato
+              label="Tipo"
+              value={donor.member ? "Miembro de la congregación" : "No es miembro (o no consta)"}
+            />
+            <Dato label="Documento" value={donor.document} />
+            <Dato label="Teléfono" value={donor.phone} />
+            <Dato label="Correo" value={donor.email} />
+            <Dato label="Notas" value={donor.notes} />
+          </dl>
         </Card>
 
         <div className="flex flex-wrap gap-2">
@@ -173,7 +225,17 @@ const DonorDetail = () => {
               disabled={statement.isPending}
             >
               <LuFileText aria-hidden="true" />
-              {statement.isPending ? "Preparando…" : `Constancia ${year}`}
+              {statement.isPending ? "Preparando…" : `Constancia de aportes ${year}`}
+            </Button>
+          )}
+          {donor.payments > 0 && (
+            <Button
+              variant="secondary"
+              onClick={() => paymentStatement.mutate({ id: donor._id, year })}
+              disabled={paymentStatement.isPending}
+            >
+              <LuFileText aria-hidden="true" />
+              {paymentStatement.isPending ? "Preparando…" : `Constancia de pagos ${year}`}
             </Button>
           )}
           {canWrite && (
@@ -186,7 +248,7 @@ const DonorDetail = () => {
               {donor.archived ? "Volver a usarlo" : "Archivar"}
             </Button>
           )}
-          {canWrite && donor.giftsAllTime === 0 && (
+          {canWrite && donor.giftsAllTime === 0 && donor.paymentsAllTime === 0 && (
             <Button variant="danger-ghost" onClick={handleDelete} disabled={remove.isPending}>
               <LuTrash2 aria-hidden="true" /> Borrar
             </Button>
@@ -208,21 +270,25 @@ const DonorDetail = () => {
             )}
           </div>
           {gifts.isError && <AlertMessage type="error" message={getErrorMessage(gifts.error)} />}
-          {gifts.data?.transactions?.length ? (
-            <Card as="ul" className="divide-y divide-line overflow-hidden">
-              {gifts.data.transactions.map((t) => (
-                <TransactionRow
-                  key={t._id}
-                  transaction={t}
-                  icon={iconOf(t.category)}
-                  currency={currency}
-                  href={`/update-transactions/${t._id}`}
-                />
-              ))}
-            </Card>
-          ) : (
-            !gifts.isLoading && <p className="px-1 text-sm text-muted">Todavía no tiene aportes registrados.</p>
-          )}
+          {listaMovimientos(gifts, "Todavía no tiene aportes registrados.")}
+        </section>
+
+        <section aria-labelledby="pagos">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h2 id="pagos" className="font-extrabold">
+              Pagos que recibió
+            </h2>
+            {pagos.data?.total > 0 && (
+              <Link
+                to={`/movimientos?pagado=${donor._id}`}
+                className="text-sm font-semibold text-muted hover:text-ink"
+              >
+                Ver en Movimientos
+              </Link>
+            )}
+          </div>
+          {pagos.isError && <AlertMessage type="error" message={getErrorMessage(pagos.error)} />}
+          {listaMovimientos(pagos, "Todavía no se le ha pagado nada.")}
         </section>
       </div>
     </div>

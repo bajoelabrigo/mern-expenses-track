@@ -6,6 +6,7 @@ const Fund = require("../model/Fund");
 const Category = require("../model/Category");
 const Donor = require("../model/Donor");
 const { effectiveIncomeKind, inferIncomeKind } = require("../utils/incomeKinds");
+const { isValidPaymentKind, PAYMENT_KIND_LABELS } = require("../utils/paymentKinds");
 const { can } = require("../utils/permissions");
 const {
   parseStartDate,
@@ -50,14 +51,15 @@ const MAX_LIMIT = 100;
 //! valor absurdo desborde las sumas.
 const MAX_AMOUNT_CENTS = 100_000_000_000; // mil millones
 
-//! Quién dio cuánto solo lo ve la tesorería: a los demás se les quita el
-//! aportante de cada movimiento antes de responder (esconderlo solo en la
+//! Quién dio o recibió cuánto solo lo ve la tesorería: a los demás se les quita
+//! la persona de cada movimiento antes de responder (esconderlo solo en la
 //! pantalla no serviría de nada).
 const seesDonors = (req) => can(req.role, "donor:read");
 const visible = (req, doc) => {
   if (seesDonors(req)) return doc;
   const json = doc && typeof doc.toJSON === "function" ? doc.toJSON() : { ...doc };
   delete json.donor;
+  delete json.payee;
   return json;
 };
 const visibleList = (req, docs) => (seesDonors(req) ? docs : docs.map((d) => visible(req, d)));
@@ -71,6 +73,16 @@ const resolveDonor = async (workspaceId, value) => {
   const donor = await Donor.findOne({ _id: value, workspace: workspaceId });
   if (!donor) return { error: "Ese aportante no existe en este espacio", status: 404 };
   return { donor };
+};
+
+//! A quién se le pagó: misma ficha que el aportante, pero en un gasto.
+const resolvePayee = async (workspaceId, value) => {
+  if (value === undefined) return { unchanged: true };
+  if (value === null || value === "") return { payee: null };
+  if (!mongoose.isValidObjectId(value)) return { error: "Persona inválida", status: 400 };
+  const payee = await Donor.findOne({ _id: value, workspace: workspaceId });
+  if (!payee) return { error: "Esa persona no existe en este espacio", status: 404 };
+  return { payee };
 };
 
 //! Valida un monto de la API (en unidades) y lo devuelve en centavos.
@@ -113,6 +125,13 @@ const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {
     if (query.donor === "sin") filters.donor = null;
     else if (mongoose.isValidObjectId(query.donor)) filters.donor = query.donor;
     else return { error: "Aportante inválido" };
+  }
+
+  //! A quién se le pagó: un id o "sin" para los gastos sin persona
+  if (query.payee !== undefined && query.payee !== "") {
+    if (query.payee === "sin") filters.payee = null;
+    else if (mongoose.isValidObjectId(query.payee)) filters.payee = query.payee;
+    else return { error: "Persona inválida" };
   }
 
   //! Fondo: "general" son los que no tienen fondo (null también cubre los
@@ -201,6 +220,8 @@ const transactionController = {
       clientId,
       fund,
       donor,
+      payee,
+      paymentKind,
       ministry,
     } = req.body;
 
@@ -275,6 +296,11 @@ const transactionController = {
     if (resolvedDonor.error) {
       return res.status(resolvedDonor.status).json({ message: resolvedDonor.error });
     }
+    //! Y a quién se le pagó, lo mismo (misma ficha, misma privacidad)
+    const resolvedPayee = await resolvePayee(req.workspace._id, payee);
+    if (resolvedPayee.error) {
+      return res.status(resolvedPayee.status).json({ message: resolvedPayee.error });
+    }
     //! El ministerio solo tiene sentido en un gasto: es contra su presupuesto
     const resolvedMinistry = await resolveMinistry(req.workspace._id, ministry);
     if (resolvedMinistry.error) {
@@ -291,6 +317,20 @@ const transactionController = {
     }
     if (donorDoc && type !== "income") {
       return res.status(400).json({ message: "Solo los ingresos llevan aportante" });
+    }
+
+    const payeeDoc = resolvedPayee.payee || null;
+    if (payeeDoc && !seesDonors(req)) {
+      return res.status(403).json({ message: "Tu rol no permite registrar a quién se le pagó" });
+    }
+    if (payeeDoc && type !== "expense") {
+      return res.status(400).json({ message: "Solo los gastos llevan a quién se le pagó" });
+    }
+
+    //! El concepto del pago solo acompaña a un pago; sin persona no se guarda
+    const kindDoc = payeeDoc && paymentKind ? String(paymentKind) : null;
+    if (kindDoc && !isValidPaymentKind(kindDoc)) {
+      return res.status(400).json({ message: "Concepto de pago no válido" });
     }
 
     const transactions = [];
@@ -326,6 +366,8 @@ const transactionController = {
         category: normalizedCategory,
         fund: fundDoc ? fundDoc._id : null,
         donor: donorDoc ? donorDoc._id : null,
+        payee: payeeDoc ? payeeDoc._id : null,
+        paymentKind: kindDoc,
         ministry: ministryDoc ? ministryDoc._id : null,
         amountCents: cents,
         description,
@@ -391,7 +433,8 @@ const transactionController = {
         .populate("createdBy", "username")
         .populate("voidedBy", "username")
         .populate("fund", "name icon")
-        .populate("donor", "name"),
+        .populate("donor", "name")
+        .populate("payee", "name"),
     ]);
 
     res.status(200).json({
@@ -428,7 +471,7 @@ const transactionController = {
       });
     }
 
-    const { type, category, amount, date, description, icon, fund, donor, ministry } = req.body;
+    const { type, category, amount, date, description, icon, fund, donor, payee, paymentKind, ministry } = req.body;
 
     //! Nombre del fondo antes y después, para que el historial se lea solo
     const currentFund = transaction.fund
@@ -444,6 +487,13 @@ const transactionController = {
     }
     if (!resolvedDonor.unchanged && !seesDonors(req)) {
       return res.status(403).json({ message: "Tu rol no permite cambiar el aportante" });
+    }
+    const resolvedPayee = await resolvePayee(req.workspace._id, payee);
+    if (resolvedPayee.error) {
+      return res.status(resolvedPayee.status).json({ message: resolvedPayee.error });
+    }
+    if (!resolvedPayee.unchanged && !seesDonors(req)) {
+      return res.status(403).json({ message: "Tu rol no permite cambiar a quién se le pagó" });
     }
     const resolvedMinistry = await resolveMinistry(req.workspace._id, ministry);
     if (resolvedMinistry.error) {
@@ -485,8 +535,25 @@ const transactionController = {
     if (!resolvedDonor.unchanged) {
       transaction.donor = resolvedDonor.donor ? resolvedDonor.donor._id : null;
     }
+    if (!resolvedPayee.unchanged) {
+      transaction.payee = resolvedPayee.payee ? resolvedPayee.payee._id : null;
+    }
+    if (paymentKind !== undefined) {
+      const kind = paymentKind ? String(paymentKind) : null;
+      if (kind && !isValidPaymentKind(kind)) {
+        return res.status(400).json({ message: "Concepto de pago no válido" });
+      }
+      transaction.paymentKind = kind;
+    }
     //! Un gasto nunca lleva aportante (p. ej. si se cambió de ingreso a gasto)
     if (transaction.type !== "income") transaction.donor = null;
+    //! Un ingreso nunca lleva a quién se le pagó, ni concepto del pago
+    if (transaction.type !== "expense") {
+      transaction.payee = null;
+      transaction.paymentKind = null;
+    }
+    //! El concepto del pago solo acompaña a un pago: sin persona no se guarda
+    if (!transaction.payee) transaction.paymentKind = null;
     //! Y un ingreso nunca se carga a un ministerio: el presupuesto es de gasto
     if (transaction.type !== "expense") transaction.ministry = null;
 
@@ -826,7 +893,8 @@ const transactionController = {
     const transactions = await Transaction.find(filters)
       .sort({ date: -1 })
       .populate("fund", "name")
-      .populate("donor", "name");
+      .populate("donor", "name")
+      .populate("payee", "name");
 
     //! En una iglesia, cada ingreso lleva su tipo (diezmo, ofrenda…) según su
     //! categoría; si la categoría ya no existe, se deduce de su nombre
@@ -850,6 +918,8 @@ const transactionController = {
       { header: "Categoría", key: "category", width: 20 },
       ...(isChurch ? [{ header: "Tipo de ingreso", key: "incomeKind", width: 18 }] : []),
       ...(seesDonors(req) ? [{ header: "Aportante", key: "donor", width: 24 }] : []),
+      ...(seesDonors(req) ? [{ header: "Se le pagó a", key: "payee", width: 24 }] : []),
+      ...(seesDonors(req) ? [{ header: "Concepto del pago", key: "paymentKind", width: 18 }] : []),
       { header: "Fondo", key: "fund", width: 18 },
       { header: "Descripción", key: "description", width: 30 },
       { header: `Monto (${req.workspace.currency})`, key: "amount", width: 14 },
@@ -873,6 +943,8 @@ const transactionController = {
         category: tx.category || "Sin categoría",
         ...(isChurch ? { incomeKind: incomeKindOf(tx) } : {}),
         ...(seesDonors(req) ? { donor: tx.donor?.name || "" } : {}),
+        ...(seesDonors(req) ? { payee: tx.payee?.name || "" } : {}),
+        ...(seesDonors(req) ? { paymentKind: PAYMENT_KIND_LABELS[tx.paymentKind] || "" } : {}),
         fund: fundName(tx.fund),
         description: tx.description || "",
         amount: tx.amount,

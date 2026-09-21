@@ -58,6 +58,9 @@ const MovementsPage = () => {
   const donorId = searchParams.get("aportante") || undefined;
   const { donors } = useDonors();
   const donorInfo = donorId ? donors.find((d) => d._id === donorId) : null;
+  //! Filtro por persona pagada (/movimientos?pagado=…), desde su ficha
+  const payeeId = searchParams.get("pagado") || undefined;
+  const payeeInfo = payeeId ? donors.find((d) => d._id === payeeId) : null;
   const clearParam = (name) => () => {
     const next = new URLSearchParams(searchParams);
     next.delete(name);
@@ -68,6 +71,7 @@ const MovementsPage = () => {
     q,
     fund,
     donor: donorId,
+    payee: payeeId,
     type: filter === "income" || filter === "expense" ? filter : undefined,
     recurrent: filter === "recurrent",
     includeVoided: filter === "voided",
@@ -99,6 +103,7 @@ const MovementsPage = () => {
         q,
         fund,
         donor: donorId,
+        payee: payeeId,
         type: params.type,
         recurrent: params.recurrent,
         includeVoided: filter === "voided",
@@ -160,6 +165,17 @@ const MovementsPage = () => {
             <Chip selected onClick={clearParam("fondo")} aria-label={`Quitar el filtro del fondo ${fundInfo?.name || ""}`}>
               <span className="inline-flex items-center gap-1.5">
                 {fundInfo ? `${fundInfo.icon} ${fundInfo.name}` : "Fondo"} <LuX aria-hidden="true" />
+              </span>
+            </Chip>
+          )}
+          {payeeId && (
+            <Chip
+              selected
+              onClick={clearParam("pagado")}
+              aria-label={`Quitar el filtro de pagos a ${payeeInfo?.name || ""}`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                Pagado a {payeeInfo?.name || "alguien"} <LuX aria-hidden="true" />
               </span>
             </Chip>
           )}

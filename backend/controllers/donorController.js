@@ -6,7 +6,8 @@ const { fromCents } = require("../utils/money");
 const { audit } = require("../utils/audit");
 const Category = require("../model/Category");
 const { effectiveIncomeKind, inferIncomeKind } = require("../utils/incomeKinds");
-const { buildStatements, fileSlug } = require("../services/statementPdf");
+const { PAYMENT_KIND_LABELS } = require("../utils/paymentKinds");
+const { buildStatements, buildPaymentStatements, fileSlug } = require("../services/statementPdf");
 const { logoBytesFor } = require("../services/logoStorage");
 const { upToToday } = require("../utils/dates");
 
@@ -19,6 +20,7 @@ const donorSnapshot = (donor) =>
     document: donor.document,
     email: donor.email,
     phone: donor.phone,
+    member: donor.member,
     archived: donor.archived,
   };
 
@@ -43,6 +45,8 @@ const parseDonorInput = (body, { partial = false } = {}) => {
   if (body.email !== undefined) values.email = String(body.email).trim().toLowerCase().slice(0, 120);
 
   if (partial && body.archived !== undefined) values.archived = Boolean(body.archived);
+  //! ¿Es miembro de la congregación? Solo informativo, para los informes
+  if (body.member !== undefined) values.member = Boolean(body.member);
   return { values };
 };
 
@@ -73,11 +77,41 @@ const donorTotals = async (workspaceId, year) => {
   return new Map(rows.map((r) => [String(r._id), r]));
 };
 
-const withTotals = (donor, row) => ({
+//! Cuánto se le pagó a cada persona en un año (clave: id). Mismo criterio: no
+//! cuentan los anulados ni lo que tenga fecha futura.
+const paidTotals = async (workspaceId, year) => {
+  const rows = await Transaction.aggregate([
+    {
+      $match: upToToday({
+        workspace: new mongoose.Types.ObjectId(String(workspaceId)),
+        type: "expense",
+        voided: { $ne: true },
+        payee: { $ne: null },
+        ...(year
+          ? { date: { $gte: new Date(Date.UTC(year, 0, 1)), $lt: new Date(Date.UTC(year + 1, 0, 1)) } }
+          : {}),
+      }),
+    },
+    {
+      $group: {
+        _id: "$payee",
+        cents: { $sum: "$amountCents" },
+        count: { $sum: 1 },
+        last: { $max: "$date" },
+      },
+    },
+  ]);
+  return new Map(rows.map((r) => [String(r._id), r]));
+};
+
+const withTotals = (donor, row, paid) => ({
   ...donor.toJSON(),
   given: fromCents(row?.cents || 0),
   gifts: row?.count || 0,
   lastGift: row?.last || null,
+  paid: fromCents(paid?.cents || 0),
+  payments: paid?.count || 0,
+  lastPayment: paid?.last || null,
 });
 
 const parseYear = (value) => {
@@ -149,20 +183,72 @@ const sendPdf = (res, doc, filename) => {
   doc.pipe(res);
 };
 
+//! Lo PAGADO en el año a cada persona, por concepto y por mes: es lo que lleva
+//! la constancia de pagos. Mismo criterio que los aportes: sin anulados y solo
+//! hasta hoy.
+const paymentSummaries = async (workspaceId, year, personIds) => {
+  const match = upToToday({
+    workspace: new mongoose.Types.ObjectId(String(workspaceId)),
+    type: "expense",
+    voided: { $ne: true },
+    payee: personIds
+      ? { $in: personIds.map((id) => new mongoose.Types.ObjectId(String(id))) }
+      : { $ne: null },
+    date: { $gte: new Date(Date.UTC(year, 0, 1)), $lt: new Date(Date.UTC(year + 1, 0, 1)) },
+  });
+
+  const rows = await Transaction.aggregate([
+    { $match: match },
+    {
+      $group: {
+        _id: { payee: "$payee", kind: "$paymentKind", month: { $month: "$date" } },
+        cents: { $sum: "$amountCents" },
+      },
+    },
+  ]);
+
+  const summaries = new Map();
+  rows.forEach(({ _id, cents }) => {
+    const key = String(_id.payee);
+    if (!summaries.has(key)) summaries.set(key, { total: 0, kinds: new Map(), months: new Map() });
+    const summary = summaries.get(key);
+    const kind = _id.kind || "otro";
+    summary.total += cents;
+    summary.kinds.set(kind, (summary.kinds.get(kind) || 0) + cents);
+    summary.months.set(_id.month, (summary.months.get(_id.month) || 0) + cents);
+  });
+
+  return new Map(
+    [...summaries].map(([key, s]) => [
+      key,
+      {
+        total: fromCents(s.total),
+        byKind: [...s.kinds]
+          .sort((a, b) => b[1] - a[1])
+          .map(([kind, cents]) => ({ kind, amount: fromCents(cents) })),
+        byMonth: [...s.months]
+          .sort((a, b) => a[0] - b[0])
+          .map(([month, cents]) => ({ month, amount: fromCents(cents) })),
+      },
+    ])
+  );
+};
+
 const donorController = {
-  //! Aportantes con lo que dio cada uno en el año pedido
+  //! Personas con lo que dio y lo que recibió en el año pedido
   list: asyncHandler(async (req, res) => {
     const year = parseYear(req.query.year);
     if (year === null) return res.status(400).json({ message: "Año inválido" });
 
-    const [donors, totals] = await Promise.all([
+    const [donors, totals, paid] = await Promise.all([
       Donor.find({ workspace: req.workspace._id }).sort({ archived: 1, key: 1 }),
       donorTotals(req.workspace._id, year),
+      paidTotals(req.workspace._id, year),
     ]);
 
     res.status(200).json({
       year,
-      donors: donors.map((d) => withTotals(d, totals.get(String(d._id)))),
+      donors: donors.map((d) => withTotals(d, totals.get(String(d._id)), paid.get(String(d._id)))),
     });
   }),
 
@@ -173,17 +259,22 @@ const donorController = {
     const year = parseYear(req.query.year);
     if (year === null) return res.status(400).json({ message: "Año inválido" });
 
-    const [totals, allTime] = await Promise.all([
+    const [totals, allTime, paid, paidAll] = await Promise.all([
       donorTotals(req.workspace._id, year),
       donorTotals(req.workspace._id, null),
+      paidTotals(req.workspace._id, year),
+      paidTotals(req.workspace._id, null),
     ]);
     const all = allTime.get(String(donor._id));
+    const allPaid = paidAll.get(String(donor._id));
 
     res.status(200).json({
       year,
-      ...withTotals(donor, totals.get(String(donor._id))),
+      ...withTotals(donor, totals.get(String(donor._id)), paid.get(String(donor._id))),
       givenAllTime: fromCents(all?.cents || 0),
       giftsAllTime: all?.count || 0,
+      paidAllTime: fromCents(allPaid?.cents || 0),
+      paymentsAllTime: allPaid?.count || 0,
     });
   }),
 
@@ -273,8 +364,7 @@ const donorController = {
   }),
 
   //! Todas las constancias del año en un solo PDF, una por página
-  statements: asyncHandler(async (req, res) => {
-    const year = parseYear(req.query.year);
+  statements: asyncHandler(async (req, res) => {    const year = parseYear(req.query.year);
     if (year === null) return res.status(400).json({ message: "Año inválido" });
 
     const [donors, summaries] = await Promise.all([
@@ -305,19 +395,161 @@ const donorController = {
     sendPdf(res, doc, `constancias-${fileSlug(req.workspace.name)}-${year}.pdf`);
   }),
 
-  //! Solo se borra a quien no tiene ningún aporte; si ya dio, se archiva (sus
-  //! datos hacen falta para las constancias)
+  //! Constancia anual de PAGOS de una persona (PDF): lo que la iglesia le pagó,
+  //! con línea de "Recibí conforme" para que la firme
+  paymentStatement: asyncHandler(async (req, res) => {
+    const person = await findInWorkspace(req);
+    if (!person) return res.status(404).json({ message: "Persona no encontrada" });
+
+    const year = parseYear(req.query.year);
+    if (year === null) return res.status(400).json({ message: "Año inválido" });
+
+    const summaries = await paymentSummaries(req.workspace._id, year, [person._id]);
+    const summary = summaries.get(String(person._id));
+    if (!summary) {
+      return res.status(409).json({
+        message: `${person.name} no tiene pagos registrados en ${year}`,
+        code: "NO_PAYMENTS",
+      });
+    }
+
+    const doc = buildPaymentStatements({
+      workspace: req.workspace,
+      year,
+      issuedBy: req.user.username,
+      statements: [{ person, summary }],
+      logo: await logoBytesFor(req.workspace),
+    });
+    sendPdf(res, doc, `constancia-pagos-${fileSlug(person.name)}-${year}.pdf`);
+  }),
+
+  //! Todas las constancias de pago del año en un solo PDF, una por página
+  paymentStatements: asyncHandler(async (req, res) => {
+    const year = parseYear(req.query.year);
+    if (year === null) return res.status(400).json({ message: "Año inválido" });
+
+    const [people, summaries] = await Promise.all([
+      Donor.find({ workspace: req.workspace._id }).sort({ key: 1 }),
+      paymentSummaries(req.workspace._id, year),
+    ]);
+
+    const statements = people
+      .filter((person) => summaries.has(String(person._id)))
+      .map((person) => ({ person, summary: summaries.get(String(person._id)) }));
+
+    if (statements.length === 0) {
+      return res.status(409).json({
+        message: `No hay pagos a personas registrados en ${year}`,
+        code: "NO_PAYMENTS",
+      });
+    }
+
+    const doc = buildPaymentStatements({
+      workspace: req.workspace,
+      year,
+      issuedBy: req.user.username,
+      statements,
+      logo: await logoBytesFor(req.workspace),
+    });
+    sendPdf(res, doc, `constancias-pagos-${fileSlug(req.workspace.name)}-${year}.pdf`);
+  }),
+
+  //! Informe de pagos a personas del año: total, a quién, por concepto y qué
+  //! parte del gasto se fue en pagos a personas. Lo usa la pantalla de Informes.
+  paymentsReport: asyncHandler(async (req, res) => {
+    const year = parseYear(req.query.year);
+    if (year === null) return res.status(400).json({ message: "Año inválido" });
+
+    const workspaceId = req.workspace._id;
+    const [people, summaries, expenseRows] = await Promise.all([
+      Donor.find({ workspace: workspaceId }).select("name member").lean(),
+      paymentSummaries(workspaceId, year),
+      Transaction.aggregate([
+        {
+          $match: upToToday({
+            workspace: new mongoose.Types.ObjectId(String(workspaceId)),
+            type: "expense",
+            voided: { $ne: true },
+            date: {
+              $gte: new Date(Date.UTC(year, 0, 1)),
+              $lt: new Date(Date.UTC(year + 1, 0, 1)),
+            },
+          }),
+        },
+        { $group: { _id: null, cents: { $sum: "$amountCents" } } },
+      ]),
+    ]);
+
+    const porId = new Map(people.map((p) => [String(p._id), p]));
+    let totalCents = 0;
+    const kinds = new Map();
+
+    const lista = [...summaries].map(([id, s]) => {
+      const person = porId.get(id);
+      totalCents += Math.round(s.total * 100);
+      s.byKind.forEach((k) =>
+        kinds.set(k.kind, (kinds.get(k.kind) || 0) + Math.round(k.amount * 100))
+      );
+      return {
+        _id: id,
+        name: person?.name || "",
+        member: Boolean(person?.member),
+        amount: s.total,
+        concepts: s.byKind.length,
+      };
+    });
+
+    //! Cuántos pagos hubo (movimientos, no personas)
+    const countRows = await Transaction.aggregate([
+      {
+        $match: upToToday({
+          workspace: new mongoose.Types.ObjectId(String(workspaceId)),
+          type: "expense",
+          voided: { $ne: true },
+          payee: { $ne: null },
+          date: {
+            $gte: new Date(Date.UTC(year, 0, 1)),
+            $lt: new Date(Date.UTC(year + 1, 0, 1)),
+          },
+        }),
+      },
+      { $count: "n" },
+    ]);
+
+    const expenseCents = expenseRows[0]?.cents || 0;
+    const total = fromCents(totalCents);
+
+    res.status(200).json({
+      year,
+      total,
+      payments: countRows[0]?.n || 0,
+      people: lista.sort((a, b) => b.amount - a.amount),
+      byKind: [...kinds]
+        .sort((a, b) => b[1] - a[1])
+        .map(([kind, cents]) => ({
+          kind,
+          label: PAYMENT_KIND_LABELS[kind] || PAYMENT_KIND_LABELS.otro,
+          amount: fromCents(cents),
+        })),
+      expenseTotal: fromCents(expenseCents),
+      share: expenseCents > 0 ? Math.round((totalCents / expenseCents) * 1000) / 10 : 0,
+    });
+  }),
+
+  //! Solo se borra a quien no tiene ningún movimiento; si ya dio o recibió, se
+  //! archiva (sus datos hacen falta para las constancias)
   delete: asyncHandler(async (req, res) => {
     const donor = await findInWorkspace(req);
     if (!donor) return res.status(404).json({ message: "Aportante no encontrado" });
 
-    const gifts = await Transaction.countDocuments({
-      workspace: req.workspace._id,
-      donor: donor._id,
-    });
-    if (gifts > 0) {
+    const [gifts, pagos] = await Promise.all([
+      Transaction.countDocuments({ workspace: req.workspace._id, donor: donor._id }),
+      Transaction.countDocuments({ workspace: req.workspace._id, payee: donor._id }),
+    ]);
+    if (gifts + pagos > 0) {
       return res.status(409).json({
-        message: "Este aportante ya tiene aportes registrados: archívalo en vez de borrarlo",
+        message:
+          "Esta persona ya tiene aportes o pagos registrados: archívala en vez de borrarla",
         code: "DONOR_IN_USE",
       });
     }
@@ -335,5 +567,7 @@ const donorController = {
 
 module.exports = donorController;
 module.exports.donorTotals = donorTotals;
-//! Se exporta para poder comprobar en las pruebas lo que dirá la constancia
+module.exports.paidTotals = paidTotals;
+//! Se exportan para poder comprobar en las pruebas lo que dirán las constancias
 module.exports.statementSummaries = statementSummaries;
+module.exports.paymentSummaries = paymentSummaries;

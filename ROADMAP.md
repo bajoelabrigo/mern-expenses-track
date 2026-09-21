@@ -75,6 +75,12 @@ despliega Netlify y Render) cuando está verificada.
       en el Excel).
 - [x] Aportantes con privacidad: quién dio cuánto solo lo ven propietario,
       tesorero y contador (la API lo oculta al auditor y a los lectores).
+- [x] **Pagos a personas**: los miembros no solo ofrendan, a veces trabajan y se
+      les remunera. El gasto lleva **a quién se le pagó** (la misma ficha que el
+      aportante: quien da también puede recibir) y **por qué** (honorarios,
+      jornal, servicio, reembolso). La pantalla "Personas" muestra las dos
+      cifras de cada uno, hay **constancia de pagos** en PDF con "Recibí
+      conforme" e informe de cuánto del gasto se fue en pagos a personas.
 - [x] Constancias de donación anuales en PDF (por persona o todas de un año;
       total en cifras y en letras, por tipo de aporte y por mes).
 - [x] Conteo de ofrenda del culto con doble firma: hoja con los billetes y

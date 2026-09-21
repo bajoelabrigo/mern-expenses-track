@@ -183,6 +183,28 @@ predeterminado del usuario. Pedir un espacio del que no se es miembro responde
 
 Las reglas viven en `backend/utils/permissions.js`.
 
+### Aportantes y personas
+
+Las mismas fichas sirven para quien **da** (diezmos, ofrendas) y para quien
+**recibe un pago** por un trabajo (la hermana que cocinó, el predicador
+invitado, el gasfitero). Un movimiento de ingreso se registra con `donor`; uno
+de gasto, con `payee` y su `paymentKind` (honorarios, jornal, servicio,
+reembolso, otro). Quién dio o recibió cuánto es dato de la tesorería
+(`donor:read`).
+
+| Método | Ruta                                | Descripción                        |
+| ------ | ----------------------------------- | ---------------------------------- |
+| GET    | `/donors?year=`                     | Personas con lo que dieron y lo que se les pagó |
+| POST   | `/donors`                           | Crear una persona                  |
+| GET    | `/donors/:id?year=`                 | Una persona, con sus dos totales (año e histórico) |
+| PUT    | `/donors/:id`                       | Editar (incluye `archived` y `member`) |
+| DELETE | `/donors/:id`                       | Solo si no tiene aportes ni pagos  |
+| GET    | `/donors/:id/constancia?year=`      | Constancia de aportes (PDF)        |
+| GET    | `/donors/constancias?year=`         | Todas las de aportes, una por página |
+| GET    | `/donors/:id/constancia-pagos?year=`| Constancia de pagos, con "Recibí conforme" (PDF) |
+| GET    | `/donors/constancias-pagos?year=`   | Todas las de pagos                 |
+| GET    | `/donors/pagos?year=`               | Informe: total pagado a personas, por concepto y qué parte del gasto es |
+
 ### Categorías (del espacio actual)
 
 | Método | Ruta                       | Descripción                       |

@@ -36,6 +36,23 @@ const transactionSchema = new mongoose.Schema(
       ref: "Donor",
       default: null,
     },
+    //! A quién se le pagó (opcional, solo gastos): la hermana que cocinó, el
+    //! predicador invitado, el gasfitero. Misma ficha que el aportante, y el
+    //! mismo cuidado: la API lo oculta sin donor:read.
+    payee: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Donor",
+      default: null,
+    },
+    //! Por qué se le pagó (honorarios, jornal…). Solo tiene sentido con `payee`
+    paymentKind: {
+      type: String,
+      enum: {
+        values: ["honorarios", "jornal", "servicio", "reembolso", "otro", null],
+        message: "Concepto de pago no válido",
+      },
+      default: null,
+    },
     //! Fondo al que pertenece; null = fondo General (lo que no tiene fondo)
     fund: {
       type: mongoose.Schema.Types.ObjectId,
@@ -150,6 +167,7 @@ transactionSchema.index(
 transactionSchema.index({ workspace: 1, category: 1 });
 transactionSchema.index({ workspace: 1, fund: 1 });
 transactionSchema.index({ workspace: 1, donor: 1, date: -1 });
+transactionSchema.index({ workspace: 1, payee: 1, date: -1 });
 transactionSchema.index({ workspace: 1, ministry: 1, date: -1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);
