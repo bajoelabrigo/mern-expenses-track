@@ -1,5 +1,6 @@
 const { test, describe, before, after, beforeEach } = require("node:test");
 const assert = require("node:assert/strict");
+const jwt = require("jsonwebtoken");
 const {
   app,
   request,
@@ -7,7 +8,9 @@ const {
   teardownDatabase,
   clearDatabase,
   createUser,
+  mongoose,
 } = require("./helpers");
+const { JWT_SECRET } = require("../config/env");
 
 describe("Autenticación", () => {
   before(setupDatabase);
@@ -152,6 +155,102 @@ describe("Autenticación", () => {
     const res = await request(app)
       .get("/api/v1/users/profile")
       .set("Authorization", "Bearer token.falso.invalido")
+      .expect(401);
+
+    assert.equal(res.body.code, "INVALID_TOKEN");
+  });
+
+  //! ── La cookie y el encabezado, que pueden no estar de acuerdo ──
+  //! Pasó de verdad al migrar los datos: la cookie quedó apuntando a un usuario
+  //! que ya no existía y la app mandaba un token nuevo y bueno en el encabezado.
+  //! El servidor la echaba al login igual, sin manera de entrar hasta que
+  //! caducara la cookie.
+
+  test("la cookie buena, sola, sigue sirviendo", async () => {
+    const { token, credentials } = await createUser();
+
+    const res = await request(app)
+      .get("/api/v1/users/profile")
+      .set("Cookie", `token=${token}`)
+      .expect(200);
+
+    assert.equal(res.body.email, credentials.email);
+  });
+
+  test("una cookie vieja no tumba un token bueno del encabezado", async () => {
+    const { token, credentials } = await createUser();
+
+    const res = await request(app)
+      .get("/api/v1/users/profile")
+      .set("Cookie", "token=cookie.vieja.invalida")
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    assert.equal(res.body.email, credentials.email);
+  });
+
+  test("una cookie de una cuenta borrada no tumba un token bueno", async () => {
+    const { token } = await createUser();
+
+    //! El token de la cookie está bien firmado, pero su usuario ya no existe:
+    //! es el caso exacto de la migración.
+    const fantasma = jwt.sign(
+      { id: String(new mongoose.Types.ObjectId()), role: "user", v: 0 },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    await request(app)
+      .get("/api/v1/users/profile")
+      .set("Cookie", `token=${fantasma}`)
+      .expect(401);
+
+    const res = await request(app)
+      .get("/api/v1/users/profile")
+      .set("Cookie", `token=${fantasma}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(200);
+
+    assert.ok(res.body.email);
+  });
+
+  test("si no sirve ninguno de los dos, 401 con el motivo", async () => {
+    const res = await request(app)
+      .get("/api/v1/users/profile")
+      .set("Cookie", "token=cookie.mala")
+      .set("Authorization", "Bearer token.falso.invalido")
+      .expect(401);
+
+    assert.equal(res.body.code, "INVALID_TOKEN");
+  });
+
+  test("un token con una contraseña cambiada no cuela por el encabezado", async () => {
+    const { token, credentials } = await createUser();
+
+    await request(app)
+      .put("/api/v1/users/change-password")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ currentPassword: credentials.password, newPassword: "NuevaClave123" })
+      .expect(200);
+
+    //! Da igual en qué sitio venga el token viejo: no sirve
+    const res = await request(app)
+      .get("/api/v1/users/profile")
+      .set("Cookie", `token=${token}`)
+      .set("Authorization", `Bearer ${token}`)
+      .expect(401);
+
+    assert.equal(res.body.code, "PASSWORD_CHANGED");
+  });
+
+  test("un token con un id que no es un id se rechaza, no rompe el servidor", async () => {
+    const falso = jwt.sign({ id: "no-soy-un-id", role: "user", v: 0 }, JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    const res = await request(app)
+      .get("/api/v1/users/profile")
+      .set("Authorization", `Bearer ${falso}`)
       .expect(401);
 
     assert.equal(res.body.code, "INVALID_TOKEN");

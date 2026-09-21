@@ -341,6 +341,12 @@ Al estar en dominios distintos, la cookie de sesión se emite con
 (Safari, Brave) la descartan, pero la sesión sigue funcionando porque el
 frontend también envía el token en la cabecera `Authorization`.
 
+El servidor acepta las dos y **prueba primero la cookie y después la cabecera**:
+vale la primera que sirva. No es lo mismo que "gana la cookie": una cookie vieja
+(por ejemplo de antes de una migración, apuntando a una cuenta que ya no existe)
+no puede tumbar una petición que trae un token bueno. Ver `middlewares/isAuth.js`
+y las pruebas de `tests/auth.test.js`.
+
 ### Opción B: un solo servicio
 
 Render (o similar) sirve la API y los archivos estáticos: `SERVE_FRONTEND=true`

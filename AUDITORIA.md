@@ -370,6 +370,23 @@ Perfil con un "Ya está todo listo". Claro y oscuro revisados. Pruebas:
 Quedan pendientes de la tanda el conteo ofrecido al registrar, el comprobante en
 los gastos grandes y los recordatorios por correo.
 
+**Fuera de la tanda, dos cosas que salieron al escribir la ayuda** (22 de
+septiembre):
+
+1. **La app no crea ninguna categoría.** Un espacio nuevo arranca vacío: para
+   poder registrar un ingreso hay que ir a Categorías y tocar «Agregarlas». El
+   botón existe desde antes (`POST /categories/church-defaults`) pero nadie lo
+   descubre solo, y sin él la primera ofrenda no se puede anotar. Corregida la
+   afirmación contraria que había en este documento; la ayuda lo explica como
+   tema propio. **Pendiente de decidir:** crearlas solas al abrir una iglesia.
+2. **Una cookie vieja tumbaba la sesión.** El servidor usaba la cookie *en vez
+   de* la cabecera, así que una cookie huérfana (de antes de la migración de
+   septiembre, apuntando a una cuenta que ya no existe) rechazaba una petición
+   con un token nuevo y bueno: la app te mandaba a entrar otra vez sin manera de
+   evitarlo hasta que caducara la cookie. Ahora se prueban las dos, en orden, y
+   vale la primera que sirva (`middlewares/isAuth.js`). Tres pruebas de
+   `tests/auth.test.js` fallan sin el arreglo.
+
 **Tanda 3 — producto:** cierre mensual + conciliación, importación del extracto,
 y aprobación de gastos. Antes de empezar, partir `transactionController.js` y
 sacar las duplicaciones (parseYear, totales de personas), que es lo que hace

@@ -9,9 +9,6 @@ verdad, no maquetas: si la app cambia, se vuelven a hacer. Esto es cómo.
   (`npm run dev:memoria` + `npm run datos-ejemplo`), nunca contra la iglesia
   real: la página es pública y el enlace se reenvía por WhatsApp. La iglesia del
   demo se renombra a «Iglesia Ejemplo» para que se note que son ejemplos.
-  Ojo: la API **prefiere la cookie** sobre el token del encabezado, así que si el
-  navegador tiene una cookie vieja de `localhost:8000` la sesión se cae aunque el
-  token sea bueno. Se limpian las cookies antes de empezar.
 - **En móvil y en oscuro** (390 × 844). En móvil porque es donde las van a leer,
   y en oscuro porque es como abre la app.
 - **Contra la app compilada**, no contra el servidor de desarrollo: en
