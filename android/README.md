@@ -13,7 +13,7 @@ Proyecto generado con [Bubblewrap](https://github.com/GoogleChromeLabs/bubblewra
 | | |
 |---|---|
 | Paquete | `com.controldegastos.app` (no se puede cambiar si se publica en Play) |
-| Versión actual | 1.1.0 (versionCode 2), colores e icono del rediseño |
+| Versión actual | 1.2.0 (versionCode 3), barras del sistema y pantalla de carga en oscuro |
 | Clave de firma | `C:\Users\bajoe\android-keys\control-gastos.keystore`, alias `controldegastos` |
 | Contraseña | en `C:\Users\bajoe\android-keys\LEEME-clave-apk.txt` |
 | Huella SHA-256 | `F4:F5:EC:B4:76:EB:78:0F:39:4D:5F:66:EA:F4:95:11:46:BD:DA:2B:41:7D:FA:48:38:AE:E9:C8:7D:DE:51:40` |

@@ -59,6 +59,8 @@ despliega Netlify y Render) cuando está verificada.
 - [x] Portada, acceso, íconos de la app y el resto de pantallas.
 - [x] **Desplegar**: fusionado en `main` (2026-09-19).
 - [x] APK 1.1.0 (versionCode 2) con los colores y el ícono nuevos; se instala encima de la 1.0.0.
+- [x] APK 1.2.0 (versionCode 3) con las barras del sistema y la pantalla de carga en
+      oscuro, a juego con el tema con el que abre la app.
 
 ## Fase 3 — Núcleo de iglesia
 
