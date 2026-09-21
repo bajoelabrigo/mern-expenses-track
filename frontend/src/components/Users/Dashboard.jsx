@@ -38,6 +38,7 @@ import TransactionsTable from "../Transactions/TransactionsTable";
 import FundsSummaryCard from "../Funds/FundsSummaryCard";
 import IncomeByKindCard from "./IncomeByKindCard";
 import WelcomeGuide from "./WelcomeGuide";
+import AvisosBell from "../Notificaciones/AvisosBell";
 import { useFunds } from "../../hooks/useFunds";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, LinearScale, LineElement, PointElement, Tooltip);
@@ -586,7 +587,10 @@ const Dashboard = () => {
         <div className="min-w-0">
           <WorkspacePicker size="lg" />
         </div>
-        {avatar}
+        <div className="flex items-center gap-2 shrink-0">
+          <AvisosBell />
+          {avatar}
+        </div>
       </header>
 
       <PendingTransactions />

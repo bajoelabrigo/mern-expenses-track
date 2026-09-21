@@ -60,6 +60,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
+        //! Los avisos al teléfono (recibir el push y abrir la pantalla al
+        //! tocarlo) viven en public/push-sw.js: se le pegan al service worker
+        //! generado, que si no no tendría esos dos manejadores.
+        importScripts: ["push-sw.js"],
         //! Cualquier ruta de la app abre index.html también sin conexión
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],

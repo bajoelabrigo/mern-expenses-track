@@ -76,6 +76,7 @@ clave, para comprobar qué ve cada rol. El frontend en desarrollo habla con
 | `APP_URL`         | no          | URL pública del frontend, para los enlaces de los correos. Por defecto, el primer origen de `CORS_ORIGINS`. |
 | `BREVO_API_KEY`, `MAIL_FROM` | no | Correo saliente por la API de Brevo (invitaciones y recuperar contraseña). Es la opción para Render: su plan gratuito bloquea los puertos SMTP. `MAIL_FROM` debe ser un remitente verificado en Brevo. |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | no | Comprobantes de los movimientos. Se guardan como *authenticated* (nunca públicos) en `control-gastos/<espacio>/` y se ven con un enlace firmado de 5 minutos. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | no | Avisos al teléfono (Web Push): cada cambio del espacio llega al móvil aunque la app esté cerrada. Se generan una vez con `npx web-push generate-vapid-keys` y **no se cambian**: al cambiarlas, los aparatos ya suscritos dejan de recibirlos. Sin ellas la campana de la app funciona igual. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | no | Correo por SMTP, para un hosting que lo permita (solo si no hay `BREVO_API_KEY`). Sin ninguno de los dos no se envía nada: el enlace sale en el log y las invitaciones se comparten copiando el enlace. |
 
 La app **no arranca** si falta `MONGO_URL` o `JWT_SECRET`, o si el secreto es
@@ -104,8 +105,8 @@ demasiado corto: es intencional, evita desplegar con una configuración insegura
 ## Pruebas
 
 ```bash
-npm test --prefix backend    # 81 pruebas de integración sobre la API real
-npm test --prefix frontend   # 36 pruebas de componentes, servicios y estado
+npm test --prefix backend    # 219 pruebas de integración sobre la API real
+npm test --prefix frontend   # 166 pruebas de componentes, servicios y estado
 ```
 
 El backend levanta un MongoDB en memoria: no toca la base de datos real y no
@@ -122,11 +123,13 @@ backend/
   middlewares/      # auth, espacio actual y permisos, rate limit, ids, errores
   model/            # esquemas de Mongoose con índices
   routes/           # routers montados bajo /api/v1
-  services/         # alta de espacios y espacio predeterminado
+  services/         # alta de espacios, fondos, avisos, push y PDF
   scripts/          # migraciones y API en memoria para desarrollo
   utils/            # fechas, dinero (centavos), permisos, auditoría, correo
   tests/            # pruebas de integración (node:test + supertest)
 frontend/
+  public/           # iconos (generados), service worker de avisos y el APK
+  scripts/          # generador de iconos desde el logo maestro
   src/components/   # UI por dominio
   src/services/     # llamadas a la API
   src/lib/axios.js  # instancia con token y espacio, manejo de 401 y errores
@@ -252,6 +255,23 @@ reembolso, otro). Quién dio o recibió cuánto es dato de la tesorería
 | PUT    | `/transactions/:id/receipt`        | Adjuntar o reemplazar el comprobante (`multipart`, campo `receipt`; JPG/PNG/WEBP/HEIC/PDF, 8 MB). |
 | GET    | `/transactions/:id/receipt`        | Enlace temporal (5 min) para verlo.          |
 | DELETE | `/transactions/:id/receipt`        | Quitar el comprobante.                       |
+
+### Avisos (del espacio actual)
+
+La campana cuenta lo que cambian **los demás** en el espacio, con el nombre de
+quien lo hizo. No hay tabla de avisos: se leen del historial de auditoría, así
+que aparecen solos en cuanto se añade una acción nueva. Cada rol ve lo suyo (a
+quien no puede ver aportantes se le cuenta sin nombres, y los ministerios solo
+se nombran a quien los ve).
+
+| Método | Ruta                | Descripción                                  |
+| ------ | ------------------- | -------------------------------------------- |
+| GET    | `/avisos?limit=`    | Los últimos cambios y cuántos hay sin ver.   |
+| POST   | `/avisos/leidas`    | Dar por vistos los de este espacio.          |
+| GET    | `/avisos/push`      | Si el servidor puede mandar avisos al teléfono, con qué clave suscribirse y qué aparatos están apuntados. |
+| POST   | `/avisos/push`      | Activar los avisos en este aparato (`subscription` del navegador). |
+| DELETE | `/avisos/push`      | Apagarlos en este aparato (`endpoint`).      |
+| POST   | `/avisos/prueba`    | Mandarse un aviso de prueba.                 |
 
 ### Administración de la plataforma (`role: admin`)
 

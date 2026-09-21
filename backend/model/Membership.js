@@ -19,6 +19,9 @@ const membershipSchema = new mongoose.Schema(
       enum: { values: ROLES, message: "Rol no válido" },
       required: true,
     },
+    //! Hasta cuándo leyó los avisos del espacio (la campana). Null = todavía no
+    //! los ha abierto nunca.
+    lastReadAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

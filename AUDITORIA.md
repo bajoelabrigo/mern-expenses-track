@@ -282,7 +282,7 @@ abandonan es **cómo salga el primer uso**, no una campaña. Tres ideas concreta
 | Idea | Para qué sirve | Esfuerzo |
 |---|---|---|
 | **Recordatorios por correo**: "tienes un conteo pendiente de firmar", "cierra el mes", "hay 3 movimientos programados" | El olvido es lo que deja funciones sin usar; un correo semanal las devuelve a la vista | Medio |
-| **Actividad del equipo** (quién registró qué y cuándo, en una pantalla) | Hoy 417 de 438 movimientos son de una persona: verlo ayuda a repartir el trabajo antes de que sea un problema | Bajo |
+| **Actividad del equipo** (quién registró qué y cuándo, en una pantalla) | Hoy 417 de 438 movimientos son de una persona: verlo ayuda a repartir el trabajo antes de que sea un problema. ✅ **Hecho el 21 de septiembre** como la campana de avisos: cada miembro ve lo que hacen los demás, con su nombre y el detalle, y le llega al teléfono si lo activa | Bajo |
 | **Varias monedas en un mismo espacio** (diezmo desde el extranjero, con tipo de cambio) | Un ministerio con hermanos fuera recibe en dólares y paga en soles | Medio |
 | **Recibos numerados con correlativo** para aportes | Muchas iglesias necesitan justificar donaciones ante terceros; hoy la constancia no lleva número | Bajo |
 | **Modo auditor útil**: marcar un mes como "revisado" y un informe de diferencias | El rol de auditor existe pero hoy solo mira; darle una tarea concreta lo justifica | Bajo |

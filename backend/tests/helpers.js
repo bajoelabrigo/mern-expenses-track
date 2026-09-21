@@ -4,6 +4,11 @@ process.env.JWT_SECRET =
   process.env.JWT_SECRET || "secreto-de-pruebas-suficientemente-largo-1234567890";
 process.env.CORS_ORIGINS = "http://localhost:5173";
 process.env.SERVE_FRONTEND = "false";
+//! Los avisos al teléfono quedan apagados en las pruebas, aunque quien las corra
+//! tenga las claves en su .env: así ninguna prueba intenta hablar con el
+//! servicio de push, y el resultado no depende del .env de cada uno.
+process.env.VAPID_PUBLIC_KEY = "";
+process.env.VAPID_PRIVATE_KEY = "";
 
 const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");

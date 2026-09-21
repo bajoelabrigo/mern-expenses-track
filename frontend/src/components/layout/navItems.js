@@ -1,4 +1,5 @@
 import {
+  LuBell,
   LuHandHeart,
   LuHistory,
   LuHouse,
@@ -60,6 +61,9 @@ export const NAV_ITEMS = [
   },
   { to: "/informes", label: "Informes", icon: LuFileText, when: leeElLibro },
   { to: "/categories", label: "Categorías", icon: LuTags, when: leeElLibro },
+  //! Los avisos son del libro del espacio: quien no lo ve (el líder de un
+  //! ministerio) tampoco los recibe, así que no se le ofrece la sección.
+  { to: "/avisos", label: "Avisos", icon: LuBell, when: leeElLibro },
   {
     to: "/espacio/miembros",
     label: "Miembros",

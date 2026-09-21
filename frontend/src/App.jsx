@@ -52,6 +52,7 @@ const DonorsPage = lazy(() => import("./components/Donors/DonorsPage"));
 const DonorDetail = lazy(() => import("./components/Donors/DonorDetail"));
 const DonorEditor = lazy(() => import("./components/Donors/DonorEditor"));
 const AdminUsersList = lazy(() => import("./components/Admin/AdminUsersList"));
+const AvisosPage = lazy(() => import("./components/Notificaciones/AvisosPage"));
 
 const Cargando = () => (
   <p className="text-center text-muted py-10">Cargando...</p>
@@ -246,6 +247,14 @@ const App = () => (
             element={
               <Privada>
                 <DonorEditor />
+              </Privada>
+            }
+          />
+          <Route
+            path="avisos"
+            element={
+              <Privada>
+                <AvisosPage />
               </Privada>
             }
           />

@@ -20,6 +20,7 @@ const supportRouter = require("./routes/supportRouter");
 const offeringCountRouter = require("./routes/offeringCountRouter");
 const publicReportRouter = require("./routes/publicReportRouter");
 const ministryRouter = require("./routes/ministryRouter");
+const notificationRouter = require("./routes/notificationRouter");
 const { CORS_ORIGINS, SERVE_FRONTEND, isProduction } = require("./config/env");
 
 const app = express();
@@ -81,6 +82,7 @@ app.use("/api/v1/socio", supportRouter);
 app.use("/api/v1/conteos", offeringCountRouter);
 app.use("/api/v1/publico", publicReportRouter);
 app.use("/api/v1/ministerios", ministryRouter);
+app.use("/api/v1/avisos", notificationRouter);
 
 //! Servir el frontend compilado solo si se activa explícitamente
 if (SERVE_FRONTEND) {

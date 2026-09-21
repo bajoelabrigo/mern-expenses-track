@@ -48,10 +48,16 @@ despliega Netlify y Render) cuando está verificada.
 - [x] Service worker: la app abre sin conexión.
 - [x] Registrar movimientos sin conexión y sincronizar al volver, sin duplicados.
 - [x] Foto del comprobante con la cámara del móvil (Cloudinary privado, enlaces de 5 min).
+- [x] Avisos al teléfono (Web Push): los cambios del espacio llegan al móvil con
+      la app cerrada. La app de Android los muestra como suyos (delegación de
+      notificaciones de la TWA). Fase 3.
+- [ ] Notificaciones push de **recordatorio** (resumen semanal, "cierra el mes",
+      "tienes un conteo por firmar"). Los avisos de cambios ya están; esto es
+      otra cosa: los manda el servidor por su cuenta, sin que nadie cambie nada.
 - [x] APK como Trusted Web Activity (Bubblewrap) con
       `/.well-known/assetlinks.json` en Netlify (verificado por Google y
       probado en un emulador Android 17). Ver `android/README.md`.
-- [ ] Notificaciones push (recordatorios, resumen semanal). Pasan a la fase 4.
+- [ ] Notificaciones push de recordatorio (resumen semanal, "cierra el mes"). Pasan a la fase 4.
 
 ## Rediseño visual (entre las fases 2 y 3)
 
@@ -117,6 +123,14 @@ despliega Netlify y Render) cuando está verificada.
       movimiento). Token de 32 bytes guardado con hash, se puede apagar,
       rehacer (el anterior muere al instante) o quitar, y cuenta las visitas.
       Solo el propietario lo maneja. Publica el mes o el año en curso.
+- [x] **Avisos de lo que cambia**: cada cambio del espacio se le cuenta a los
+      demás —movimientos, categorías, fondos y sus pases, personas, ministerios,
+      conteos, altas del equipo y ajustes— en una campana dentro de la app y,
+      si se activan, en el teléfono con la app cerrada. Salen del historial de
+      auditoría (no hay una segunda lista que se pueda desincronizar) y cada rol
+      ve lo suyo: al lector no se le nombran los aportantes, a quien no gestiona
+      miembros no se le dan los correos, y el líder de un ministerio no recibe
+      nada porque tampoco tiene campana donde leerlo.
 
 ## Fase 4 — Núcleo personal
 

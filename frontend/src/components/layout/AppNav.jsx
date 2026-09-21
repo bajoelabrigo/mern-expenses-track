@@ -5,10 +5,12 @@ import { LuEllipsis, LuLogOut, LuPlus, LuX } from "react-icons/lu";
 import { FaChurch } from "react-icons/fa6";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useLogout } from "../../hooks/useLogout";
+import { useAvisos } from "../../hooks/useAvisos";
 import { visibleNavItems } from "./navItems";
 import ThemeToggle from "./ThemeToggle";
 import SupportCard from "./SupportCard";
 import WorkspacePicker from "./WorkspacePicker";
+import { AvisosContador } from "../Notificaciones/AvisosBell";
 import { buttonClass } from "../ui/styles";
 
 const useNavContext = () => {
@@ -27,6 +29,7 @@ export const Sidebar = () => {
   const ctx = useNavContext();
   const logout = useLogout();
   const items = visibleNavItems(ctx);
+  const { unread } = useAvisos();
 
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 flex-col gap-5 px-4 py-5 border-r border-line bg-bg">
@@ -47,6 +50,7 @@ export const Sidebar = () => {
         {items.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} className={navLinkClass}>
             <Icon aria-hidden="true" className="text-lg" /> {label}
+            {to === "/avisos" && <AvisosContador unread={unread} />}
           </NavLink>
         ))}
       </nav>
@@ -157,6 +161,7 @@ export const BottomNav = () => {
 //! Hoja inferior con el resto de secciones, el tema y salir
 const MoreSheet = ({ onClose, ctx }) => {
   const logout = useLogout();
+  const { unread } = useAvisos();
   const items = visibleNavItems(ctx).filter((item) => !item.primary);
 
   useEffect(() => {
@@ -190,6 +195,7 @@ const MoreSheet = ({ onClose, ctx }) => {
               className="flex items-center gap-3 h-13 px-4 text-[15px] font-semibold text-ink"
             >
               <Icon aria-hidden="true" className="text-lg text-muted" /> {label}
+              {to === "/avisos" && <AvisosContador unread={unread} />}
             </NavLink>
           ))}
         </nav>

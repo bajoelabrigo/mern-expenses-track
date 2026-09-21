@@ -1,4 +1,5 @@
 const AuditLog = require("../model/AuditLog");
+const notificationService = require("../services/notificationService");
 const { effectiveIncomeKind } = require("./incomeKinds");
 
 //! Campos de un movimiento que se guardan en el historial (antes/después).
@@ -38,7 +39,7 @@ const fundSnapshot = (fund) =>
 //! bloquear la operación que ya se hizo: se registra en el log del servidor.
 const audit = async (req, { action, entity, entityId, before, after, note }) => {
   try {
-    await AuditLog.create({
+    const entrada = await AuditLog.create({
       workspace: req.workspace._id,
       actor: req.user._id,
       actorName: req.user.username,
@@ -49,6 +50,19 @@ const audit = async (req, { action, entity, entityId, before, after, note }) => 
       after: after || null,
       note: note || "",
     });
+
+    //! Los avisos al equipo salen de aquí. El historial es el único sitio por el
+    //! que pasan TODOS los cambios, así que avisar aquí evita acordarse de
+    //! hacerlo en cada controlador (y que se olvide en los que se añadan
+    //! mañana). No se espera: un aviso que falle no puede retrasar el cambio que
+    //! ya está hecho.
+    notificationService
+      .avisar({
+        entrada: entrada.toObject(),
+        workspace: req.workspace,
+        actorName: req.user.username,
+      })
+      .catch((err) => console.error(`[aviso] No se pudo avisar de ${action}:`, err.message));
   } catch (err) {
     console.error(`[audit] No se pudo registrar ${action}:`, err.message);
   }

@@ -120,6 +120,14 @@ module.exports = {
   //! Id del webhook que se crea en el panel de PayPal; sin él no se puede
   //! comprobar que un aviso viene de verdad de PayPal y se rechaza.
   PAYPAL_WEBHOOK_ID: leer("PAYPAL_WEBHOOK_ID") || "",
+  //! Avisos al teléfono (Web Push). El par de claves se genera UNA vez con
+  //! `npx web-push generate-vapid-keys` y no se cambia: cambiarlo deja sin
+  //! avisos a los aparatos ya suscritos. Sin ellas la campana de la app
+  //! funciona igual, pero no llega nada al teléfono.
+  VAPID_PUBLIC_KEY: leer("VAPID_PUBLIC_KEY") || "",
+  VAPID_PRIVATE_KEY: leer("VAPID_PRIVATE_KEY") || "",
+  //! Quién firma los avisos: un correo de contacto (mailto:) o la URL del sitio
+  VAPID_SUBJECT: leer("VAPID_SUBJECT") || "mailto:soporte@controldegastos.app",
   SMTP_HOST: leer("SMTP_HOST") || "",
   SMTP_PORT: Number(leer("SMTP_PORT")) || 587,
   SMTP_USER: leer("SMTP_USER") || "",
