@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LuCheck, LuCopy, LuMessageCircle } from "react-icons/lu";
 import {
+  addMemberAPI,
   createInvitationAPI,
   listInvitationsAPI,
   listMembersAPI,
@@ -87,8 +88,11 @@ const MembersPage = () => {
   const myRole = workspace?.role;
   const canManage = can("members:manage");
 
-  const [invite, setInvite] = useState({ email: "", role: "contador" });
+  const [form, setForm] = useState({ email: "", role: "contador" });
   const [lastInvitation, setLastInvitation] = useState(null);
+  //! Miembro agregado hace un momento, y correo que todavía no tiene cuenta
+  const [added, setAdded] = useState(null);
+  const [sinCuenta, setSinCuenta] = useState(null);
 
   const membersQuery = useQuery({
     queryKey: ["members", id],
@@ -107,11 +111,32 @@ const MembersPage = () => {
     queryClient.invalidateQueries({ queryKey: ["invitations", id] });
   };
 
+  //! Alta directa: si la persona ya tiene cuenta entra al instante, sin
+  //! invitación. Si el correo no está registrado (USER_NOT_FOUND) se ofrece
+  //! mandarle una invitación, que es lo único que puede hacer que se registre.
+  const addMutation = useMutation({
+    mutationFn: addMemberAPI,
+    onSuccess: (data, variables) => {
+      setAdded(data);
+      setSinCuenta(null);
+      setForm({ email: "", role: variables.role });
+      refresh();
+    },
+    onError: (error) => {
+      const data = error?.response?.data;
+      if (error?.response?.status === 404 && data?.code === "USER_NOT_FOUND") {
+        setSinCuenta(form.email.trim());
+      }
+    },
+  });
+
   const inviteMutation = useMutation({
     mutationFn: createInvitationAPI,
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       setLastInvitation(data);
-      setInvite({ email: "", role: invite.role });
+      setAdded(null);
+      setSinCuenta(null);
+      setForm({ email: "", role: variables.role });
       refresh();
     },
   });
@@ -119,15 +144,29 @@ const MembersPage = () => {
   const removeMutation = useMutation({ mutationFn: removeMemberAPI });
   const revokeMutation = useMutation({ mutationFn: revokeInvitationAPI, onSuccess: refresh });
 
-  const mutationError = [inviteMutation, roleMutation, removeMutation, revokeMutation].find(
-    (m) => m.isError
-  );
+  //! El "no tiene cuenta" no es un fallo: se explica en su propio aviso, con la
+  //! salida (invitarle), así que no se pinta además como error.
+  const mutationError = [
+    addMutation,
+    inviteMutation,
+    roleMutation,
+    removeMutation,
+    revokeMutation,
+  ].find((m) => m.isError && m.error?.response?.data?.code !== "USER_NOT_FOUND");
 
   if (!workspace) return <AlertMessage type="loading" message="Cargando espacio..." />;
 
-  const handleInvite = (e) => {
+  const handleAdd = (e) => {
     e.preventDefault();
-    inviteMutation.mutate({ id, email: invite.email.trim(), role: invite.role });
+    const email = form.email.trim();
+    if (!email) return;
+    setAdded(null);
+    setSinCuenta(null);
+    addMutation.mutate({ id, email, role: form.role });
+  };
+
+  const handleInvite = () => {
+    inviteMutation.mutate({ id, email: (sinCuenta || form.email).trim(), role: form.role });
   };
 
   const handleRemove = async (member) => {
@@ -168,9 +207,9 @@ const MembersPage = () => {
         )}
 
         {canManage && (
-          <section aria-labelledby="invitar">
+          <section aria-labelledby="agregar">
             <SectionTitle>
-              <span id="invitar">Invitar a alguien</span>
+              <span id="agregar">Agregar a alguien</span>
             </SectionTitle>
             <Card className="p-5">
               {lastInvitation ? (
@@ -180,14 +219,30 @@ const MembersPage = () => {
                   onClose={() => setLastInvitation(null)}
                 />
               ) : (
-                <form onSubmit={handleInvite} className="space-y-4">
-                  <Field label="Correo" htmlFor="invite-email">
+                <form onSubmit={handleAdd} className="space-y-4">
+                  {added && (
+                    <Notice tone="success">
+                      {added.message}.
+                      {added.emailSent
+                        ? " Le enviamos un aviso por correo."
+                        : " No se pudo enviar el aviso por correo: avísale por otro medio."}
+                    </Notice>
+                  )}
+                  <Field
+                    label="Correo"
+                    htmlFor="invite-email"
+                    hint="El correo con el que esa persona se registró en la app."
+                  >
                     <Input
                       id="invite-email"
                       type="email"
                       required
-                      value={invite.email}
-                      onChange={(e) => setInvite({ ...invite, email: e.target.value })}
+                      value={form.email}
+                      onChange={(e) => {
+                        setForm({ ...form, email: e.target.value });
+                        setAdded(null);
+                        setSinCuenta(null);
+                      }}
                       placeholder="tesorera@correo.com"
                     />
                   </Field>
@@ -197,19 +252,41 @@ const MembersPage = () => {
                       {roles.map((r) => (
                         <Chip
                           key={r}
-                          selected={invite.role === r}
-                          onClick={() => setInvite({ ...invite, role: r })}
-                          className={invite.role === r ? "" : "shadow-none bg-surface-2"}
+                          selected={form.role === r}
+                          onClick={() => setForm({ ...form, role: r })}
+                          className={form.role === r ? "" : "shadow-none bg-surface-2"}
                         >
                           {ROLE_LABELS[r]}
                         </Chip>
                       ))}
                     </div>
-                    <p className="mt-2 text-sm text-muted">{ROLE_HELP[invite.role]}.</p>
+                    <p className="mt-2 text-sm text-muted">{ROLE_HELP[form.role]}.</p>
                   </fieldset>
-                  <Button type="submit" block disabled={inviteMutation.isPending}>
-                    {inviteMutation.isPending ? "Invitando…" : "Crear invitación"}
+                  <Button type="submit" block disabled={addMutation.isPending}>
+                    {addMutation.isPending ? "Agregando…" : "Agregar"}
                   </Button>
+                  <p className="text-xs text-muted">
+                    Si ya tiene cuenta, entra al instante: no hace falta que confirme ningún
+                    correo. Si todavía no la tiene, te ofreceremos enviarle una invitación.
+                  </p>
+                  {sinCuenta && (
+                    <Notice tone="warning">
+                      <p>
+                        <strong className="text-ink">{sinCuenta}</strong> todavía no tiene cuenta
+                        en la app. Invítale para que se registre con ese mismo correo.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="mt-3"
+                        onClick={handleInvite}
+                        disabled={inviteMutation.isPending}
+                      >
+                        {inviteMutation.isPending ? "Enviando…" : "Enviar invitación"}
+                      </Button>
+                    </Notice>
+                  )}
                 </form>
               )}
             </Card>

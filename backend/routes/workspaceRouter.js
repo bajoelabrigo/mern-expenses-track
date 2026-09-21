@@ -49,6 +49,11 @@ router.delete(
 router.delete("/:id", scoped, requirePermission("workspace:delete"), ctrl.remove);
 
 router.get("/:id/members", scoped, requirePermission("tx:read"), ctrl.listMembers);
+//! Alta directa de alguien que ya tiene cuenta (sin invitación ni confirmación).
+//! Sin emailLimiter a propósito: ese límite corta a las 5 peticiones cada 15
+//! minutos y dejaría a una iglesia sin poder dar de alta a su equipo; aquí el
+//! permiso members:manage ya es la barrera.
+router.post("/:id/members", scoped, requirePermission("members:manage"), ctrl.addMember);
 router.put(
   "/:id/members/:userId",
   scoped,

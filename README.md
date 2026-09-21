@@ -155,6 +155,7 @@ predeterminado del usuario. Pedir un espacio del que no se es miembro responde
 | PUT    | `/workspaces/:id`                             | `workspace:manage`  |
 | DELETE | `/workspaces/:id` (con `confirmName`)         | `workspace:delete`  |
 | GET    | `/workspaces/:id/members`                     | miembro             |
+| POST   | `/workspaces/:id/members`                     | `members:manage` (alta directa si el correo ya tiene cuenta; 404 `USER_NOT_FOUND` si no) |
 | PUT    | `/workspaces/:id/members/:userId`             | `members:manage`    |
 | DELETE | `/workspaces/:id/members/:userId`             | `members:manage`, o uno mismo para salir |
 | GET    | `/workspaces/:id/invitations`                 | `members:manage`    |

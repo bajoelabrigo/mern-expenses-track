@@ -53,6 +53,14 @@ export const listMembersAPI = async (id) => {
   return response.data;
 };
 
+//! Alta directa de alguien que ya tiene cuenta: entra al instante, sin
+//! invitación ni correo que confirmar. Si el correo no está registrado, el
+//! backend responde 404 con code USER_NOT_FOUND.
+export const addMemberAPI = async ({ id, email, role }) => {
+  const response = await axiosInstance.post(`/workspaces/${id}/members`, { email, role });
+  return response.data;
+};
+
 export const updateMemberRoleAPI = async ({ id, userId, role }) => {
   const response = await axiosInstance.put(`/workspaces/${id}/members/${userId}`, { role });
   return response.data;

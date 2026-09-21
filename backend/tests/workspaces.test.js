@@ -283,6 +283,123 @@ describe("Espacios, roles e invitaciones", () => {
       .expect(409);
   });
 
+  test("agregar a alguien ya registrado le da acceso al instante, sin confirmar nada", async () => {
+    const pastor = await createUser({ iglesia: "Iglesia Betel" });
+    const tesorera = await createUser();
+    const espacio = pastor.user.defaultWorkspace;
+
+    const res = await as("post", `/api/v1/workspaces/${espacio}/members`, pastor)
+      .send({ email: tesorera.credentials.email.toUpperCase(), role: "tesorero" })
+      .expect(201);
+
+    assert.equal(res.body.member.username, tesorera.user.username);
+    assert.equal(res.body.member.role, "tesorero");
+    assert.equal(res.body.member.isMe, false);
+
+    //! El correo es un aviso, no una invitación: no hay enlace que aceptar
+    assert.equal(res.body.emailSent, true);
+    assert.equal(sentInTests.length, 1);
+    assert.equal(sentInTests[0].to, tesorera.credentials.email);
+    assert.ok(!/invitacion\//.test(sentInTests[0].text));
+
+    //! No queda ninguna invitación pendiente y ya trabaja en el espacio
+    const pendientes = await as("get", `/api/v1/workspaces/${espacio}/invitations`, pastor);
+    assert.equal(pendientes.body.length, 0);
+    await as("get", "/api/v1/transactions/balance", tesorera, espacio).expect(200);
+
+    const miembros = await as("get", `/api/v1/workspaces/${espacio}/members`, pastor);
+    assert.deepEqual(
+      miembros.body.map((m) => m.username).sort(),
+      [pastor.user.username, tesorera.user.username].sort()
+    );
+
+    //! Y queda en el historial
+    const historial = await as("get", `/api/v1/workspaces/${espacio}/audit`, pastor);
+    assert.ok(historial.body.entries.some((e) => e.action === "member.add"));
+  });
+
+  test("agregar anula la invitación que estuviera pendiente para ese correo", async () => {
+    const pastor = await createUser({ iglesia: "Iglesia Betel" });
+    const invitada = await createUser();
+    const espacio = pastor.user.defaultWorkspace;
+    const email = invitada.credentials.email;
+
+    const inv = await as("post", `/api/v1/workspaces/${espacio}/invitations`, pastor)
+      .send({ email, role: "lector" })
+      .expect(201);
+    const token = inv.body.url.split("/invitacion/")[1];
+
+    await as("post", `/api/v1/workspaces/${espacio}/members`, pastor)
+      .send({ email, role: "contador" })
+      .expect(201);
+
+    const pendientes = await as("get", `/api/v1/workspaces/${espacio}/invitations`, pastor);
+    assert.equal(pendientes.body.length, 0);
+    //! El enlace viejo ya no sirve, y el rol que vale es el del alta directa
+    await request(app).get(`/api/v1/invitations/${token}`).expect(410);
+    const miembros = await as("get", `/api/v1/workspaces/${espacio}/members`, pastor);
+    assert.equal(miembros.body.find((m) => m.username === invitada.user.username).role, "contador");
+  });
+
+  test("no se agrega a quien ya es miembro ni se inventa a quien no tiene cuenta", async () => {
+    const pastor = await createUser({ iglesia: "Iglesia Betel" });
+    const miembro = await createUser();
+    const espacio = pastor.user.defaultWorkspace;
+    await invitarYAceptar(pastor, espacio, miembro, "lector");
+
+    await as("post", `/api/v1/workspaces/${espacio}/members`, pastor)
+      .send({ email: miembro.credentials.email, role: "contador" })
+      .expect(409);
+
+    const res = await as("post", `/api/v1/workspaces/${espacio}/members`, pastor)
+      .send({ email: "nadie@test.com", role: "contador" })
+      .expect(404);
+    assert.equal(res.body.code, "USER_NOT_FOUND");
+    //! Sin cuenta no se agrega nada y no se manda correo: eso lo decide quien
+    //! administra, enviando la invitación
+    assert.equal(sentInTests.length, 1);
+  });
+
+  test("agregar exige el mismo permiso que invitar", async () => {
+    const pastor = await createUser({ iglesia: "Iglesia Betel" });
+    const tesorero = await createUser();
+    const contador = await createUser();
+    const nuevo = await createUser();
+    const espacio = pastor.user.defaultWorkspace;
+    await invitarYAceptar(pastor, espacio, tesorero, "tesorero");
+    await invitarYAceptar(pastor, espacio, contador, "contador");
+
+    //! Un contador no gestiona miembros
+    await as("post", `/api/v1/workspaces/${espacio}/members`, contador)
+      .send({ email: nuevo.credentials.email, role: "lector" })
+      .expect(403);
+
+    //! El tesorero sí, pero no puede nombrar propietarios
+    await as("post", `/api/v1/workspaces/${espacio}/members`, tesorero)
+      .send({ email: nuevo.credentials.email, role: "propietario" })
+      .expect(403);
+
+    await as("post", `/api/v1/workspaces/${espacio}/members`, tesorero)
+      .send({ email: nuevo.credentials.email.toUpperCase(), role: "lector" })
+      .expect(201);
+  });
+
+  test("dos altas a la vez de la misma persona no la duplican", async () => {
+    const pastor = await createUser({ iglesia: "Iglesia Betel" });
+    const nueva = await createUser();
+    const espacio = pastor.user.defaultWorkspace;
+    const body = { email: nueva.credentials.email, role: "lector" };
+
+    const [a, b] = await Promise.all([
+      as("post", `/api/v1/workspaces/${espacio}/members`, pastor).send(body),
+      as("post", `/api/v1/workspaces/${espacio}/members`, pastor).send(body),
+    ]);
+
+    assert.deepEqual([a.status, b.status].sort((x, y) => x - y), [201, 409]);
+    const miembros = await as("get", `/api/v1/workspaces/${espacio}/members`, pastor);
+    assert.equal(miembros.body.filter((m) => m.username === nueva.user.username).length, 1);
+  });
+
   test("ajustes del espacio: nombre y moneda, solo el propietario", async () => {
     const pastor = await createUser({ iglesia: "Iglesia Betel" });
     const tesorero = await createUser();

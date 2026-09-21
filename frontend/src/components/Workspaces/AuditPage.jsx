@@ -20,6 +20,7 @@ const ACTION_LABELS = {
   "category.create": "creó una categoría",
   "category.update": "editó una categoría",
   "category.delete": "borró una categoría",
+  "member.add": "agregó a un miembro",
   "member.role": "cambió el rol de un miembro",
   "member.remove": "quitó a un miembro",
   "member.leave": "salió del espacio",

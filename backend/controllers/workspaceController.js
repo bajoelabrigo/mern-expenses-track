@@ -288,6 +288,97 @@ exports.listMembers = asyncHandler(async (req, res) => {
   );
 });
 
+//! f.2) Agregar directamente a alguien que YA tiene cuenta en la app. No hay
+//! invitación ni correo de confirmación: la persona entra al instante. Si el
+//! correo no está registrado responde 404 con code USER_NOT_FOUND para que el
+//! cliente ofrezca enviarle una invitación (que es la única forma de que se
+//! registre).
+exports.addMember = asyncHandler(async (req, res) => {
+  const email = String(req.body?.email || "").toLowerCase().trim();
+  const { role } = req.body || {};
+
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ message: "Formato de correo inválido" });
+  }
+  if (!ROLES.includes(role)) {
+    return res.status(400).json({ message: "Rol no válido" });
+  }
+  if (!canAssignRole(req.role, role)) {
+    return res
+      .status(403)
+      .json({ message: "Tu rol no permite agregar a alguien con ese rol" });
+  }
+
+  const user = await User.findOne({ email }).select("username email");
+  if (!user) {
+    return res.status(404).json({
+      message: "Esa persona todavía no tiene cuenta en la app. Envíale una invitación.",
+      code: "USER_NOT_FOUND",
+    });
+  }
+
+  if (await Membership.exists({ workspace: req.workspace._id, user: user._id })) {
+    return res.status(409).json({ message: "Esa persona ya es miembro del espacio" });
+  }
+
+  let membership;
+  try {
+    membership = await Membership.create({
+      workspace: req.workspace._id,
+      user: user._id,
+      role,
+    });
+  } catch (err) {
+    //! Dos administradores a la vez: decide el índice único y el segundo avisa
+    //! en vez de reventar con un error de servidor
+    if (err?.code === 11000) {
+      return res.status(409).json({ message: "Esa persona ya es miembro del espacio" });
+    }
+    throw err;
+  }
+
+  //! Si tenía una invitación pendiente ya no sirve: entró por aquí. Se revoca
+  //! para que no siga apareciendo en la lista de pendientes.
+  await Invitation.updateMany(
+    { workspace: req.workspace._id, email, acceptedAt: null, revokedAt: null },
+    { revokedAt: new Date() }
+  );
+
+  await audit(req, {
+    action: "member.add",
+    entity: "member",
+    entityId: user._id,
+    after: { email, role },
+  });
+
+  //! Un aviso, no una confirmación: ya tiene acceso y el correo solo se lo
+  //! cuenta. Si el envío falla, el alta sigue hecha.
+  const mail = await sendMail({
+    to: email,
+    subject: `Ya tienes acceso a "${req.workspace.name}"`,
+    ...simpleEmail({
+      title: `Ya tienes acceso a "${req.workspace.name}"`,
+      intro: `${req.user.username} te agregó a "${req.workspace.name}" como ${ROLE_LABELS[role]}. Entra con tu cuenta cuando quieras: no hay nada que confirmar.`,
+      buttonText: "Entrar a la app",
+      url: `${APP_URL}/dashboard`,
+      footer: "Si no esperabas esto, avisa a quien te agregó.",
+    }),
+  });
+
+  res.status(201).json({
+    message: `${user.username} ya tiene acceso como ${ROLE_LABELS[role]}`,
+    emailSent: mail.sent,
+    member: {
+      userId: user._id,
+      username: user.username,
+      email: user.email,
+      role,
+      joinedAt: membership.createdAt,
+      isMe: sameId(user._id, req.user._id),
+    },
+  });
+});
+
 //! g) Cambiar el rol de un miembro
 exports.updateMemberRole = asyncHandler(async (req, res) => {
   const { role } = req.body || {};
