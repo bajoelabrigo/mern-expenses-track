@@ -15,7 +15,7 @@ const OCULTA = "oculta";
 const LISTO = "listo";
 const PEDIDA = "pedida";
 
-export const guideState = (workspaceId, userId) => {
+const guideState = (workspaceId, userId) => {
   try {
     return localStorage.getItem(keyOf(workspaceId, userId));
   } catch {
