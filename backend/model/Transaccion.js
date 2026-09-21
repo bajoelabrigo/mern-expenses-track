@@ -42,6 +42,13 @@ const transactionSchema = new mongoose.Schema(
       ref: "Fund",
       default: null,
     },
+    //! Ministerio al que se le carga el gasto (jóvenes, damas…). Solo los
+    //! gastos lo llevan: es contra su presupuesto que cuenta.
+    ministry: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Ministry",
+      default: null,
+    },
     //! Centavos enteros. La API expone `amount` (virtual) en unidades.
     amountCents: {
       type: Number,
@@ -143,5 +150,6 @@ transactionSchema.index(
 transactionSchema.index({ workspace: 1, category: 1 });
 transactionSchema.index({ workspace: 1, fund: 1 });
 transactionSchema.index({ workspace: 1, donor: 1, date: -1 });
+transactionSchema.index({ workspace: 1, ministry: 1, date: -1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);

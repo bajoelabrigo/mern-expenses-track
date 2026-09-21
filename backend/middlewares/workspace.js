@@ -63,4 +63,16 @@ const requirePermission = (permission) => (req, res, next) => {
   });
 };
 
-module.exports = { withWorkspace, requirePermission, HEADER };
+//! Deja pasar si tiene CUALQUIERA de los permisos. Hace falta cuando a una
+//! ruta llegan dos clases de persona por caminos distintos: el tesorero ve
+//! todos los ministerios ("ministry:read") y el líder solo el suyo
+//! ("ministry:own"), pero entran por la misma puerta.
+const requireAnyPermission = (...permissions) => (req, res, next) => {
+  if (permissions.some((permission) => can(req.role, permission))) return next();
+  return res.status(403).json({
+    message: "Tu rol en este espacio no permite esta acción",
+    code: "FORBIDDEN",
+  });
+};
+
+module.exports = { withWorkspace, requirePermission, requireAnyPermission, HEADER };

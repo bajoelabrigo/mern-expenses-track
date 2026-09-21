@@ -17,6 +17,7 @@ import { pressKey } from "../../lib/keypad";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useFunds } from "../../hooks/useFunds";
 import { useDonors } from "../../hooks/useDonors";
+import { useMinistries } from "../../hooks/useMinistries";
 import { Button, Chip, ListGroup, Segmented } from "../ui";
 import AlertMessage from "../Alert/AlertMessage";
 import ReceiptPicker from "./ReceiptPicker";
@@ -73,6 +74,27 @@ const TransactionForm = ({ transaction, children }) => {
   //! Al registrar solo los activos; al editar, también el archivado que ya tenía
   const fundOptions = funds.filter((f) => !f.archived || (f._id && f._id === transaction?.fund));
   const showFund = funds.length > 0 && (hasFunds || fund !== "general");
+  //! Ministerio al que se le carga el gasto, contra su presupuesto. Se ofrecen
+  //! los del año de la fecha elegida: el presupuesto es anual, y un gasto de
+  //! diciembre pasado va contra el presupuesto de ese año, no de este.
+  const [ministry, setMinistry] = useState(() => transaction?.ministry || "");
+  const {
+    ministries,
+    activeMinistries,
+    canSee: canSeeMinistries,
+    isFetched: ministriesFetched,
+  } = useMinistries({ year: Number(date.slice(0, 4)) || undefined });
+  const ministryOptions = ministries.filter(
+    (m) => !m.archived || m._id === transaction?.ministry
+  );
+  //! Al cambiar el año de la fecha, el ministerio elegido puede no existir en
+  //! el nuevo (mientras la lista no haya llegado se respeta el que había)
+  const selectedMinistry =
+    !ministriesFetched || ministryOptions.some((m) => m._id === ministry) ? ministry : "";
+  const showMinistry =
+    canSeeMinistries &&
+    type === "expense" &&
+    (activeMinistries.length > 0 || Boolean(selectedMinistry));
 
   const {
     data: categories = [],
@@ -184,6 +206,9 @@ const TransactionForm = ({ transaction, children }) => {
       category: selectedCategory,
       fund: fund === "general" ? null : fund,
       ...(canSeeDonors ? { donor: type === "income" && donor ? donor : null } : {}),
+      ...(canSeeMinistries
+        ? { ministry: type === "expense" && selectedMinistry ? selectedMinistry : null }
+        : {}),
       amount: numeric,
       //! Mediodía local: la fecha no se corre de día por la zona horaria
       date: new Date(`${date}T12:00:00`).toISOString(),
@@ -339,6 +364,27 @@ const TransactionForm = ({ transaction, children }) => {
                   <option key={f._id || "general"} value={f._id || "general"}>
                     {f.icon} {f.name}
                     {f.archived ? " (archivado)" : ""}
+                  </option>
+                ))}
+              </select>
+              <LuChevronDown aria-hidden="true" className="pointer-events-none absolute right-0 text-muted" />
+            </span>
+          </label>
+        )}
+        {showMinistry && (
+          <label className="flex items-center justify-between gap-3 px-4 h-13">
+            <span className="text-sm font-semibold text-ink-2">Ministerio</span>
+            <span className="relative min-w-0 flex items-center">
+              <select
+                value={selectedMinistry}
+                onChange={(e) => setMinistry(e.target.value)}
+                className="appearance-none bg-transparent text-sm text-right font-semibold pr-6 min-w-0 truncate focus:outline-none"
+              >
+                <option value="">Sin ministerio</option>
+                {ministryOptions.map((m) => (
+                  <option key={m._id} value={m._id}>
+                    {m.icon} {m.name}
+                    {m.archived ? " (archivado)" : ""}
                   </option>
                 ))}
               </select>

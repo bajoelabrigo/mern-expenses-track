@@ -55,11 +55,14 @@ const workspaceView = (workspace, role, defaultId) => ({
   isDefault: defaultId ? String(workspace._id) === String(defaultId) : false,
 });
 
-//! Un tesorero solo gestiona a contadores, auditores y lectores; el
-//! propietario, a todos.
+//! Un tesorero solo gestiona a contadores, auditores, lectores y líderes de
+//! ministerio; el propietario, a todos. Los mismos roles que puede asignar
+//! (canAssignRole): si pudiera nombrar a un líder y después no tocarlo, lo
+//! dejaría puesto para siempre.
 const canManageMember = (actorRole, memberRole) =>
   actorRole === "propietario" ||
-  (actorRole === "tesorero" && ["contador", "auditor", "lector"].includes(memberRole));
+  (actorRole === "tesorero" &&
+    ["contador", "auditor", "lector", "lider"].includes(memberRole));
 
 const countOwners = (workspaceId) =>
   Membership.countDocuments({ workspace: workspaceId, role: "propietario" });

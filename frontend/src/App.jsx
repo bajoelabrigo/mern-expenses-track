@@ -43,6 +43,7 @@ const AcceptInvitation = lazy(() =>
   import("./components/Workspaces/AcceptInvitation")
 );
 const MovementsPage = lazy(() => import("./components/Transactions/MovementsPage"));
+const MinistriesPage = lazy(() => import("./components/Ministries/MinistriesPage"));
 const FundsPage = lazy(() => import("./components/Funds/FundsPage"));
 const FundDetail = lazy(() => import("./components/Funds/FundDetail"));
 const FundEditor = lazy(() => import("./components/Funds/FundEditor"));
@@ -57,10 +58,13 @@ const Cargando = () => (
 );
 
 //! Ruta privada que además exige un permiso del rol en el espacio actual
-const Privada = ({ permission, children }) => (
+//! (`permission` puede ser una lista: basta con tener uno)
+const Privada = ({ permission, redirectTo, children }) => (
   <AuthRoute>
     {permission ? (
-      <PermissionRoute permission={permission}>{children}</PermissionRoute>
+      <PermissionRoute permission={permission} redirectTo={redirectTo}>
+        {children}
+      </PermissionRoute>
     ) : (
       children
     )}
@@ -123,10 +127,12 @@ const App = () => (
               </Privada>
             }
           />
+          {/* El Inicio es el libro del espacio: quien no lo puede leer (el
+              líder de un ministerio) aterriza en su presupuesto */}
           <Route
             path="dashboard"
             element={
-              <Privada>
+              <Privada permission="tx:read" redirectTo="/ministerios">
                 <Dashboard />
               </Privada>
             }
@@ -144,6 +150,14 @@ const App = () => (
             element={
               <Privada>
                 <FundsPage />
+              </Privada>
+            }
+          />
+          <Route
+            path="ministerios"
+            element={
+              <Privada permission={["ministry:read", "ministry:own"]}>
+                <MinistriesPage />
               </Privada>
             }
           />

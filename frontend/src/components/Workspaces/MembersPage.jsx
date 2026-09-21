@@ -153,7 +153,7 @@ const MembersPage = () => {
 
   const members = membersQuery.data || [];
   const invitations = invitationsQuery.data || [];
-  const roles = assignableRoles(myRole);
+  const roles = assignableRoles(myRole, workspace.kind);
   //! El último propietario no puede irse (el backend responde 409): no se le
   //! ofrece el botón en vez de dejarle chocar con el error
   const ownerCount = members.filter((m) => m.role === "propietario").length;

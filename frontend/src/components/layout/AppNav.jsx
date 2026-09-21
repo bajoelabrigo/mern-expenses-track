@@ -81,6 +81,8 @@ export const BottomNav = () => {
   const ctx = useNavContext();
   const [moreOpen, setMoreOpen] = useState(false);
   const location = useLocation();
+  //! Un rol con una sola pantalla (el líder de un ministerio) no llena las
+  //! tres ranuras: las que falten quedan vacías en vez de romper la barra.
   const primary = visibleNavItems(ctx).filter((item) => item.primary);
   const [first, second, third] = primary;
 
@@ -102,11 +104,15 @@ export const BottomNav = () => {
         className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-surface border-t border-line pb-[env(safe-area-inset-bottom)]"
       >
         <div className="flex items-stretch h-16 max-w-lg mx-auto px-2">
-          {[first, second].map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={tab}>
-              <Icon aria-hidden="true" className="text-[22px]" /> {label}
-            </NavLink>
-          ))}
+          {[first, second].map((item, i) =>
+            item ? (
+              <NavLink key={item.to} to={item.to} className={tab}>
+                <item.icon aria-hidden="true" className="text-[22px]" /> {item.label}
+              </NavLink>
+            ) : (
+              <span key={`hueco-${i}`} className="flex-1" aria-hidden="true" />
+            )
+          )}
 
           <div className="flex flex-1 items-center justify-center">
             {ctx.can("tx:write") ? (
@@ -122,9 +128,13 @@ export const BottomNav = () => {
             )}
           </div>
 
-          <NavLink to={third.to} className={tab}>
-            <third.icon aria-hidden="true" className="text-[22px]" /> {third.label}
-          </NavLink>
+          {third ? (
+            <NavLink to={third.to} className={tab}>
+              <third.icon aria-hidden="true" className="text-[22px]" /> {third.label}
+            </NavLink>
+          ) : (
+            <span className="flex-1" aria-hidden="true" />
+          )}
 
           <button
             type="button"

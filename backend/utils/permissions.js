@@ -2,7 +2,9 @@
 //! Es la única fuente de verdad: el frontend recibe la lista de permisos ya
 //! calculada (GET /workspaces) y no replica estas reglas.
 
-const ROLES = ["propietario", "tesorero", "contador", "auditor", "lector"];
+//! "lider" es el líder de un ministerio. A propósito NO tiene tx:read: no ve
+//! el libro de la iglesia, solo su propio presupuesto y lo que se le cargó.
+const ROLES = ["propietario", "tesorero", "contador", "auditor", "lector", "lider"];
 
 const PERMISSIONS = {
   //! Ver movimientos, categorías y balances
@@ -22,6 +24,12 @@ const PERMISSIONS = {
   "members:manage": ["propietario", "tesorero"],
   "audit:read": ["propietario", "tesorero", "auditor"],
   //! Nombre, moneda y demás ajustes del espacio
+  //! Crear ministerios, ponerles presupuesto y nombrar a su líder
+  "ministry:manage": ["propietario", "tesorero"],
+  //! Ver los presupuestos de todos los ministerios y cómo van
+  "ministry:read": ["propietario", "tesorero", "contador", "auditor"],
+  //! Ver LO SUYO: el líder solo alcanza el ministerio que lleva
+  "ministry:own": ["lider"],
   "workspace:manage": ["propietario"],
   "workspace:delete": ["propietario"],
 };
@@ -37,7 +45,7 @@ const permissionsFor = (role) =>
 const canAssignRole = (actorRole, targetRole) => {
   if (actorRole === "propietario") return ROLES.includes(targetRole);
   if (actorRole === "tesorero") {
-    return ["contador", "auditor", "lector"].includes(targetRole);
+    return ["contador", "auditor", "lector", "lider"].includes(targetRole);
   }
   return false;
 };

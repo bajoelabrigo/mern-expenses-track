@@ -16,8 +16,10 @@ const { loginAPI, changePasswordAPI } = await import(
   "../services/users/userService"
 );
 const {
+  addTransactionAPI,
   exportTransactionExcelAPI,
   getTransactionByPeriodAPI,
+  updateTransactionAPI,
 } = await import("../services/transactions/transactionService");
 
 describe("servicios de la API", () => {
@@ -50,6 +52,31 @@ describe("servicios de la API", () => {
       currentPassword: "Vieja123",
       newPassword: "Nueva1234",
     });
+  });
+
+  //! El servicio copia campo por campo, así que uno nuevo se pierde callado
+  //! si no se añade en los dos sitios: el gasto llegaba sin su ministerio.
+  it("registrar y editar un gasto llevan el fondo, el aportante y el ministerio", async () => {
+    post.mockResolvedValue({ data: [{ _id: "t1" }] });
+    await addTransactionAPI({
+      type: "expense",
+      category: "mantenimiento",
+      amount: 200,
+      date: "2026-09-20T12:00:00.000Z",
+      description: "Biblias",
+      fund: "f-misiones",
+      donor: null,
+      ministry: "m-misiones",
+    });
+    expect(post.mock.calls[0][1]).toMatchObject({
+      fund: "f-misiones",
+      donor: null,
+      ministry: "m-misiones",
+    });
+
+    put.mockResolvedValue({ data: { _id: "t1" } });
+    await updateTransactionAPI({ id: "t1", type: "expense", ministry: null });
+    expect(put.mock.calls[0][1]).toHaveProperty("ministry", null);
   });
 
   it("getTransactionByPeriodAPI reenvía el filtro de categoría", async () => {

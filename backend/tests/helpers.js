@@ -67,8 +67,19 @@ const promoteToAdmin = async (userId) => {
 
 const auth = (req, token) => req.set("Authorization", `Bearer ${token}`);
 
+//! La fecha de HOY en hora LOCAL, que es la que usa la app: los totales
+//! cuentan "hasta el final de hoy" en la zona del servidor. Tomarla en UTC
+//! (toISOString) adelanta un día al caer la tarde en América y el movimiento
+//! se queda fuera del corte.
+const hoy = () => {
+  const d = new Date();
+  const dd = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${dd(d.getMonth() + 1)}-${dd(d.getDate())}`;
+};
+
 module.exports = {
   app,
+  hoy,
   request,
   mongoose,
   setupDatabase,

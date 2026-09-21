@@ -7,6 +7,7 @@ const {
   teardownDatabase,
   clearDatabase,
   createUser,
+  hoy,
 } = require("./helpers");
 const PublicReport = require("../model/PublicReport");
 
@@ -32,7 +33,7 @@ const movimiento = (user, ws, body) =>
   as("post", "/api/v1/transactions/create", user, ws).send({
     type: "income",
     category: "diezmos",
-    date: new Date().toISOString().slice(0, 10),
+    date: hoy(),
     ...body,
   });
 

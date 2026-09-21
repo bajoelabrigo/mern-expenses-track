@@ -18,6 +18,22 @@ const { toCents, fromCents } = require("../utils/money");
 const { audit, transactionSnapshot } = require("../utils/audit");
 const { receiptStorage } = require("../services/receiptStorage");
 const { GENERAL_KEY, fundName, resolveFund } = require("../services/fundService");
+const Ministry = require("../model/Ministry");
+
+//! El ministerio al que se carga un gasto: undefined = no se toca; null o ""
+//! = ninguno. Tiene que ser de este espacio y no estar archivado.
+const resolveMinistry = async (workspaceId, value) => {
+  if (value === undefined) return { unchanged: true };
+  if (value === null || value === "") return { ministry: null };
+  if (!mongoose.isValidObjectId(value)) return { error: "Ministerio inválido", status: 400 };
+
+  const ministry = await Ministry.findOne({ _id: value, workspace: workspaceId });
+  if (!ministry) return { error: "Ese ministerio no existe en este espacio", status: 404 };
+  if (ministry.archived) {
+    return { error: `El ministerio "${ministry.name}" está archivado`, status: 409 };
+  }
+  return { ministry };
+};
 
 const TYPES = ["income", "expense"];
 const INCOME_KIND_LABELS = {
@@ -185,6 +201,7 @@ const transactionController = {
       clientId,
       fund,
       donor,
+      ministry,
     } = req.body;
 
     //! Reenvío de un movimiento registrado sin conexión que ya había llegado:
@@ -258,6 +275,16 @@ const transactionController = {
     if (resolvedDonor.error) {
       return res.status(resolvedDonor.status).json({ message: resolvedDonor.error });
     }
+    //! El ministerio solo tiene sentido en un gasto: es contra su presupuesto
+    const resolvedMinistry = await resolveMinistry(req.workspace._id, ministry);
+    if (resolvedMinistry.error) {
+      return res.status(resolvedMinistry.status).json({ message: resolvedMinistry.error });
+    }
+    const ministryDoc = resolvedMinistry.ministry || null;
+    if (ministryDoc && type !== "expense") {
+      return res.status(400).json({ message: "Solo los gastos se cargan a un ministerio" });
+    }
+
     const donorDoc = resolvedDonor.donor || null;
     if (donorDoc && !seesDonors(req)) {
       return res.status(403).json({ message: "Tu rol no permite registrar a nombre de un aportante" });
@@ -299,6 +326,7 @@ const transactionController = {
         category: normalizedCategory,
         fund: fundDoc ? fundDoc._id : null,
         donor: donorDoc ? donorDoc._id : null,
+        ministry: ministryDoc ? ministryDoc._id : null,
         amountCents: cents,
         description,
         icon,
@@ -400,7 +428,7 @@ const transactionController = {
       });
     }
 
-    const { type, category, amount, date, description, icon, fund, donor } = req.body;
+    const { type, category, amount, date, description, icon, fund, donor, ministry } = req.body;
 
     //! Nombre del fondo antes y después, para que el historial se lea solo
     const currentFund = transaction.fund
@@ -417,6 +445,14 @@ const transactionController = {
     if (!resolvedDonor.unchanged && !seesDonors(req)) {
       return res.status(403).json({ message: "Tu rol no permite cambiar el aportante" });
     }
+    const resolvedMinistry = await resolveMinistry(req.workspace._id, ministry);
+    if (resolvedMinistry.error) {
+      return res.status(resolvedMinistry.status).json({ message: resolvedMinistry.error });
+    }
+    if (!resolvedMinistry.unchanged) {
+      transaction.ministry = resolvedMinistry.ministry ? resolvedMinistry.ministry._id : null;
+    }
+
     //! Se anota si alguno de los dos no es el General (así se ve "Misiones → General")
     const fundLabel = (f) => (currentFund || nextFund ? fundName(f) : undefined);
     const before = transactionSnapshot(transaction, fundLabel(currentFund));
@@ -451,6 +487,8 @@ const transactionController = {
     }
     //! Un gasto nunca lleva aportante (p. ej. si se cambió de ingreso a gasto)
     if (transaction.type !== "income") transaction.donor = null;
+    //! Y un ingreso nunca se carga a un ministerio: el presupuesto es de gasto
+    if (transaction.type !== "expense") transaction.ministry = null;
 
     const updatedTransaction = await transaction.save();
 

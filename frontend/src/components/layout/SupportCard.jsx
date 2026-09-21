@@ -1,7 +1,13 @@
 import { Link } from "react-router-dom";
+import { LuHeart } from "react-icons/lu";
 import { isAndroidApp } from "../../lib/platform";
+import { buttonClass } from "../ui/styles";
 
 //! Invitación a hacerse socio, al final de la barra lateral.
+//!
+//! Es un botón y no una tarjeta con su explicación: el menú ya es largo y la
+//! explicación está en /socio, que es a donde lleva. Va en su propio color
+//! (bg-support) para que no se confunda con el ámbar de "Registrar".
 //!
 //! No se muestra dentro de la app de Android: la política de pagos de Google
 //! Play prohíbe que una app de su tienda lleve al usuario a pagar por fuera,
@@ -13,14 +19,9 @@ const SupportCard = ({ onNavigate }) => {
     <Link
       to="/socio"
       onClick={onNavigate}
-      className="block rounded-card bg-ink text-surface px-4 py-3 hover:brightness-110 transition"
+      className={buttonClass({ variant: "support", size: "sm", block: true })}
     >
-      <p className="text-xs leading-relaxed opacity-80">
-        Gratis para tu iglesia, siempre. Mantenerla cuesta.
-      </p>
-      <span className="mt-2.5 inline-flex h-8 items-center rounded-full bg-accent px-3 text-xs font-bold text-accent-ink">
-        Hazte socio
-      </span>
+      <LuHeart aria-hidden="true" /> Hazte socio
     </Link>
   );
 };

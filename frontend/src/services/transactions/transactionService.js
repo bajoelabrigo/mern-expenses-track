@@ -16,6 +16,7 @@ export const addTransactionAPI = async (
     clientId,
     fund,
     donor,
+    ministry,
   },
   { workspaceId } = {}
 ) => {
@@ -33,6 +34,7 @@ export const addTransactionAPI = async (
       clientId,
       fund,
       donor,
+      ministry,
     },
     workspaceId ? { headers: { "X-Workspace-Id": workspaceId } } : undefined
   );
@@ -48,6 +50,7 @@ export const updateTransactionAPI = async ({
   description,
   fund,
   donor,
+  ministry,
   id,
 }) => {
   const response = await axiosInstance.put(`/transactions/update/${id}`, {
@@ -58,6 +61,7 @@ export const updateTransactionAPI = async ({
     description,
     fund,
     donor,
+    ministry,
   });
   return response.data;
 };
