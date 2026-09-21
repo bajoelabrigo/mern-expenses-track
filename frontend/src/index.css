@@ -19,6 +19,11 @@
   --accent: #e5a33b;
   --accent-ink: #1f1405;
   --accent-soft: #fbefd9;
+  /* Hacerse socio es lo único de la app que no es dinero de la iglesia: va en
+     su propio color para que no se confunda con lo que entra ni con lo que
+     sale, y para que el ámbar siga siendo solo de "Registrar". */
+  --support: #6d5bd0;
+  --support-ink: #ffffff;
   --income: #1e9b58;
   --income-soft: #e2f3e9;
   --expense: #d98a1f;
@@ -39,6 +44,8 @@
   --accent: #f0b14b;
   --accent-ink: #1f1405;
   --accent-soft: #3a2c14;
+  --support: #a394f2;
+  --support-ink: #17122e;
   --income: #3cc77f;
   --income-soft: #183324;
   --expense: #f0b14b;
@@ -61,6 +68,8 @@
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
+  --color-support: var(--support);
+  --color-support-ink: var(--support-ink);
   --color-income: var(--income);
   --color-income-soft: var(--income-soft);
   --color-expense: var(--expense);

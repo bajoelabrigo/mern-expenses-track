@@ -8,6 +8,8 @@ const BUTTON_VARIANTS = {
   primary: "bg-ink text-surface hover:opacity-90",
   //! Registrar: el ámbar se reserva para "añadir dinero al libro"
   accent: "bg-accent text-accent-ink hover:brightness-95",
+  //! Hacerse socio, y nada más: no es dinero de la iglesia
+  support: "bg-support text-support-ink hover:brightness-110",
   secondary: "bg-surface text-ink border border-line hover:bg-surface-2",
   ghost: "text-ink-2 hover:bg-surface-2",
   danger: "bg-danger text-white hover:opacity-90",
