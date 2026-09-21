@@ -103,7 +103,7 @@ describe("Miembros: agregar a alguien que ya tiene cuenta", () => {
 
   it("lo agrega directo, con su rol, y avisa que ya tiene acceso", async () => {
     addMemberAPI.mockResolvedValue({
-      message: "ana ya tiene acceso como Tesorero",
+      message: 'ana ya tiene acceso a "Iglesia Betel" como Tesorero',
       emailSent: true,
       member: { userId: "u-ana", username: "ana", email: "ana@test.com", role: "tesorero" },
     });
@@ -134,7 +134,8 @@ describe("Miembros: agregar a alguien que ya tiene cuenta", () => {
     expect(createInvitationAPI).not.toHaveBeenCalled();
 
     //! Y se le dice al administrador que el aviso salió (no hay nada que confirmar)
-    expect(await screen.findByText(/ana ya tiene acceso como Tesorero/)).toBeInTheDocument();
+    //! y, sobre todo, EN QUE ESPACIO quedó la persona
+    expect(await screen.findByText(/ana ya tiene acceso a "Iglesia Betel" como Tesorero/)).toBeInTheDocument();
     expect(screen.getByText(/Le enviamos un aviso por correo/)).toBeInTheDocument();
 
     //! La lista se refresca con la persona nueva
@@ -169,8 +170,9 @@ describe("Miembros: agregar a alguien que ya tiene cuenta", () => {
       email: "nadie@test.com",
       role: "contador",
     });
-    //! Y queda el enlace para compartirlo a mano, como antes
-    expect(await screen.findByText(/Enviamos la invitación a nadie@test.com/)).toBeInTheDocument();
+    //! Y queda el enlace para compartirlo a mano, como antes, diciendo para que
+    //! espacio es
+    expect(await screen.findByText(/Enviamos la invitación a nadie@test.com para "Iglesia Betel"/)).toBeInTheDocument();
     expect(screen.getByDisplayValue("https://app.test/invitacion/token123")).toBeInTheDocument();
   });
 

@@ -295,6 +295,9 @@ describe("Espacios, roles e invitaciones", () => {
     assert.equal(res.body.member.username, tesorera.user.username);
     assert.equal(res.body.member.role, "tesorero");
     assert.equal(res.body.member.isMe, false);
+    //! El mensaje dice en QUE espacio quedo: es lo unico que ve quien administra
+    //! si estaba mirando otro espacio (p. ej. soporte, o tras perder la sesion)
+    assert.match(res.body.message, /Iglesia Betel/);
 
     //! El correo es un aviso, no una invitación: no hay enlace que aceptar
     assert.equal(res.body.emailSent, true);

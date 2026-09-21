@@ -77,11 +77,15 @@ const RegistrationForm = () => {
   useEffect(() => {
     if (!isSuccess) return undefined;
 
-    //! Se conserva a dónde volver (p. ej. la invitación) y el correo
+    //! Se conserva a dónde volver (p. ej. la invitación), el espacio y el correo
     const timeout = setTimeout(
       () =>
         navigate("/login", {
-          state: { from: location.state?.from, email: formik.values.email },
+          state: {
+            from: location.state?.from,
+            workspaceId: location.state?.workspaceId,
+            email: formik.values.email,
+          },
         }),
       1200
     );

@@ -46,7 +46,7 @@ const InvitationLink = ({ invitation, workspaceName, onClose }) => {
     <div className="space-y-3">
       <Notice tone={invitation.emailSent ? "success" : "warning"}>
         {invitation.emailSent
-          ? `Enviamos la invitación a ${invitation.email}. También puedes compartir el enlace.`
+          ? `Enviamos la invitación a ${invitation.email} para "${workspaceName}". También puedes compartir el enlace.`
           : `No se pudo enviar el correo a ${invitation.email}. Comparte este enlace con esa persona.`}
       </Notice>
       <Input

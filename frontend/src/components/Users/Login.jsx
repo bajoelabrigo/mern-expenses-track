@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginAPI } from "../../services/users/userService";
 import { loginAction } from "../../redux/slice/authSlice";
+import { setWorkspaceAction } from "../../redux/slice/workspaceSlice";
 import { getErrorMessage } from "../../lib/axios";
 import { useEsperaLarga } from "../../hooks/useEsperaLarga";
 import AlertMessage from "../Alert/AlertMessage";
@@ -28,6 +29,9 @@ const LoginForm = () => {
   const queryClient = useQueryClient();
   //! Página a la que volver tras entrar (una ruta privada o una invitación)
   const destino = location.state?.from || "/dashboard";
+  //! Y el espacio en el que estabas: se recupera para no aterrizar en la misma
+  //! pantalla pero con otro espacio cargado (ver AuthRoute)
+  const espacioPrevio = location.state?.workspaceId || null;
   const user = useSelector((state) => state.auth.user);
 
   const { mutateAsync, isPending, isError, error, isSuccess } = useMutation({
@@ -52,6 +56,9 @@ const LoginForm = () => {
         //! debe verse con la sesión nueva
         queryClient.clear();
         dispatch(loginAction(data)); // guarda token + usuario
+        //! Y se vuelve al espacio donde estabas, no al predeterminado: si no,
+        //! la pantalla que se restaura sería la de otro espacio
+        if (espacioPrevio) dispatch(setWorkspaceAction(espacioPrevio));
       } catch {
         // mensaje mostrado por AlertMessage
       }

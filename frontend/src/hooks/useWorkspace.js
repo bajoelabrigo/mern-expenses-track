@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getWorkspaceAPI,
@@ -21,11 +22,11 @@ const resetWorkspaceData = (queryClient) =>
 //!   can(p)      -> ¿el rol permite p? (p. ej. "tx:write")
 //!   isSupport   -> el admin de la plataforma está dentro de un espacio ajeno
 export const useWorkspace = () => {
+  const navigate = useNavigate();
   const dispatch = useDispatch();
   const queryClient = useQueryClient();
   const user = useSelector((state) => state.auth.user);
   const currentId = useSelector((state) => state.workspace.currentId);
-  const isPlatformAdmin = user?.role === "admin";
 
   const {
     data: workspaces = [],
@@ -40,27 +41,54 @@ export const useWorkspace = () => {
 
   const inList = workspaces.find((w) => w._id === currentId) || null;
 
-  //! Un espacio que no está en mi lista solo lo puede abrir el admin (soporte)
-  const { data: supportWorkspace } = useQuery({
+  //! Un espacio pedido que no está en mi lista todavía puede ser mío de otra
+  //! forma: el administrador de la plataforma entra a cualquiera como soporte.
+  //! Antes esto solo se preguntaba si el CLIENTE creía ser admin (user.role), y
+  //! con una sesión vieja o mal hidratada un admin aterrizaba en su espacio
+  //! personal sin enterarse: la pantalla era la de la iglesia y lo que hiciera
+  //! ahí iba a su libro. Ahora se le pregunta siempre a la API, que es la que
+  //! decide de verdad.
+  const { data: supportWorkspace, isFetching: cargandoSoporte } = useQuery({
     queryKey: ["workspace-support", currentId],
     queryFn: () => getWorkspaceAPI(currentId),
-    enabled: Boolean(user && isPlatformAdmin && currentId && isFetched && !inList),
+    enabled: Boolean(user && currentId && isFetched && !inList),
+    retry: false,
   });
 
   const fallback = workspaces.find((w) => w.isDefault) || workspaces[0] || null;
-  const workspace =
-    inList || (isPlatformAdmin && currentId ? supportWorkspace || null : fallback);
+  //! Sin espacio pedido se usa el predeterminado; con uno pedido, lo que diga la
+  //! API (y mientras contesta, nada: mejor "Cargando…" que otro espacio)
+  const workspace = inList || supportWorkspace || (currentId ? null : fallback);
 
-  //! Sin espacio elegido, o con uno que ya no es mío: se fija el predeterminado
+  //! Sin espacio elegido, o con uno que ya no sirve, se fija el predeterminado
   useEffect(() => {
     if (!user || !isFetched || !fallback) return;
     if (!currentId) {
       dispatch(setWorkspaceAction(fallback._id));
-    } else if (!inList && !isPlatformAdmin) {
-      dispatch(setWorkspaceAction(fallback._id));
-      resetWorkspaceData(queryClient);
+      return;
     }
-  }, [user, isFetched, fallback, currentId, inList, isPlatformAdmin, dispatch, queryClient]);
+    if (inList || supportWorkspace) return; // el espacio pedido sí sirve
+    if (cargandoSoporte) return; // la API todavía no ha contestado
+
+    //! El espacio recordado ya no es tuyo (te sacaron, se borró, o es de otro
+    //! sin permiso de soporte). Se abre el predeterminado Y se va al Inicio: no
+    //! se puede seguir en una pantalla que era de ese espacio, porque lo que se
+    //! registrara ahí acabaría en el libro equivocado sin que nadie lo note.
+    dispatch(setWorkspaceAction(fallback._id));
+    resetWorkspaceData(queryClient);
+    navigate("/dashboard", { replace: true });
+  }, [
+    user,
+    isFetched,
+    fallback,
+    currentId,
+    inList,
+    supportWorkspace,
+    cargandoSoporte,
+    dispatch,
+    queryClient,
+    navigate,
+  ]);
 
   const switchWorkspace = useCallback(
     (id) => {

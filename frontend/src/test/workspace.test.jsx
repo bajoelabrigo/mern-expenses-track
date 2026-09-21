@@ -9,6 +9,7 @@ import workspaceReducer, { setWorkspaceAction } from "../redux/slice/workspaceSl
 import PermissionRoute from "../components/Auth/PermissionRoute";
 import MovementsPage from "../components/Transactions/MovementsPage";
 import TransactionUpdate from "../components/Transactions/TransactionUpdate";
+import { useWorkspace } from "../hooks/useWorkspace";
 
 const IGLESIA = {
   _id: "w-iglesia",
@@ -34,9 +35,10 @@ const PROPIETARIO = conRol("propietario", [
 ]);
 
 const listWorkspacesAPI = vi.fn();
+const getWorkspaceAPI = vi.fn();
 vi.mock("../services/workspaces/workspaceService", () => ({
   listWorkspacesAPI: (...args) => listWorkspacesAPI(...args),
-  getWorkspaceAPI: vi.fn(),
+  getWorkspaceAPI: (...args) => getWorkspaceAPI(...args),
 }));
 
 vi.mock("../services/category/categoryService", () => ({
@@ -104,6 +106,7 @@ const renderConEspacio = (ui, ruta = "/") => {
           <Routes>
             <Route path="/" element={ui} />
             <Route path="/tx/:id" element={ui} />
+            <Route path="/espacio/miembros" element={ui} />
             <Route path="/dashboard" element={<p>panel de usuario</p>} />
           </Routes>
         </MemoryRouter>
@@ -138,7 +141,6 @@ describe("workspaceSlice", () => {
 
 describe("PermissionRoute", () => {
   beforeEach(() => listWorkspacesAPI.mockReset());
-
   it("un lector no entra al formulario de alta", async () => {
     listWorkspacesAPI.mockResolvedValue(LECTOR);
     renderConEspacio(
@@ -209,5 +211,73 @@ describe("Movimientos y acciones según el rol", () => {
     expect(screen.getByText("Borrar definitivamente")).toBeInTheDocument();
     //! Un anulado no se edita: el botón de guardar lo explica
     expect(screen.getByRole("button", { name: /restáuralo para editarlo/ })).toBeDisabled();
+  });
+});
+
+//! Espacio que se está usando, tal como lo ve cualquier pantalla
+const EspacioActual = () => {
+  const { workspace, isSupport } = useWorkspace();
+  return (
+    <>
+      <p>{workspace ? `${workspace.name}:${workspace.role}` : "cargando espacio"}</p>
+      {isSupport && <p>en soporte</p>}
+    </>
+  );
+};
+
+//! El usuario solo tiene "Mis finanzas"; el espacio pedido (w-iglesia) es de otra
+//! persona: la API decide si puede entrar (soporte) o no.
+const MIS_FINANZAS = [
+  {
+    _id: "w-mia",
+    name: "Mis finanzas",
+    kind: "personal",
+    currency: "PEN",
+    isDefault: true,
+    role: "propietario",
+    permissions: ["tx:read"],
+  },
+];
+const IGLESIA_AJENA = {
+  _id: "w-iglesia",
+  name: "Iglesia Betel",
+  kind: "iglesia",
+  currency: "PEN",
+  role: "propietario",
+  permissions: ["tx:read", "members:manage"],
+};
+
+describe("El espacio que se pidió, cuando no está en tu lista", () => {
+  beforeEach(() => {
+    listWorkspacesAPI.mockReset();
+    getWorkspaceAPI.mockReset();
+    localStorage.clear();
+  });
+
+  it("si la API da acceso se usa ese espacio, aunque el cliente no te marque admin", async () => {
+    //! El usuario de la prueba NO tiene role "admin": antes, por eso mismo, la
+    //! app abría su espacio personal y lo que se hiciera iba al libro equivocado
+    listWorkspacesAPI.mockResolvedValue(MIS_FINANZAS);
+    getWorkspaceAPI.mockResolvedValue(IGLESIA_AJENA);
+
+    renderConEspacio(<EspacioActual />, "/espacio/miembros");
+
+    expect(await screen.findByText("Iglesia Betel:propietario")).toBeInTheDocument();
+    expect(screen.getByText("en soporte")).toBeInTheDocument();
+  });
+
+  it("si la API no da acceso, abre el predeterminado y se va al Inicio", async () => {
+    listWorkspacesAPI.mockResolvedValue(MIS_FINANZAS);
+    getWorkspaceAPI.mockRejectedValue(
+      Object.assign(new Error("403"), {
+        response: { status: 403, data: { code: "NOT_A_MEMBER" } },
+      })
+    );
+
+    renderConEspacio(<EspacioActual />, "/espacio/miembros");
+
+    //! No se queda en la pantalla del espacio ajeno: se abre el propio Inicio
+    expect(await screen.findByText("panel de usuario")).toBeInTheDocument();
+    expect(localStorage.getItem("workspaceId")).toBe("w-mia");
   });
 });

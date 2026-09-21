@@ -366,7 +366,10 @@ exports.addMember = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json({
-    message: `${user.username} ya tiene acceso como ${ROLE_LABELS[role]}`,
+    //! El mensaje nombra el espacio A PROPOSITO: quien administra puede estar
+    //! dentro de otro (soporte) o haber cambiado de espacio sin darse cuenta, y
+    //! esta es la unica senal de donde quedo la persona.
+    message: `${user.username} ya tiene acceso a "${req.workspace.name}" como ${ROLE_LABELS[role]}`,
     emailSent: mail.sent,
     member: {
       userId: user._id,
