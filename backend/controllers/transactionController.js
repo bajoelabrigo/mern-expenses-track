@@ -100,7 +100,14 @@ const parseAmount = (amount) => {
 
 //! Construye el filtro común (espacio + fechas + tipo + categoría + anulados).
 //! Devuelve { error } si alguno de los parámetros es inválido.
-const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {}) => {
+//! `puedeFiltrarPersonas` (donor:read) va cerrado por defecto: filtrar por una
+//! persona ya revela —devuelve solo SUS movimientos y con ellos los importes—,
+//! así que no basta con ocultar el campo en la respuesta.
+const buildFilters = (
+  workspaceId,
+  query,
+  { includeVoidedByDefault = false, puedeFiltrarPersonas = false } = {}
+) => {
   const { startDate, endDate, type, category, includeVoided, q, recurrent, fund } = query;
   const filters = { workspace: workspaceId };
 
@@ -122,6 +129,9 @@ const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {
   //! Aportante (solo para quien puede verlos): un id o "sin" para los ingresos
   //! sin aportante
   if (query.donor !== undefined && query.donor !== "") {
+    if (!puedeFiltrarPersonas) {
+      return { error: "Tu rol no permite filtrar por aportante", status: 403 };
+    }
     if (query.donor === "sin") filters.donor = null;
     else if (mongoose.isValidObjectId(query.donor)) filters.donor = query.donor;
     else return { error: "Aportante inválido" };
@@ -129,6 +139,9 @@ const buildFilters = (workspaceId, query, { includeVoidedByDefault = false } = {
 
   //! A quién se le pagó: un id o "sin" para los gastos sin persona
   if (query.payee !== undefined && query.payee !== "") {
+    if (!puedeFiltrarPersonas) {
+      return { error: "Tu rol no permite filtrar por persona", status: 403 };
+    }
     if (query.payee === "sin") filters.payee = null;
     else if (mongoose.isValidObjectId(query.payee)) filters.payee = query.payee;
     else return { error: "Persona inválida" };
@@ -414,8 +427,10 @@ const transactionController = {
   getFilteredTransactions: asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
 
-    const { filters, error } = buildFilters(req.workspace._id, req.query);
-    if (error) return res.status(400).json({ message: error });
+    const { filters, error, status } = buildFilters(req.workspace._id, req.query, {
+      puedeFiltrarPersonas: seesDonors(req),
+    });
+    if (error) return res.status(status || 400).json({ message: error });
 
     const parsedPage = Math.max(1, parseInt(page, 10) || 1);
     const parsedLimit = Math.min(
@@ -809,8 +824,10 @@ const transactionController = {
 
   //! Balance general (con filtros opcionales)
   getBalance: asyncHandler(async (req, res) => {
-    const { filters, error } = buildFilters(req.workspace._id, req.query);
-    if (error) return res.status(400).json({ message: error });
+    const { filters, error, status } = buildFilters(req.workspace._id, req.query, {
+      puedeFiltrarPersonas: seesDonors(req),
+    });
+    if (error) return res.status(status || 400).json({ message: error });
 
     res.status(200).json(await sumTotals(filters));
   }),
@@ -887,8 +904,10 @@ const transactionController = {
 
   //! Exportar a Excel respetando los filtros activos
   generateExcelReport: asyncHandler(async (req, res) => {
-    const { filters, error } = buildFilters(req.workspace._id, req.query);
-    if (error) return res.status(400).json({ message: error });
+    const { filters, error, status } = buildFilters(req.workspace._id, req.query, {
+      puedeFiltrarPersonas: seesDonors(req),
+    });
+    if (error) return res.status(status || 400).json({ message: error });
 
     const transactions = await Transaction.find(filters)
       .sort({ date: -1 })

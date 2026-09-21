@@ -55,7 +55,9 @@ const ministriesWithProgress = async (workspaceId, year, { leader } = {}) => {
   if (leader) filters.leader = leader;
 
   const [ministries, spent] = await Promise.all([
-    Ministry.find(filters).sort({ archived: 1, key: 1 }).populate("leader", "username email"),
+    //! Solo el nombre del líder: su correo es dato de miembros y lo ve quien
+    //! gestiona miembros (members:manage), no cualquiera que mire ministerios
+    Ministry.find(filters).sort({ archived: 1, key: 1 }).populate("leader", "username"),
     spentByMinistry(workspaceId, year),
   ]);
 

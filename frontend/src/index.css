@@ -14,7 +14,12 @@
   --surface-2: #f5f4f0;
   --ink: #161615;
   --ink-2: #3b3a37;
-  --muted: #86837c;
+  /*! Los cuatro colores de abajo están oscurecidos respecto al rediseño
+      original para que el texto cumpla el contraste AA (4,5:1) sobre el fondo,
+      la tarjeta y los avisos de color. Medido, no a ojo: el gris anterior daba
+      3,17:1 sobre el fondo y el verde de ingreso 3,57:1 sobre la tarjeta. El
+      tema oscuro ya cumplía y no se toca. */
+  --muted: #6d6a64;
   --line: #e4e2dc;
   --accent: #e5a33b;
   --accent-ink: #1f1405;
@@ -24,10 +29,10 @@
      sale, y para que el ámbar siga siendo solo de "Registrar". */
   --support: #6d5bd0;
   --support-ink: #ffffff;
-  --income: #1e9b58;
+  --income: #187c46;
   --income-soft: #e2f3e9;
-  --expense: #d98a1f;
-  --danger: #d9443f;
+  --expense: #9c6316;
+  --danger: #bd3b37;
   --danger-soft: #fbe6e5;
   --shadow: 0 1px 2px rgb(20 20 18 / 0.04);
   color-scheme: light;

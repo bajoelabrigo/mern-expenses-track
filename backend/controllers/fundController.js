@@ -126,10 +126,16 @@ const buildReportData = async (workspaceId, fund, { withNames }) => {
       amount: fromCents(t.amountCents),
     }));
 
-  const sum = (list) => list.reduce((total, item) => total + item.amount, 0);
   const movedOutCents = transfersOut.reduce((total, t) => total + t.amountCents, 0);
-  const raised = sum(income);
-  const spent = sum(expenses);
+  //! Los totales se suman en CENTAVOS y se convierten al final: sumar los
+  //! importes ya convertidos acumula error de coma flotante (lo que
+  //! utils/money.js existe para evitar). Por eso se usa la lista de movimientos
+  //! cruda y no los importes de `income`/`expenses`, que ya vienen en unidades.
+  const centsOf = (list) => list.reduce((total, t) => total + t.amountCents, 0);
+  const raisedCents = centsOf(movements.filter((t) => t.type === "income")) + centsOf(transfersIn);
+  const spentCents = centsOf(movements.filter((t) => t.type === "expense"));
+  const raised = fromCents(raisedCents);
+  const spent = fromCents(spentCents);
   const movedOut = fromCents(movedOutCents);
 
   return {
@@ -142,7 +148,7 @@ const buildReportData = async (workspaceId, fund, { withNames }) => {
       raised,
       spent,
       movedOut,
-      balance: Number((raised - spent - movedOut).toFixed(2)),
+      balance: fromCents(raisedCents - spentCents - movedOutCents),
       withReceipt: expenses.filter((e) => e.receipt).length,
     },
   };

@@ -609,6 +609,17 @@ exports.listAudit = asyncHandler(async (req, res) => {
       .lean(),
   ]);
 
+  //! El correo de una persona es dato de miembros: en el historial aparece al
+  //! agregarla, al invitarla y al revocar la invitación, y el auditor (que sí
+  //! lee el historial) no tiene por qué verlo
+  if (!can(req.role, "members:manage")) {
+    entries.forEach((entry) => {
+      if (entry.entity !== "member" && entry.entity !== "invitation") return;
+      if (entry.before) delete entry.before.email;
+      if (entry.after) delete entry.after.email;
+    });
+  }
+
   res.json({
     total,
     currentPage: page,

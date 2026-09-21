@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LuHeart, LuServer, LuShieldCheck, LuUsers } from "react-icons/lu";
@@ -119,6 +119,12 @@ const SupportPage = () => {
     },
   });
 
+  //! Los botones de PayPal se pintan una vez: el importe se lee al crear la
+  //! orden (`amountRef`), así que no hay que rehacerlos al cambiarlo. El manejador
+  //! de error va memorizado a propósito: si cambiara en cada pintado, el efecto
+  //! de abajo volvería a ejecutarse y destruiría los botones con cada tecla.
+  const onPaypalError = useCallback((err) => setFallo(getErrorMessage(err)), []);
+
   if (enAppAndroid) return <Navigate to="/dashboard" replace />;
 
   if (estado.isLoading) return <AlertMessage type="loading" message="Cargando…" />;
@@ -229,7 +235,7 @@ const SupportPage = () => {
             <PaypalButtons
               amount={amount}
               onPaid={pagado.mutate}
-              onError={(err) => setFallo(getErrorMessage(err))}
+              onError={onPaypalError}
             />
           )}
 

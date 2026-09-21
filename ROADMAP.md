@@ -150,7 +150,12 @@ despliega Netlify y Render) cuando está verificada.
 - [ ] Flujo de aprobación de gastos (solicitar, aprobar, pagar).
 - [ ] Conciliación bancaria y cierre mensual (bloquea editar meses cerrados).
 - [ ] Varias sedes con informe consolidado.
-- [ ] Landing page, alta guiada y datos de ejemplo.
+- [x] **Datos de ejemplo** para probar sin tocar la base real: `npm run
+      dev:memoria` levanta la API con MongoDB en memoria y `npm run datos-ejemplo`
+      la llena con una iglesia de ejemplo (equipo con roles, personas que aportan
+      y que cobran, nueve meses de movimientos, una solicitud para entrar y una
+      invitación pendiente).
+- [ ] Landing page y alta guiada para una iglesia nueva.
 - [ ] Soporte: centro de ayuda (cómo registrar, roles, fondos, constancias) y
       un botón de "reportar problema" desde la app.
 - [ ] Verificación de correo y 2FA para tesoreros.

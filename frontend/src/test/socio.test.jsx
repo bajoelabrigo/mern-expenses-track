@@ -132,4 +132,29 @@ describe("Hazte socio", () => {
     fireEvent.change(screen.getByLabelText(/Otro monto/), { target: { value: "35" } });
     expect(screen.getByRole("button", { name: "$20" })).toHaveAttribute("aria-pressed", "false");
   });
+
+  it("los botones de PayPal se pintan una vez, no con cada tecla", async () => {
+    getSupportStatusAPI.mockResolvedValue({ disponible: true, total: 0, aportes: [] });
+    const dibujar = vi.fn(() => Promise.resolve());
+    const botones = vi.fn(() => ({ render: dibujar, close: vi.fn() }));
+    //! El SDK de PayPal ya cargado: así la página dibuja sus botones
+    window.paypal = { Buttons: botones };
+
+    const { default: SupportPage } = await import("../components/Support/SupportPage");
+    renderCon(<SupportPage />);
+
+    await screen.findByRole("button", { name: "$10" });
+    await waitFor(() => expect(botones).toHaveBeenCalledTimes(1));
+
+    //! Cambiar el importe NO debe rehacer los botones: el importe se lee al
+    //! crear la orden, así que basta con pintarlos una vez. Si el manejador de
+    //! error cambiara en cada pintado, aquí se destruirían y se volverían a
+    //! crear con cada tecla.
+    fireEvent.click(screen.getByRole("button", { name: "$20" }));
+    fireEvent.change(screen.getByLabelText(/Otro monto/), { target: { value: "35" } });
+    expect(screen.getByRole("button", { name: "$20" })).toBeInTheDocument();
+    expect(botones).toHaveBeenCalledTimes(1);
+
+    delete window.paypal;
+  });
 });
