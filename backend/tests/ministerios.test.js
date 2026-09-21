@@ -261,4 +261,23 @@ describe("Presupuesto por ministerio", () => {
 
     await as("get", "/api/v1/ministerios", lector, ws).expect(403);
   });
+
+  //! El tesorero es quien lleva los ministerios al día: si pudiera nombrar a
+  //! un líder y después no tocarlo, lo dejaría puesto para siempre.
+  test("un tesorero nombra líderes y también puede cambiarlos y quitarlos", async () => {
+    const { pastor, ws } = await iglesia();
+    const tesorero = await createUser();
+    const lider = await createUser();
+    await invitarYAceptar(pastor, ws, tesorero, "tesorero");
+    await invitarYAceptar(tesorero, ws, lider, "lider");
+
+    await as("put", `/api/v1/workspaces/${ws}/members/${lider.user.id}`, tesorero)
+      .send({ role: "lector" })
+      .expect(200);
+    await as("put", `/api/v1/workspaces/${ws}/members/${lider.user.id}`, tesorero)
+      .send({ role: "lider" })
+      .expect(200);
+    await as("delete", `/api/v1/workspaces/${ws}/members/${lider.user.id}`, tesorero).expect(200);
+    await as("get", "/api/v1/ministerios", lider, ws).expect(403);
+  });
 });

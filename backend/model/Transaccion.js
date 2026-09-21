@@ -150,5 +150,6 @@ transactionSchema.index(
 transactionSchema.index({ workspace: 1, category: 1 });
 transactionSchema.index({ workspace: 1, fund: 1 });
 transactionSchema.index({ workspace: 1, donor: 1, date: -1 });
+transactionSchema.index({ workspace: 1, ministry: 1, date: -1 });
 
 module.exports = mongoose.model("Transaction", transactionSchema);

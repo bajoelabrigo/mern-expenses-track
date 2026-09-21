@@ -75,8 +75,15 @@ despliega Netlify y Render) cuando está verificada.
       asentado se corrige anulando su movimiento.
 - [x] Contabilidad por fondos (general, misiones, construcción, benevolencia):
       saldo por fondo, pases entre fondos (anulables) y fondos archivados.
-- [ ] Presupuesto anual por ministerio, con alertas al 80 % y 100 %.
-- [ ] Rol de líder de ministerio (solo ve y solicita sobre su presupuesto).
+- [x] Presupuesto anual por ministerio: avance de lo gastado y avisos al 80 %
+      y al 100 %. Avisa, **no bloquea**: quién autoriza pasarse del
+      presupuesto lo decide la iglesia. Un gasto se carga a un ministerio al
+      registrarlo, y cuenta contra el presupuesto del año de su fecha.
+- [x] Rol de líder de ministerio: ve el suyo (presupuesto y en qué se ha ido)
+      y nada más del libro, ni movimientos, ni saldos, ni fondos, ni
+      aportantes, ni informes. Entra a la app por esa pantalla.
+- [ ] Que el líder pueda **solicitar** un gasto contra su presupuesto: hoy
+      solo lo ve, registrar sigue siendo de la tesorería.
 - [x] Campañas con meta y barra de avance (un fondo con meta).
 - [x] Informe de una actividad o fondo en PDF: lo que entró (con o sin los
       nombres de quienes dieron, a elección de quien lo emite), lo que salió

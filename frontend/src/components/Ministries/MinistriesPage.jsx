@@ -12,13 +12,14 @@ import {
 import {
   createMinistryAPI,
   deleteMinistryAPI,
-  listMinistriesAPI,
   listMinistryExpensesAPI,
   updateMinistryAPI,
 } from "../../services/ministries/ministryService";
 import { listMembersAPI } from "../../services/workspaces/workspaceService";
 import { useWorkspace } from "../../hooks/useWorkspace";
+import { MINISTRIES_KEY, useMinistries } from "../../hooks/useMinistries";
 import { getErrorMessage } from "../../lib/axios";
+import { ROLE_LABELS } from "../../lib/roles";
 import { formatMoney } from "../../lib/money";
 import { shortDate } from "../../lib/periods";
 import { capitalize } from "../ui/styles";
@@ -26,7 +27,6 @@ import AlertMessage from "../Alert/AlertMessage";
 import { Button, Card, EmptyState, Field, Input, Notice, PageHeader, Select } from "../ui";
 import MinistryBar from "./MinistryBar";
 
-const MINISTRIES_KEY = ["ministerios"];
 const THIS_YEAR = new Date().getFullYear();
 
 //! Los gastos de un ministerio, que se abren al pedirlos
@@ -137,10 +137,12 @@ const MinistryForm = ({ year, ministry, members, onDone, onCancel }) => {
             required
           />
         </Field>
+        {/* Nombrar líder NO cambia el rol: quien no sea "Líder de ministerio"
+            seguirá viendo lo que su rol le deje (o el libro entero) */}
         <Field
           label="Quién lo lleva"
           htmlFor="min-lider"
-          hint="Verá su presupuesto, y nada más de las cuentas"
+          hint={`Para que vea su presupuesto y nada más, dale el rol ${ROLE_LABELS.lider} en Miembros`}
         >
           <Select
             id="min-lider"
@@ -149,8 +151,8 @@ const MinistryForm = ({ year, ministry, members, onDone, onCancel }) => {
           >
             <option value="">Nadie por ahora</option>
             {members.map((m) => (
-              <option key={m.user?._id || m._id} value={m.user?._id || m._id}>
-                {m.user?.username || m.username}
+              <option key={m.userId} value={m.userId}>
+                {m.username} · {ROLE_LABELS[m.role] || m.role}
               </option>
             ))}
           </Select>
@@ -174,20 +176,15 @@ const MinistryForm = ({ year, ministry, members, onDone, onCancel }) => {
 //! /ministerios — presupuesto anual de cada ministerio
 const MinistriesPage = () => {
   const queryClient = useQueryClient();
-  const { can, workspace } = useWorkspace();
-  const puedeGestionar = can("ministry:manage");
-  //! Un líder solo recibe el suyo: la pantalla es la misma, más corta
-  const soloElMio = can("ministry:own") && !can("ministry:read");
-
+  const { workspace } = useWorkspace();
   const [year, setYear] = useState(THIS_YEAR);
   const [creando, setCreando] = useState(false);
   const [editando, setEditando] = useState(null);
   const [abierto, setAbierto] = useState(null);
 
-  const query = useQuery({
-    queryKey: [...MINISTRIES_KEY, year],
-    queryFn: () => listMinistriesAPI(year),
-  });
+  //! Un líder solo recibe el suyo: la pantalla es la misma, más corta
+  const query = useMinistries({ year });
+  const { ministries, currency, canManage: puedeGestionar, onlyMine: soloElMio } = query;
 
   const { data: members = [] } = useQuery({
     queryKey: ["members", workspace?._id],
@@ -203,7 +200,6 @@ const MinistriesPage = () => {
   if (query.isLoading) return <AlertMessage type="loading" message="Cargando…" />;
   if (query.isError) return <AlertMessage type="error" message={getErrorMessage(query.error)} />;
 
-  const { ministries = [], currency } = query.data;
   const pasados = ministries.filter((m) => m.exceeded);
   const cerca = ministries.filter((m) => m.warning);
 
@@ -375,6 +371,8 @@ const MinistriesPage = () => {
                   >
                     {abierto === ministry._id
                       ? "Ocultar los gastos"
+                      : ministry.expenses === 1
+                      ? "Ver el gasto"
                       : `Ver los ${ministry.expenses} gastos`}
                   </button>
                   {abierto === ministry._id && (
