@@ -27,6 +27,21 @@ const PLANES = {
   20: PAYPAL_PLAN_SOCIO_20,
 };
 
+//! Los avisos de PayPal que esta app atiende. Todo lo demás se contesta con un
+//! 200 y nada más: el webhook está suscrito a "*" y comparte cuenta con otros
+//! productos, así que llega mucho que no es nuestro.
+const EVENTOS = new Set([
+  "PAYMENT.CAPTURE.COMPLETED",
+  "PAYMENT.CAPTURE.REFUNDED",
+  "PAYMENT.CAPTURE.REVERSED",
+  "PAYMENT.SALE.COMPLETED",
+  "PAYMENT.SALE.REFUNDED",
+  "PAYMENT.SALE.REVERSED",
+  "BILLING.SUBSCRIPTION.ACTIVATED",
+  "BILLING.SUBSCRIPTION.CANCELLED",
+  "BILLING.SUBSCRIPTION.SUSPENDED",
+]);
+
 const planesDisponibles = () =>
   Object.entries(PLANES)
     .filter(([, id]) => Boolean(id))
@@ -283,11 +298,22 @@ const supportController = {
   //! Avisos de PayPal. No llevan sesión: la única prueba de que son auténticos
   //! es la firma, así que sin comprobarla no se toca nada.
   webhook: asyncHandler(async (req, res) => {
-    const valido = await paypal.verifyWebhook(req.headers, req.body);
-    if (!valido) return res.status(400).json({ message: "Aviso no verificado" });
-
     const tipo = req.body?.event_type;
     const recurso = req.body?.resource;
+
+    //! Primero se mira SI el evento nos interesa, y solo entonces se comprueba
+    //! la firma. El orden importa porque comprobarla cuesta un viaje a PayPal
+    //! (~120 ms medidos): la app REST se comparte con chat-app y holy_app, y
+    //! nuestro webhook está suscrito a "*", así que cada ofrenda de ellos nos
+    //! hacía pagar ese viaje para acabar ignorando el aviso.
+    //!
+    //! No relaja ninguna defensa: lo que se salta la comprobación es el camino
+    //! que NO hace nada. Todo evento que toque la base de datos sigue pasando
+    //! por la firma, igual que antes.
+    if (!EVENTOS.has(tipo)) return res.status(200).json({ ok: true });
+
+    const valido = await paypal.verifyWebhook(req.headers, req.body);
+    if (!valido) return res.status(400).json({ message: "Aviso no verificado" });
 
     if (tipo === "PAYMENT.CAPTURE.COMPLETED") {
       await markPaid(recurso);

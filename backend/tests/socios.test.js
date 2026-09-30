@@ -33,6 +33,7 @@ const fakePaypal = () => {
     canceladas: [],
     configured: true,
     firmaValida: true,
+    firmasComprobadas: 0,
     falla: false,
   };
   let n = 0;
@@ -72,7 +73,12 @@ const fakePaypal = () => {
         ],
       };
     },
-    verifyWebhook: async () => state.firmaValida,
+    //! Se cuentan las comprobaciones: cada una cuesta un viaje a PayPal en
+    //! producción, y la prueba de abajo vigila que no se gasten de más
+    verifyWebhook: async () => {
+      state.firmasComprobadas += 1;
+      return state.firmaValida;
+    },
   };
   return state;
 };
@@ -498,6 +504,32 @@ describe("Socios de la app", () => {
     assert.equal(estado.body.total, 0);
     const aporte = await Support.findOne({ paypalSaleId: "SALE-1" });
     assert.equal(aporte.status, "devuelto");
+  });
+
+  test("un aviso que no nos toca no gasta una comprobación de firma", async () => {
+    //! El webhook está suscrito a "*" y la app de PayPal se comparte con
+    //! chat-app y holy_app: llega mucho que no es nuestro. Comprobar la firma
+    //! cuesta un viaje a PayPal (~120 ms), así que primero se mira el tipo.
+    const ajenos = [
+      "BILLING.SUBSCRIPTION.CREATED",
+      "CHECKOUT.ORDER.APPROVED",
+      "PAYMENT.PAYOUTSBATCH.SUCCESS",
+      "VAULT.CREDIT-CARD.CREATED",
+    ];
+    for (const event_type of ajenos) {
+      await request(app).post("/api/v1/socio/webhook").send({ event_type }).expect(200);
+    }
+    assert.equal(pp.firmasComprobadas, 0, "ni un solo viaje a PayPal por avisos ajenos");
+
+    //! Pero lo que sí nos toca sigue pasando por la firma, igual que antes: la
+    //! defensa no se relaja, solo se deja de pagar por rechazar lo que se iba
+    //! a ignorar de todas formas.
+    pp.firmaValida = false;
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send({ event_type: "PAYMENT.CAPTURE.COMPLETED", resource: {} })
+      .expect(400);
+    assert.equal(pp.firmasComprobadas, 1);
   });
 
   test("sin sesión no se puede aportar ni ver lo aportado", async () => {
