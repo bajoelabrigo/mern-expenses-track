@@ -7,7 +7,7 @@ import { changePasswordAPI } from "../../services/users/userService";
 import { logoutAction } from "../../redux/slice/authSlice";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
-import { Button, Field, Input } from "../ui";
+import { Button, Field, PasswordInput } from "../ui";
 
 const validationSchema = Yup.object({
   currentPassword: Yup.string().required("Ingresa tu contraseña actual"),
@@ -75,7 +75,7 @@ const UpdatePassword = () => {
           hint={hint}
           error={formik.touched[name] && formik.errors[name]}
         >
-          <Input id={name} type="password" autoComplete={autoComplete} {...formik.getFieldProps(name)} />
+          <PasswordInput id={name} autoComplete={autoComplete} {...formik.getFieldProps(name)} />
         </Field>
       ))}
 

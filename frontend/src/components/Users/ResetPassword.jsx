@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { resetPasswordAPI } from "../../services/users/userService";
 import { getErrorMessage } from "../../lib/axios";
 import AlertMessage from "../Alert/AlertMessage";
-import { Button, ButtonLink, Field, Input } from "../ui";
+import { Button, ButtonLink, Field, PasswordInput } from "../ui";
 import AuthShell from "./AuthShell";
 
 const MIN_LENGTH = 8;
@@ -59,18 +59,16 @@ const ResetPassword = () => {
         )}
 
         <Field label="Contraseña nueva" htmlFor="new-password" hint="Mínimo 8 caracteres.">
-          <Input
+          <PasswordInput
             id="new-password"
-            type="password"
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </Field>
         <Field label="Repite la contraseña" htmlFor="confirm-password">
-          <Input
+          <PasswordInput
             id="confirm-password"
-            type="password"
             autoComplete="new-password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
