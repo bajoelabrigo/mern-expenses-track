@@ -89,7 +89,14 @@ const PaypalButtons = ({ amount, onPaid, onError }) => {
     };
   }, [onPaid, onError]);
 
-  return <div ref={contenedor} />;
+  //! `color-scheme: light` a propósito, y solo aquí. La app declara
+  //! `color-scheme: dark` en :root (index.css), y eso hace que el navegador deje
+  //! de dar lienzo transparente al iframe de PayPal —que es de otro dominio— y
+  //! le pinte su fondo propio, que es blanco. El resultado era una banda blanca
+  //! en medio de la tarjeta oscura. Devolviendo el esquema claro a este trozo,
+  //! el iframe vuelve a ser transparente y los botones se sientan sobre la
+  //! tarjeta. No se puede arreglar por dentro: el iframe no es nuestro.
+  return <div ref={contenedor} className="[color-scheme:light]" />;
 };
 
 //! /socio — aporte voluntario para sostener la app
