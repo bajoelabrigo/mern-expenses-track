@@ -9,6 +9,12 @@ process.env.SERVE_FRONTEND = "false";
 //! servicio de push, y el resultado no depende del .env de cada uno.
 process.env.VAPID_PUBLIC_KEY = "";
 process.env.VAPID_PRIVATE_KEY = "";
+//! Los planes del aporte mensual, con valores fijos de mentira: quien corra las
+//! pruebas puede tener los de verdad en su .env, y entonces el resultado
+//! dependería de eso. El PayPal falso no mira el plan, solo que exista.
+process.env.PAYPAL_PLAN_SOCIO_5 = "P-PRUEBA-5";
+process.env.PAYPAL_PLAN_SOCIO_10 = "P-PRUEBA-10";
+process.env.PAYPAL_PLAN_SOCIO_20 = "P-PRUEBA-20";
 
 const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");

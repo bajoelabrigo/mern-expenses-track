@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const Support = require("../model/Support");
+const Subscription = require("../model/Subscription");
 const { toCents, fromCents } = require("../utils/money");
 const {
   paypal,
@@ -7,7 +8,29 @@ const {
   captureFromOrder,
   readRefund,
   applyRefund,
+  readSale,
+  saleIdFromRefund,
 } = require("../services/paypal");
+const {
+  APP_URL,
+  PAYPAL_PLAN_SOCIO_5,
+  PAYPAL_PLAN_SOCIO_10,
+  PAYPAL_PLAN_SOCIO_20,
+} = require("../config/env");
+
+//! Los montos del aporte mensual son los tres que existen como plan en PayPal:
+//! un plan fija su precio al crearse, así que aquí no se puede elegir cualquier
+//! cifra como en el aporte de una vez.
+const PLANES = {
+  5: PAYPAL_PLAN_SOCIO_5,
+  10: PAYPAL_PLAN_SOCIO_10,
+  20: PAYPAL_PLAN_SOCIO_20,
+};
+
+const planesDisponibles = () =>
+  Object.entries(PLANES)
+    .filter(([, id]) => Boolean(id))
+    .map(([monto]) => Number(monto));
 
 //! Tope por aporte. No es un pago por un servicio, es un apoyo voluntario:
 //! un importe enorme casi siempre es un dedo de más.
@@ -43,6 +66,47 @@ const markPaid = async (capture) => {
   );
 };
 
+//! Guarda UN cobro mensual. A diferencia de chat-app, al activarse la
+//! suscripción no se crea ninguna fila de aporte: todos los cobros, incluido el
+//! primero, entran por aquí. Así no hay que "reclamar" después la fila del mes
+//! 1, que es de donde a ellos les salían ingresos duplicados.
+//!
+//! Es idempotente por el id de la venta: PayPal reenvía los avisos, y un upsert
+//! sobre un campo único no deja que el mismo cobro se guarde dos veces.
+const markSalePaid = async (sale) => {
+  const { saleId, subscriptionId, amountCents, feeCents, paidAt } = readSale(sale);
+  if (!saleId || !subscriptionId) return null;
+
+  //! Si no es una suscripción nuestra, es de otro producto que comparte la app
+  //! de PayPal (chat-app, holy_app): sus avisos llegan aquí igual
+  const suscripcion = await Subscription.findOne({ paypalSubscriptionId: subscriptionId });
+  if (!suscripcion) return null;
+
+  const aporte = await Support.findOneAndUpdate(
+    { paypalSaleId: saleId },
+    {
+      $set: { status: "pagado", amountCents, feeCents, paidAt },
+      $setOnInsert: {
+        user: suscripcion.user,
+        email: suscripcion.email,
+        subscription: suscripcion._id,
+        currency: suscripcion.currency,
+      },
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+
+  //! Que entre dinero es la prueba de que la suscripción vive: si estaba
+  //! suspendida por un cobro fallido y la tarjeta vuelve a funcionar, PayPal
+  //! cobra sin avisar de que la reactivó.
+  if (suscripcion.status !== "cancelada") suscripcion.status = "activa";
+  suscripcion.lastPaymentAt = paidAt;
+  if (!suscripcion.activatedAt) suscripcion.activatedAt = paidAt;
+  await suscripcion.save();
+
+  return aporte;
+};
+
 const supportController = {
   //! Si se puede aportar ahora mismo. La página lo consulta antes de pintar
   //! nada: sin claves de PayPal no tiene sentido ofrecer el botón.
@@ -52,11 +116,24 @@ const supportController = {
       ? await Support.find({ user: req.user._id, status: "pagado" }).sort({ paidAt: -1 }).limit(10)
       : [];
 
+    //! La suscripción que cuenta es la que está viva. Las "pendiente" se
+    //! acumulan solas: mucha gente abre el pago en PayPal y no lo termina.
+    const suscripcion = req.user
+      ? await Subscription.findOne({
+          user: req.user._id,
+          status: { $in: ["activa", "suspendida"] },
+        }).sort({ createdAt: -1 })
+      : null;
+
     res.json({
       disponible,
       //! Lo que ha aportado esta persona, para darle las gracias
       total: fromCents(mios.reduce((suma, s) => suma + s.amountCents - s.refundedCents, 0)),
       aportes: mios.map((s) => ({ amount: s.amount, currency: s.currency, paidAt: s.paidAt })),
+      //! Los montos con plan en PayPal; vacío si no se configuraron, y entonces
+      //! la página solo ofrece el aporte de una vez
+      planes: disponible ? planesDisponibles() : [],
+      suscripcion: suscripcion || null,
     });
   }),
 
@@ -97,6 +174,80 @@ const supportController = {
     await support.save();
 
     res.status(201).json({ orderId });
+  }),
+
+  //! Abre el compromiso mensual y devuelve a dónde mandar a la persona para
+  //! que lo apruebe en PayPal. Aquí todavía no se ha cobrado nada.
+  crearSuscripcion: asyncHandler(async (req, res) => {
+    const monto = Number(req.body?.amount);
+    const planId = PLANES[monto];
+    if (!paypal.isConfigured() || !planId) {
+      return res.status(503).json({ message: "El aporte mensual no está disponible ahora mismo" });
+    }
+
+    //! Dos suscripciones a la vez serían dos cobros al mes sin que la persona
+    //! lo pretendiera
+    const yaTiene = await Subscription.findOne({
+      user: req.user._id,
+      status: { $in: ["activa", "suspendida"] },
+    });
+    if (yaTiene) {
+      return res.status(409).json({ message: "Ya tienes un aporte mensual; cancélalo primero" });
+    }
+
+    //! Primero la fila, para tener una referencia que viaje con la suscripción
+    //! y vuelva en cada cobro mensual
+    const suscripcion = await Subscription.create({
+      user: req.user._id,
+      email: req.user.email,
+      planId,
+      amountCents: toCents(monto),
+      currency: "USD",
+    });
+
+    let creada;
+    try {
+      creada = await paypal.createSubscription({
+        planId,
+        reference: suscripcion._id,
+        returnUrl: `${APP_URL}/socio?mensual=listo`,
+        cancelUrl: `${APP_URL}/socio?mensual=cancelado`,
+      });
+    } catch {
+      await Subscription.deleteOne({ _id: suscripcion._id });
+      return res.status(502).json({ message: "PayPal no respondió. Inténtalo de nuevo." });
+    }
+
+    suscripcion.paypalSubscriptionId = creada.subscriptionId;
+    await suscripcion.save();
+
+    res.status(201).json({ approvalUrl: creada.approvalUrl });
+  }),
+
+  //! Cancelar deja de cobrar en adelante; lo ya aportado no se devuelve ni se
+  //! borra, que para eso son filas aparte.
+  cancelarSuscripcion: asyncHandler(async (req, res) => {
+    const suscripcion = await Subscription.findOne({
+      user: req.user._id,
+      status: { $in: ["activa", "suspendida"] },
+    });
+    if (!suscripcion) {
+      return res.status(404).json({ message: "No tienes ningún aporte mensual activo" });
+    }
+
+    try {
+      await paypal.cancelSubscription(suscripcion.paypalSubscriptionId);
+    } catch {
+      return res.status(502).json({ message: "PayPal no pudo cancelarlo. Inténtalo de nuevo." });
+    }
+
+    //! No se espera al aviso de PayPal: la persona acaba de pedirlo y tiene que
+    //! verlo cancelado al momento. El aviso llegará y dejará lo mismo.
+    suscripcion.status = "cancelada";
+    suscripcion.cancelledAt = new Date();
+    await suscripcion.save();
+
+    res.json({ ok: true });
   }),
 
   //! El botón de la página avisa en cuanto el usuario aprueba el pago. El
@@ -140,6 +291,66 @@ const supportController = {
 
     if (tipo === "PAYMENT.CAPTURE.COMPLETED") {
       await markPaid(recurso);
+
+      //! ── Aporte mensual ──
+      //! Cada cobro, incluido el del primer mes. Llega como "venta" y no como
+      //! captura porque la API de suscripciones factura con el motor antiguo.
+    } else if (tipo === "PAYMENT.SALE.COMPLETED") {
+      await markSalePaid(recurso);
+    } else if (tipo === "PAYMENT.SALE.REFUNDED" || tipo === "PAYMENT.SALE.REVERSED") {
+      const devueltos = Math.round(parseFloat(recurso?.amount?.total ?? "0") * 100);
+      const saleId = saleIdFromRefund(recurso);
+      const aporte = saleId ? await Support.findOne({ paypalSaleId: saleId }) : null;
+
+      //! Sin fila es de otro producto que comparte la app de PayPal, igual que
+      //! en los reembolsos de captura; sin id no se puede saber, y eso sí grita
+      if (!aporte) {
+        if (!saleId) {
+          console.error(
+            "PayPal: reembolso de cobro mensual sin ningun id con el que buscarlo —",
+            JSON.stringify({ refundId: recurso?.id, devueltos })
+          );
+        }
+      } else if (devueltos > 0) {
+        const { refundedCents, fullyRefunded } = applyRefund(
+          aporte.amountCents,
+          aporte.refundedCents,
+          devueltos
+        );
+        aporte.refundedCents = refundedCents;
+        aporte.refundedAt = new Date();
+        if (fullyRefunded) aporte.status = "devuelto";
+        await aporte.save();
+      }
+    } else if (
+      tipo === "BILLING.SUBSCRIPTION.ACTIVATED" ||
+      tipo === "BILLING.SUBSCRIPTION.CANCELLED" ||
+      tipo === "BILLING.SUBSCRIPTION.SUSPENDED"
+    ) {
+      //! `id` en los avisos de suscripción es el de la suscripción misma
+      const suscripcion = recurso?.id
+        ? await Subscription.findOne({ paypalSubscriptionId: recurso.id })
+        : null;
+
+      //! Lo que no es nuestro se ignora sin ruido: no hay dinero en juego en
+      //! estos avisos, solo el estado del compromiso
+      if (suscripcion) {
+        if (tipo === "BILLING.SUBSCRIPTION.ACTIVATED") {
+          //! Cancelada de verdad no revive por un aviso rezagado
+          if (suscripcion.status !== "cancelada") {
+            suscripcion.status = "activa";
+            suscripcion.activatedAt = suscripcion.activatedAt || new Date();
+          }
+        } else if (tipo === "BILLING.SUBSCRIPTION.CANCELLED") {
+          suscripcion.status = "cancelada";
+          suscripcion.cancelledAt = suscripcion.cancelledAt || new Date();
+        } else {
+          //! Suspendida no es cancelada: PayPal la para tras varios cobros
+          //! fallidos y puede revivir sola si la tarjeta vuelve a funcionar
+          if (suscripcion.status !== "cancelada") suscripcion.status = "suspendida";
+        }
+        await suscripcion.save();
+      }
     } else if (tipo === "PAYMENT.CAPTURE.REFUNDED" || tipo === "PAYMENT.CAPTURE.REVERSED") {
       const { refundId, captureId, orderId, refundedCents: devueltos } = readRefund(recurso);
 
@@ -187,3 +398,4 @@ const supportController = {
 
 module.exports = supportController;
 module.exports.markPaid = markPaid;
+module.exports.markSalePaid = markSalePaid;

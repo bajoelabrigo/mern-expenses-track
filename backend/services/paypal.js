@@ -80,6 +80,58 @@ const createOrder = async ({ amount, currency = "USD", reference }) => {
 const captureOrder = (orderId) =>
   call(`/v2/checkout/orders/${orderId}/capture`, { method: "POST", body: JSON.stringify({}) });
 
+//! ── Aporte mensual ────────────────────────────────────────────────────────
+//! La suscripción se abre en el servidor y se manda a la persona a aprobarla a
+//! PayPal, en vez de usar los botones del SDK. No es capricho: los botones
+//! necesitan cargar el SDK con `vault=true&intent=subscription`, y eso rompe el
+//! aporte de una vez, que usa el mismo SDK en la misma página.
+const createSubscription = async ({ planId, reference, returnUrl, cancelUrl }) => {
+  const sub = await call("/v1/billing/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({
+      plan_id: planId,
+      //! Vuelve en cada cobro mensual: así se sabe de quién es
+      custom_id: String(reference),
+      application_context: {
+        return_url: returnUrl,
+        cancel_url: cancelUrl,
+        //! El botón de PayPal dice "Suscribirse" y no "Continuar"
+        user_action: "SUBSCRIBE_NOW",
+      },
+    }),
+  });
+  const approvalUrl = (sub?.links || []).find((l) => l?.rel === "approve")?.href;
+  if (!sub?.id || !approvalUrl) throw new Error("PayPal no devolvió la suscripción");
+  return { subscriptionId: sub.id, approvalUrl };
+};
+
+const cancelSubscription = (subscriptionId, reason) =>
+  call(`/v1/billing/subscriptions/${subscriptionId}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason: reason || "Cancelada por la persona" }),
+  });
+
+//! Lo que interesa de un cobro mensual. Los nombres NO son los de una captura:
+//! el importe viene en `amount.total` y no en `amount.value`, y nuestra
+//! referencia en `custom` y no en `custom_id`. Es el formato antiguo de la API
+//! de pagos, que es con el que factura la de suscripciones por debajo.
+const readSale = (sale) => {
+  const centavos = Math.round(parseFloat(sale?.amount?.total ?? "0") * 100);
+  const comision = Math.round(parseFloat(sale?.transaction_fee?.value ?? "0") * 100);
+  return {
+    saleId: sale?.id || "",
+    subscriptionId: sale?.billing_agreement_id || "",
+    reference: sale?.custom || "",
+    amountCents: Number.isFinite(centavos) ? centavos : 0,
+    feeCents: Number.isFinite(comision) ? comision : 0,
+    paidAt: sale?.create_time ? new Date(sale.create_time) : new Date(),
+  };
+};
+
+//! El reembolso de un cobro mensual apunta a su venta con `sale_id`, directo,
+//! sin el rodeo del enlace `up` que hace falta en los reembolsos de captura.
+const saleIdFromRefund = (refund) => refund?.sale_id || "";
+
 //! PayPal nunca deposita el bruto: `paypal_fee` es lo que se queda
 const feeCentsFromCapture = (capture) => {
   const fee = capture?.seller_receivable_breakdown?.paypal_fee?.value;
@@ -155,7 +207,14 @@ const applyRefund = (amountCents, alreadyCents, refundedCents) => {
 };
 
 //! Implementación activa; las pruebas la sustituyen para no llamar a PayPal
-let impl = { isConfigured, createOrder, captureOrder, verifyWebhook };
+let impl = {
+  isConfigured,
+  createOrder,
+  captureOrder,
+  verifyWebhook,
+  createSubscription,
+  cancelSubscription,
+};
 
 const paypal = new Proxy({}, { get: (target, prop) => impl[prop] });
 
@@ -172,4 +231,6 @@ module.exports = {
   readRefund,
   applyRefund,
   feeCentsFromCapture,
+  readSale,
+  saleIdFromRefund,
 };

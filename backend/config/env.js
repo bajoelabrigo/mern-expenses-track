@@ -120,6 +120,13 @@ module.exports = {
   //! Id del webhook que se crea en el panel de PayPal; sin él no se puede
   //! comprobar que un aviso viene de verdad de PayPal y se rechaza.
   PAYPAL_WEBHOOK_ID: leer("PAYPAL_WEBHOOK_ID") || "",
+  //! Planes del aporte mensual, creados con scripts/crear-planes-socio.js. Son
+  //! de la cuenta en la que se crearon: los de live no valen en sandbox ni al
+  //! revés. Sin ellos la página solo ofrece el aporte de una vez, que sigue
+  //! funcionando: el aporte mensual es un añadido, no un requisito.
+  PAYPAL_PLAN_SOCIO_5: leer("PAYPAL_PLAN_SOCIO_5") || "",
+  PAYPAL_PLAN_SOCIO_10: leer("PAYPAL_PLAN_SOCIO_10") || "",
+  PAYPAL_PLAN_SOCIO_20: leer("PAYPAL_PLAN_SOCIO_20") || "",
   //! Avisos al teléfono (Web Push). El par de claves se genera UNA vez con
   //! `npx web-push generate-vapid-keys` y no se cambia: cambiarlo deja sin
   //! avisos a los aparatos ya suscritos. Sin ellas la campana de la app

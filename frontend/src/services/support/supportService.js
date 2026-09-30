@@ -17,3 +17,16 @@ export const captureSupportAPI = async (orderId) => {
   const response = await axiosInstance.post("/socio/capturar", { orderId });
   return response.data;
 };
+
+//! Abre el aporte mensual y devuelve a dónde mandar a la persona para
+//! aprobarlo. Aquí todavía no se ha cobrado nada.
+export const createSubscriptionAPI = async (amount) => {
+  const response = await axiosInstance.post("/socio/suscripcion", { amount });
+  return response.data;
+};
+
+//! Deja de cobrar en adelante; lo ya aportado no se toca
+export const cancelSubscriptionAPI = async () => {
+  const response = await axiosInstance.delete("/socio/suscripcion");
+  return response.data;
+};

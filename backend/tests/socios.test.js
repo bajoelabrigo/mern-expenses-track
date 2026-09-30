@@ -26,10 +26,30 @@ const capture = ({ orderId, captureId = "CAP-1", value = "10.00", fee = "0.79", 
 
 //! PayPal falso: registra lo que se le pide, sin salir a internet
 const fakePaypal = () => {
-  const state = { orders: [], captured: [], configured: true, firmaValida: true, falla: false };
+  const state = {
+    orders: [],
+    captured: [],
+    subs: [],
+    canceladas: [],
+    configured: true,
+    firmaValida: true,
+    falla: false,
+  };
   let n = 0;
   state.impl = {
     isConfigured: () => state.configured,
+    createSubscription: async ({ planId, reference }) => {
+      if (state.falla) throw new Error("PayPal caído");
+      n += 1;
+      const subscriptionId = `I-SUB${n}`;
+      state.subs.push({ subscriptionId, planId, reference: String(reference) });
+      return { subscriptionId, approvalUrl: `https://paypal.test/aprobar/${subscriptionId}` };
+    },
+    cancelSubscription: async (id) => {
+      if (state.falla) throw new Error("PayPal caído");
+      state.canceladas.push(id);
+      return null;
+    },
     createOrder: async ({ amount, currency, reference }) => {
       if (state.falla) throw new Error("PayPal caído");
       n += 1;
@@ -302,6 +322,182 @@ describe("Socios de la app", () => {
     } finally {
       console.error = original;
     }
+  });
+
+  //! ── Aporte mensual ──────────────────────────────────────────────────────
+
+  //! Un cobro de suscripción, con los nombres del formato antiguo de pagos:
+  //! el importe en `amount.total` y nuestra referencia en `custom`
+  const venta = ({ saleId, subscriptionId, total = "10.00", fee = "0.79" }) => ({
+    event_type: "PAYMENT.SALE.COMPLETED",
+    resource: {
+      id: saleId,
+      billing_agreement_id: subscriptionId,
+      amount: { total, currency: "USD" },
+      transaction_fee: { value: fee, currency_code: "USD" },
+      create_time: "2026-09-30T12:00:00Z",
+    },
+  });
+
+  test("el aporte mensual se abre y devuelve a donde aprobarlo", async () => {
+    const user = await createUser();
+
+    const r = await as("post", "/api/v1/socio/suscripcion", user).send({ amount: 10 }).expect(201);
+    assert.match(r.body.approvalUrl, /paypal\.test\/aprobar\/I-SUB1/);
+
+    //! Se le pasa a PayPal el plan del monto pedido y una referencia nuestra
+    assert.equal(pp.subs[0].planId, "P-PRUEBA-10");
+    assert.ok(pp.subs[0].reference, "viaja una referencia para reconocer los cobros");
+
+    //! Todavía no ha pagado nadie: queda pendiente y no cuenta como aporte
+    const estado = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(estado.body.suscripcion, null, "pendiente no se enseña como activa");
+    assert.equal(estado.body.total, 0);
+    assert.deepEqual(estado.body.planes, [5, 10, 20]);
+  });
+
+  test("los montos sin plan se rechazan", async () => {
+    const user = await createUser();
+    for (const amount of [7, 0, 50, "hola", null]) {
+      await as("post", "/api/v1/socio/suscripcion", user).send({ amount }).expect(503);
+    }
+    assert.equal(pp.subs.length, 0, "no se llama a PayPal por un monto que no existe");
+  });
+
+  test("cada cobro mensual queda como un aporte, y el aviso repetido no lo duplica", async () => {
+    const user = await createUser();
+    await as("post", "/api/v1/socio/suscripcion", user).send({ amount: 10 }).expect(201);
+
+    //! Se activa y entra el primer cobro
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send({ event_type: "BILLING.SUBSCRIPTION.ACTIVATED", resource: { id: "I-SUB1" } })
+      .expect(200);
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send(venta({ saleId: "SALE-1", subscriptionId: "I-SUB1" }))
+      .expect(200);
+
+    let estado = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(estado.body.total, 10);
+    assert.equal(estado.body.suscripcion.status, "activa");
+
+    //! PayPal reenvía los avisos: el mismo cobro no puede contar dos veces
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send(venta({ saleId: "SALE-1", subscriptionId: "I-SUB1" }))
+      .expect(200);
+    estado = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(estado.body.total, 10, "el aviso repetido no suma otra vez");
+
+    //! Al mes siguiente, otro cobro: ese sí suma
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send(venta({ saleId: "SALE-2", subscriptionId: "I-SUB1" }))
+      .expect(200);
+    estado = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(estado.body.total, 20);
+    assert.equal(await Support.countDocuments({ paypalSaleId: { $ne: null } }), 2);
+  });
+
+  test("no se puede tener dos aportes mensuales a la vez", async () => {
+    const user = await createUser();
+    await as("post", "/api/v1/socio/suscripcion", user).send({ amount: 5 }).expect(201);
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send({ event_type: "BILLING.SUBSCRIPTION.ACTIVATED", resource: { id: "I-SUB1" } })
+      .expect(200);
+
+    await as("post", "/api/v1/socio/suscripcion", user).send({ amount: 20 }).expect(409);
+  });
+
+  test("cancelar deja de cobrar pero no borra lo ya aportado", async () => {
+    const user = await createUser();
+    await as("post", "/api/v1/socio/suscripcion", user).send({ amount: 10 }).expect(201);
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send(venta({ saleId: "SALE-1", subscriptionId: "I-SUB1" }))
+      .expect(200);
+
+    await as("delete", "/api/v1/socio/suscripcion", user).expect(200);
+    assert.deepEqual(pp.canceladas, ["I-SUB1"], "se le pide a PayPal que pare");
+
+    const estado = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(estado.body.suscripcion, null, "ya no hay compromiso vivo");
+    assert.equal(estado.body.total, 10, "lo aportado sigue contando");
+
+    //! Y un aviso de activación rezagado no la resucita
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send({ event_type: "BILLING.SUBSCRIPTION.ACTIVATED", resource: { id: "I-SUB1" } })
+      .expect(200);
+    const despues = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(despues.body.suscripcion, null);
+
+    //! Sin suscripción viva, cancelar otra vez no encuentra nada
+    await as("delete", "/api/v1/socio/suscripcion", user).expect(404);
+  });
+
+  test("una suscripción suspendida sigue siendo suya, y un cobro la revive", async () => {
+    const user = await createUser();
+    await as("post", "/api/v1/socio/suscripcion", user).send({ amount: 5 }).expect(201);
+
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send({ event_type: "BILLING.SUBSCRIPTION.SUSPENDED", resource: { id: "I-SUB1" } })
+      .expect(200);
+    let estado = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(estado.body.suscripcion.status, "suspendida", "se sigue viendo, para poder actuar");
+
+    //! PayPal cobra sin avisar de que la reactivó: que entre dinero es la prueba
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send(venta({ saleId: "SALE-9", subscriptionId: "I-SUB1", total: "5.00" }))
+      .expect(200);
+    estado = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(estado.body.suscripcion.status, "activa");
+  });
+
+  test("los cobros y avisos de otro producto se ignoran", async () => {
+    const user = await createUser();
+    await as("post", "/api/v1/socio/suscripcion", user).send({ amount: 10 }).expect(201);
+
+    //! La app de PayPal se comparte con chat-app y holy_app
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send(venta({ saleId: "SALE-AJENA", subscriptionId: "I-DE-OTRO" }))
+      .expect(200);
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send({ event_type: "BILLING.SUBSCRIPTION.CANCELLED", resource: { id: "I-DE-OTRO" } })
+      .expect(200);
+
+    assert.equal(await Support.countDocuments(), 0, "no se guarda el cobro de otro");
+    const estado = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(estado.body.total, 0);
+  });
+
+  test("el reembolso de un cobro mensual deja de contar", async () => {
+    const user = await createUser();
+    await as("post", "/api/v1/socio/suscripcion", user).send({ amount: 10 }).expect(201);
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send(venta({ saleId: "SALE-1", subscriptionId: "I-SUB1" }))
+      .expect(200);
+
+    //! El reembolso de una venta apunta a su cobro con sale_id, directo
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send({
+        event_type: "PAYMENT.SALE.REFUNDED",
+        resource: { id: "REF-1", sale_id: "SALE-1", amount: { total: "10.00" } },
+      })
+      .expect(200);
+
+    const estado = await as("get", "/api/v1/socio/estado", user).expect(200);
+    assert.equal(estado.body.total, 0);
+    const aporte = await Support.findOne({ paypalSaleId: "SALE-1" });
+    assert.equal(aporte.status, "devuelto");
   });
 
   test("sin sesión no se puede aportar ni ver lo aportado", async () => {

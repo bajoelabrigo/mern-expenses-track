@@ -160,15 +160,19 @@ despliega Netlify y Render) cuando está verificada.
       porque los eventos son de la cuenta y no de la app; lo ajeno se ignora en
       silencio y solo se avisa de un reembolso que no traiga ningún id (ver
       `controllers/supportController.js`).
-      Falta: pegar las claves (PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET,
-      PAYPAL_MODE, PAYPAL_WEBHOOK_ID en el backend y VITE_PAYPAL_CLIENT_ID en
-      Netlify) y crear el webhook hacia `POST /api/v1/socio/webhook`; su id no
-      se puede reutilizar del de otro producto, porque identifica una URL
-      concreta y con el ajeno la firma nunca cuadra. Se prueba primero en
-      sandbox: con las claves live no hay forma, PayPal no deja pagarse a uno
-      mismo. Sin claves la sección avisa de que no está disponible.
-- [ ] Aporte mensual recurrente (PayPal Subscriptions), si los aportes de una
-      vez funcionan.
+      **Activo en produccion desde el 2026-09-30**: claves live en Render,
+      webhook creado y suscrito a todos los eventos, y VITE_PAYPAL_CLIENT_ID en
+      Netlify. Ojo: esa variable se incrusta al compilar, asi que guardarla no
+      basta, hay que redesplegar.
+- [x] **Aporte mensual recurrente** (PayPal Subscriptions): $5, $10 y $20 al
+      mes. Los planes se crean con `scripts/crear-planes-socio.js`; no se
+      reutilizan los de chat-app porque se llaman "Ofrenda mensual" y esa
+      palabra es justo la que esta app evita. La suscripcion se abre en el
+      servidor y se manda a la persona a aprobarla a PayPal: los botones del
+      SDK exigen `vault=true&intent=subscription`, que rompe el aporte de una
+      vez en la misma pagina. Cada cobro llega como PAYMENT.SALE.COMPLETED (la
+      API de suscripciones factura con el motor antiguo por debajo) y se guarda
+      como un aporte propio, idempotente por el id de la venta.
 - [ ] Planes de suscripción para iglesias (PayPal Subscriptions).
 - [ ] Flujo de aprobación de gastos (solicitar, aprobar, pagar).
 - [ ] Conciliación bancaria y cierre mensual (bloquea editar meses cerrados).

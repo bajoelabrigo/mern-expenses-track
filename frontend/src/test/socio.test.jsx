@@ -10,10 +10,14 @@ import SupportCard from "../components/layout/SupportCard";
 import { isAndroidApp } from "../lib/platform";
 
 const getSupportStatusAPI = vi.fn();
+const createSubscriptionAPI = vi.fn();
+const cancelSubscriptionAPI = vi.fn();
 vi.mock("../services/support/supportService", () => ({
   getSupportStatusAPI: (...args) => getSupportStatusAPI(...args),
   createSupportOrderAPI: vi.fn(),
   captureSupportAPI: vi.fn(),
+  createSubscriptionAPI: (...args) => createSubscriptionAPI(...args),
+  cancelSubscriptionAPI: (...args) => cancelSubscriptionAPI(...args),
 }));
 
 const renderCon = (ui) => {
@@ -50,6 +54,8 @@ const comoAppAndroid = (valor) =>
 describe("Hazte socio", () => {
   beforeEach(() => {
     getSupportStatusAPI.mockReset();
+    createSubscriptionAPI.mockReset();
+    cancelSubscriptionAPI.mockReset();
     comoAppAndroid(false);
     window.sessionStorage.clear();
     //! Sin clave de PayPal la página no ofrece el pago, así que las pruebas
@@ -156,5 +162,100 @@ describe("Hazte socio", () => {
     expect(botones).toHaveBeenCalledTimes(1);
 
     delete window.paypal;
+  });
+
+  //! ── Aporte mensual ──
+
+  it("sin planes configurados no ofrece el aporte mensual", async () => {
+    getSupportStatusAPI.mockResolvedValue({ disponible: true, total: 0, aportes: [], planes: [] });
+
+    const { default: SupportPage } = await import("../components/Support/SupportPage");
+    renderCon(<SupportPage />);
+
+    await screen.findByRole("button", { name: "$10" });
+    //! Un selector de una sola opción estorba más de lo que ayuda
+    expect(screen.queryByRole("radio", { name: "Cada mes" })).not.toBeInTheDocument();
+  });
+
+  it("al elegir cada mes, lleva a PayPal con el monto pedido", async () => {
+    getSupportStatusAPI.mockResolvedValue({
+      disponible: true,
+      total: 0,
+      aportes: [],
+      planes: [5, 10, 20],
+    });
+    createSubscriptionAPI.mockResolvedValue({ approvalUrl: "https://paypal.test/aprobar/I-1" });
+
+    const { default: SupportPage } = await import("../components/Support/SupportPage");
+    renderCon(<SupportPage />);
+
+    fireEvent.click(await screen.findByRole("radio", { name: "Cada mes" }));
+
+    //! El de una vez deja de verse: son dos caminos, no dos formularios a la vez
+    expect(screen.queryByLabelText(/Otro monto/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "$20" }));
+    fireEvent.click(screen.getByRole("button", { name: /Aportar \$20 cada mes/ }));
+
+    //! Se mira solo el primer argumento: react-query le añade su contexto detrás
+    await waitFor(() => expect(createSubscriptionAPI).toHaveBeenCalled());
+    expect(createSubscriptionAPI.mock.calls[0][0]).toBe(20);
+  });
+
+  it("un monto a medida se cae al plan más cercano al pasar a mensual", async () => {
+    getSupportStatusAPI.mockResolvedValue({
+      disponible: true,
+      total: 0,
+      aportes: [],
+      planes: [5, 10, 20],
+    });
+
+    const { default: SupportPage } = await import("../components/Support/SupportPage");
+    renderCon(<SupportPage />);
+
+    //! 35 vale como aporte de una vez, pero no existe como plan mensual
+    fireEvent.change(await screen.findByLabelText(/Otro monto/), { target: { value: "35" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Cada mes" }));
+
+    //! No deja un botón apagado sin explicación: elige el más cercano
+    const boton = screen.getByRole("button", { name: /cada mes$/ });
+    expect(boton).toHaveTextContent("Aportar $20 cada mes");
+    expect(boton).toBeEnabled();
+  });
+
+  it("quien ya aporta cada mes lo ve, y puede cancelarlo", async () => {
+    getSupportStatusAPI.mockResolvedValue({
+      disponible: true,
+      total: 30,
+      aportes: [],
+      planes: [5, 10, 20],
+      suscripcion: { amount: 10, status: "activa" },
+    });
+    cancelSubscriptionAPI.mockResolvedValue({ ok: true });
+
+    const { default: SupportPage } = await import("../components/Support/SupportPage");
+    renderCon(<SupportPage />);
+
+    await screen.findByText(/Aportas 10 dólares cada mes/);
+    //! Con un compromiso vivo no se ofrece abrir otro
+    expect(screen.queryByRole("radio", { name: "Cada mes" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Cancelar el aporte mensual/ }));
+    await waitFor(() => expect(cancelSubscriptionAPI).toHaveBeenCalled());
+  });
+
+  it("una suscripción suspendida explica qué pasó en vez de callarse", async () => {
+    getSupportStatusAPI.mockResolvedValue({
+      disponible: true,
+      total: 10,
+      aportes: [],
+      planes: [5, 10, 20],
+      suscripcion: { amount: 5, status: "suspendida" },
+    });
+
+    const { default: SupportPage } = await import("../components/Support/SupportPage");
+    renderCon(<SupportPage />);
+
+    await screen.findByText(/no pudo hacer el último cobro/i);
   });
 });

@@ -17,6 +17,19 @@ const supportSchema = new mongoose.Schema(
     //! Por donde llega un reembolso más adelante
     paypalCaptureId: { type: String, default: "" },
 
+    //! ── Si este aporte es un cobro mensual de una suscripción ──
+    //! De qué compromiso salió. Vacío en los aportes de una vez.
+    subscription: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subscription",
+      default: null,
+    },
+    //! Los cobros de una suscripción NO llegan como captura sino como "venta"
+    //! (PAYMENT.SALE.COMPLETED): la API de suscripciones factura con el motor
+    //! antiguo de pagos por debajo. Por eso llevan su propio id, y es por donde
+    //! llega su reembolso. Único, para que un aviso reenviado no cobre dos veces.
+    paypalSaleId: { type: String, index: true, unique: true, sparse: true },
+
     amountCents: { type: Number, required: true, min: 0 },
     //! Lo que se queda PayPal: el ingreso real es amount - fee
     feeCents: { type: Number, default: 0 },
@@ -48,6 +61,7 @@ supportSchema.set("toJSON", {
     delete ret.refundedCents;
     delete ret.paypalOrderId;
     delete ret.paypalCaptureId;
+    delete ret.paypalSaleId;
     delete ret.__v;
     delete ret.id;
     return ret;
