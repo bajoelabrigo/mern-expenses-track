@@ -8,7 +8,7 @@ import { churchExistsAPI } from "../../services/workspaces/workspaceService";
 import { getErrorMessage } from "../../lib/axios";
 import { tokenDeInvitacion } from "../../lib/invitationLink";
 import AlertMessage from "../Alert/AlertMessage";
-import { Button, Field, Input, Notice, Select } from "../ui";
+import { Button, Field, Input, Notice, PasswordInput, Select } from "../ui";
 import AuthShell from "./AuthShell";
 import { CURRENCIES } from "../../lib/money";
 
@@ -221,13 +221,12 @@ const RegistrationForm = () => {
         </Field>
 
         <Field label="Contraseña" htmlFor="password" hint="Mínimo 8 caracteres." error={formik.touched.password && formik.errors.password}>
-          <Input id="password" type="password" autoComplete="new-password" {...formik.getFieldProps("password")} />
+          <PasswordInput id="password" autoComplete="new-password" {...formik.getFieldProps("password")} />
         </Field>
 
         <Field label="Repite la contraseña" htmlFor="confirmPassword" error={formik.touched.confirmPassword && formik.errors.confirmPassword}>
-          <Input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             autoComplete="new-password"
             {...formik.getFieldProps("confirmPassword")}
           />

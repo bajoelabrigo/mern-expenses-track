@@ -10,7 +10,7 @@ import { setWorkspaceAction } from "../../redux/slice/workspaceSlice";
 import { getErrorMessage } from "../../lib/axios";
 import { useEsperaLarga } from "../../hooks/useEsperaLarga";
 import AlertMessage from "../Alert/AlertMessage";
-import { Button, Field, Input } from "../ui";
+import { Button, Field, Input, PasswordInput } from "../ui";
 import AuthShell from "./AuthShell";
 
 const validationSchema = Yup.object({
@@ -107,9 +107,8 @@ const LoginForm = () => {
           htmlFor="password"
           error={formik.touched.password && formik.errors.password}
         >
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="current-password"
             {...formik.getFieldProps("password")}
           />

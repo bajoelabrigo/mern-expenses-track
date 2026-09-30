@@ -1,6 +1,6 @@
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { LuChevronDown } from "react-icons/lu";
+import { LuChevronDown, LuEye, LuEyeOff } from "react-icons/lu";
 import { formatMoney } from "../../lib/money";
 import { buttonClass, categoryColor, cx, inputClass } from "./styles";
 
@@ -99,6 +99,35 @@ export const Input = forwardRef(({ className, ...props }, ref) => (
   <input ref={ref} className={inputClass(className)} {...props} />
 ));
 Input.displayName = "Input";
+
+//! Contraseña con ojito: escribir una clave a ciegas en el móvil se equivoca
+//! mucho, así que se puede mirar lo escrito. Nace tapada y el botón queda
+//! fuera del recorrido del tabulador para no estorbar al enviar el formulario.
+export const PasswordInput = forwardRef(({ className, ...props }, ref) => {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        ref={ref}
+        type={visible ? "text" : "password"}
+        className={inputClass(cx("pr-12", className))}
+        {...props}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Ocultar la contraseña" : "Ver la contraseña"}
+        aria-pressed={visible}
+        title={visible ? "Ocultar la contraseña" : "Ver la contraseña"}
+        className="absolute right-0 top-0 h-12 w-12 grid place-items-center rounded-r-xl text-muted hover:text-ink focus:outline-none focus-visible:text-ink transition"
+      >
+        {visible ? <LuEyeOff aria-hidden="true" /> : <LuEye aria-hidden="true" />}
+      </button>
+    </div>
+  );
+});
+PasswordInput.displayName = "PasswordInput";
 
 export const Select = forwardRef(({ className, children, ...props }, ref) => (
   <div className="relative">
