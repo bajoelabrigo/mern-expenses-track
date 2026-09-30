@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Layout from "./layout/Layout";
 import AuthRoute from "./components/Auth/AuthRoute";
+import GuestRoute from "./components/Auth/GuestRoute";
 import AdminRoute from "./components/Auth/AdminRoute";
 import PermissionRoute from "./components/Auth/PermissionRoute";
 import HeroSection from "./components/Home/Homepage";
@@ -78,7 +79,15 @@ const App = () => (
     <Suspense fallback={<Cargando />}>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<HeroSection />} />
+          {/* Con sesión, la portada no pinta nada: se va al panel */}
+          <Route
+            index
+            element={
+              <GuestRoute>
+                <HeroSection />
+              </GuestRoute>
+            }
+          />
           <Route path="descargas" element={<Downloads />} />
           {/* Cómo se usa la app. Pública a propósito: el enlace se manda por
               WhatsApp y tiene que abrir sin cuenta. */}
@@ -86,7 +95,14 @@ const App = () => (
           {/* Las cuentas que la iglesia comparte: sin sesión, a propósito */}
           <Route path="cuentas/:token" element={<PublicReport />} />
           <Route path="login" element={<LoginForm />} />
-          <Route path="register" element={<RegistrationForm />} />
+          <Route
+            path="register"
+            element={
+              <GuestRoute>
+                <RegistrationForm />
+              </GuestRoute>
+            }
+          />
           <Route path="olvide-contrasena" element={<ForgotPassword />} />
           <Route path="restablecer-contrasena/:token" element={<ResetPassword />} />
           {/* Sin sesión muestra la invitación y manda a entrar o registrarse */}
