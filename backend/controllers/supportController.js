@@ -5,7 +5,7 @@ const {
   paypal,
   readCapture,
   captureFromOrder,
-  captureIdFromRefund,
+  readRefund,
   applyRefund,
 } = require("../services/paypal");
 
@@ -141,16 +141,32 @@ const supportController = {
     if (tipo === "PAYMENT.CAPTURE.COMPLETED") {
       await markPaid(recurso);
     } else if (tipo === "PAYMENT.CAPTURE.REFUNDED" || tipo === "PAYMENT.CAPTURE.REVERSED") {
-      const devueltos = Math.round(parseFloat(recurso?.amount?.value ?? "0") * 100);
-      const captureId = captureIdFromRefund(recurso);
-      const support = captureId ? await Support.findOne({ paypalCaptureId: captureId }) : null;
+      const { refundId, captureId, orderId, refundedCents: devueltos } = readRefund(recurso);
+
+      //! Se busca por los dos ids, no solo por el de la captura: si el aviso
+      //! llegara antes de que `markPaid` guardara ese id, el de la orden (que
+      //! se guarda al abrirla) es el que salva la búsqueda. El de la captura se
+      //! prueba además contra `paypalOrderId` porque en los avisos antiguos el
+      //! enlace `up` traía el de la orden — a chat-app le pasó.
+      const condiciones = [
+        ...(captureId ? [{ paypalCaptureId: captureId }, { paypalOrderId: captureId }] : []),
+        ...(orderId ? [{ paypalOrderId: orderId }] : []),
+      ];
+      const support = condiciones.length ? await Support.findOne({ $or: condiciones }) : null;
 
       if (!support) {
-        //! No se calla: es dinero que salió y nadie se enteró
-        console.error(
-          "PayPal: reembolso sin aporte que le corresponda —",
-          JSON.stringify({ captureId, devueltos })
-        );
+        //! Con ids y sin fila, el reembolso es de otro producto que comparte la
+        //! app de PayPal (chat-app, holy_app): los avisos son de la cuenta, no
+        //! de la app, así que llegan aquí igual. Se ignora en silencio.
+        //!
+        //! Pero sin ningún id no se puede saber si era nuestro, y eso sí se
+        //! grita: podría ser dinero que salió sin que nadie se enterara.
+        if (!condiciones.length) {
+          console.error(
+            "PayPal: reembolso sin ningún id con el que buscarlo —",
+            JSON.stringify({ refundId, devueltos })
+          );
+        }
       } else if (devueltos > 0) {
         const { refundedCents, fullyRefunded } = applyRefund(
           support.amountCents,

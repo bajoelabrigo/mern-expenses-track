@@ -154,10 +154,19 @@ despliega Netlify y Render) cuando está verificada.
       **Solo en la web**: dentro de la app de Android no se muestra, porque la
       política de pagos de Google Play prohíbe llevar al usuario a pagar por
       fuera (le pasó a AnkiDroid en 2026). Ver `frontend/src/lib/platform.js`.
-      Falta: crear la app en PayPal y poner sus claves (PAYPAL_CLIENT_ID,
-      PAYPAL_CLIENT_SECRET, PAYPAL_MODE, PAYPAL_WEBHOOK_ID en el backend y
-      VITE_PAYPAL_CLIENT_ID en Netlify). Sin ellas la sección avisa de que no
-      está disponible.
+      Se reutiliza la app REST de `holy_app`: el dinero cae en la misma cuenta
+      de negocio y no hay un segundo secreto que cuidar. El aviso de PayPal
+      llega también con los pagos de los otros productos que comparten esa app,
+      porque los eventos son de la cuenta y no de la app; lo ajeno se ignora en
+      silencio y solo se avisa de un reembolso que no traiga ningún id (ver
+      `controllers/supportController.js`).
+      Falta: pegar las claves (PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET,
+      PAYPAL_MODE, PAYPAL_WEBHOOK_ID en el backend y VITE_PAYPAL_CLIENT_ID en
+      Netlify) y crear el webhook hacia `POST /api/v1/socio/webhook`; su id no
+      se puede reutilizar del de otro producto, porque identifica una URL
+      concreta y con el ajeno la firma nunca cuadra. Se prueba primero en
+      sandbox: con las claves live no hay forma, PayPal no deja pagarse a uno
+      mismo. Sin claves la sección avisa de que no está disponible.
 - [ ] Aporte mensual recurrente (PayPal Subscriptions), si los aportes de una
       vez funcionan.
 - [ ] Planes de suscripción para iglesias (PayPal Subscriptions).

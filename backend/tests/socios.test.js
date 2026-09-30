@@ -8,7 +8,7 @@ const {
   clearDatabase,
   createUser,
 } = require("./helpers");
-const { setPaypal, applyRefund, captureIdFromRefund } = require("../services/paypal");
+const { setPaypal, applyRefund, captureIdFromRefund, readRefund } = require("../services/paypal");
 const Support = require("../model/Support");
 
 const as = (method, url, user) =>
@@ -225,6 +225,83 @@ describe("Socios de la app", () => {
       captureIdFromRefund({ links: [{ rel: "up", href: "https://x/v2/payments/captures/CAP-9" }] }),
       "CAP-9"
     );
+
+    //! Y del reembolso se leen los dos ids, más el importe
+    assert.deepEqual(
+      readRefund({
+        id: "REF-1",
+        amount: { value: "10.00" },
+        supplementary_data: { related_ids: { capture_id: "CAP-9", order_id: "ORDER-9" } },
+      }),
+      { refundId: "REF-1", captureId: "CAP-9", orderId: "ORDER-9", refundedCents: 1000 }
+    );
+
+    //! Un importe ilegible no se convierte en NaN
+    assert.equal(readRefund({ amount: { value: "hola" } }).refundedCents, 0);
+  });
+
+  test("un reembolso encuentra su aporte por el id de la orden", async () => {
+    const user = await createUser();
+    await as("post", "/api/v1/socio/orden", user).send({ amount: 30 }).expect(201);
+    await as("post", "/api/v1/socio/capturar", user).send({ orderId: "ORDER-1" }).expect(200);
+
+    //! Se simula el caso que importa: el aporte se cobró, pero su id de captura
+    //! no quedó guardado (el aviso se adelantó a `markPaid`). Antes esto dejaba
+    //! el reembolso sin dueño y contando como aporte para siempre.
+    await Support.updateOne({ paypalOrderId: "ORDER-1" }, { $unset: { paypalCaptureId: "" } });
+
+    await request(app)
+      .post("/api/v1/socio/webhook")
+      .send({
+        event_type: "PAYMENT.CAPTURE.REFUNDED",
+        resource: {
+          amount: { value: "30.00", currency_code: "USD" },
+          supplementary_data: { related_ids: { order_id: "ORDER-1" } },
+        },
+      })
+      .expect(200);
+
+    const guardado = await Support.findOne({ paypalOrderId: "ORDER-1" });
+    assert.equal(guardado.status, "devuelto");
+    assert.equal(guardado.refundedCents, 3000);
+    assert.equal((await as("get", "/api/v1/socio/estado", user).expect(200)).body.total, 0);
+  });
+
+  test("el reembolso de otro producto se ignora sin gritar; uno sin ids sí grita", async () => {
+    const gritos = [];
+    const original = console.error;
+    console.error = (...args) => gritos.push(args.join(" "));
+
+    try {
+      //! La app de PayPal se comparte con chat-app y holy_app, y sus avisos
+      //! llegan aquí igual: los eventos son de la cuenta, no de la app
+      await request(app)
+        .post("/api/v1/socio/webhook")
+        .send({
+          event_type: "PAYMENT.CAPTURE.REFUNDED",
+          resource: {
+            amount: { value: "5.00", currency_code: "USD" },
+            supplementary_data: { related_ids: { capture_id: "CAP-DE-OTRO", order_id: "ORD-OTRO" } },
+          },
+        })
+        .expect(200);
+
+      assert.deepEqual(gritos, [], "un reembolso ajeno no es una falsa alarma");
+
+      //! Pero sin ningún id no hay forma de saber si era nuestro
+      await request(app)
+        .post("/api/v1/socio/webhook")
+        .send({
+          event_type: "PAYMENT.CAPTURE.REVERSED",
+          resource: { id: "REF-SIN-IDS", amount: { value: "5.00", currency_code: "USD" } },
+        })
+        .expect(200);
+
+      assert.equal(gritos.length, 1, "esto sí puede ser dinero que salió sin enterarnos");
+      assert.match(gritos[0], /REF-SIN-IDS/);
+    } finally {
+      console.error = original;
+    }
   });
 
   test("sin sesión no se puede aportar ni ver lo aportado", async () => {

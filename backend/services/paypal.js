@@ -131,6 +131,22 @@ const captureIdFromRefund = (refund) => {
   return refund?.supplementary_data?.related_ids?.capture_id || fromLink || "";
 };
 
+//! Lo que interesa de un reembolso. Saca los DOS ids a propósito: el de la
+//! captura solo existe si `markPaid` llegó a correr, mientras el de la orden se
+//! guarda al abrirla, antes de que nadie pague. Con los dos, un reembolso de un
+//! aporte nuestro encuentra su fila siempre — y entonces "no la encuentro"
+//! pasa a significar una sola cosa: que el reembolso no era nuestro.
+const readRefund = (refund) => {
+  const centavos = Math.round(parseFloat(refund?.amount?.value ?? "0") * 100);
+  return {
+    refundId: refund?.id || "",
+    captureId: captureIdFromRefund(refund),
+    orderId: refund?.supplementary_data?.related_ids?.order_id || "",
+    //! Un importe ilegible se trata como cero: un NaN acabaría guardado
+    refundedCents: Number.isFinite(centavos) ? centavos : 0,
+  };
+};
+
 //! Cuánto queda devuelto tras un reembolso, contando los parciales y los
 //! avisos repetidos (PayPal reenvía). Separado para poder probarlo.
 const applyRefund = (amountCents, alreadyCents, refundedCents) => {
@@ -153,6 +169,7 @@ module.exports = {
   readCapture,
   captureFromOrder,
   captureIdFromRefund,
+  readRefund,
   applyRefund,
   feeCentsFromCapture,
 };
