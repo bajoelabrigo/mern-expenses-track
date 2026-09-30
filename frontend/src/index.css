@@ -24,10 +24,19 @@
   --accent: #e5a33b;
   --accent-ink: #1f1405;
   --accent-soft: #fbefd9;
-  /* Hacerse socio es lo único de la app que no es dinero de la iglesia: va en
-     su propio color para que no se confunda con lo que entra ni con lo que
-     sale, y para que el ámbar siga siendo solo de "Registrar". */
-  --support: #6d5bd0;
+  /* Hacerse socio: el mismo degradado violeta → rosa del botón de socio de
+     chat-app, para que las dos aplicaciones se reconozcan como de la misma
+     casa. Va en degradado y no en plano para distinguirse a ojo del ámbar de
+     "Registrar", que es el otro botón de la barra.
+     El violeta es el de allí tal cual (DaisyUI primary, #422ad5). El rosa NO:
+     el suyo (#f43098) deja el texto blanco en 3,67:1, y aquí todos los colores
+     cumplen AA. Bajado a #d92b7f da 4,6:1, y al lado del original no se nota.
+     El violeta da 8,3:1.
+     Los mismos valores sirven en los dos temas a propósito: es un botón de
+     fondo oscuro con texto blanco, que funciona igual sobre la crema y sobre
+     el negro. Por eso este bloque no se repite abajo. */
+  --support: #422ad5;
+  --support-2: #d92b7f;
   --support-ink: #ffffff;
   --income: #187c46;
   --income-soft: #e2f3e9;
@@ -49,8 +58,8 @@
   --accent: #f0b14b;
   --accent-ink: #1f1405;
   --accent-soft: #3a2c14;
-  --support: #a394f2;
-  --support-ink: #17122e;
+  /* --support, --support-2 y --support-ink NO se redefinen aquí: ver la nota
+     en el tema claro. */
   --income: #3cc77f;
   --income-soft: #183324;
   --expense: #f0b14b;
@@ -74,6 +83,7 @@
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
   --color-support: var(--support);
+  --color-support-2: var(--support-2);
   --color-support-ink: var(--support-ink);
   --color-income: var(--income);
   --color-income-soft: var(--income-soft);
